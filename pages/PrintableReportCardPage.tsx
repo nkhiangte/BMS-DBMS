@@ -1,0 +1,304 @@
+import React, { useMemo } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Student, Grade, SubjectMark, GradeDefinition, SubjectDefinition } from '../types';
+import { BackIcon, UserIcon, HomeIcon, PrinterIcon } from '../components/Icons';
+import { formatStudentId } from '../utils';
+
+const PhotoWithFallback: React.FC<{src?: string, alt: string}> = ({ src, alt }) => {
+    const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+        e.currentTarget.onerror = null; // Prevent infinite loop
+        e.currentTarget.style.display = 'none';
+        const parent = e.currentTarget.parentElement;
+        if(parent) {
+            const fallback = parent.querySelector('.fallback-icon');
+            if(fallback) {
+                (fallback as HTMLElement).style.display = 'flex';
+            }
+        }
+    };
+
+    return (
+        <div className="relative w-full h-full bg-slate-200 flex items-center justify-center border">
+             {src && <img src={src} alt={alt} className="h-full w-full object-cover" onError={handleError} />}
+            <div className={`fallback-icon absolute inset-0 items-center justify-center text-slate-400 ${src ? 'hidden' : 'flex'}`}>
+                <UserIcon className="w-2/3 h-2/3" />
+            </div>
+        </div>
+    )
+};
+
+const getSplitMarks = (subjectName: string, results: SubjectMark[], subjectDef: SubjectDefinition) => {
+    const result = results.find(r => r.subject === subjectName);
+    const hasActivity = subjectDef.activityFullMarks > 0;
+    const fullExam = subjectDef.examFullMarks;
+    const fullActivity = subjectDef.activityFullMarks;
+    const fullTotal = fullExam + fullActivity;
+
+    if (!result) return { exam: null, activity: null, total: null, fullExam, fullActivity, fullTotal };
+
+    const examMarks = hasActivity ? (result.examMarks ?? null) : (result.marks ?? null);
+    const activityMarks = hasActivity ? (result.activityMarks ?? null) : null;
+    
+    let total: number | null = null;
+    if (examMarks !== null || activityMarks !== null) {
+        total = (examMarks || 0) + (activityMarks || 0);
+    }
+    
+    return { exam: examMarks, activity: activityMarks, total, fullExam, fullActivity, fullTotal };
+};
+
+
+interface PrintableReportCardPageProps {
+  students: Student[];
+  gradeDefinitions: Record<Grade, GradeDefinition>;
+  academicYear: string;
+}
+
+const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ students, gradeDefinitions, academicYear }) => {
+    const { studentId } = useParams<{ studentId: string; examId: string }>();
+    const navigate = useNavigate();
+
+    const student = useMemo(() => students.find(s => s.id === Number(studentId)), [students, studentId]);
+    const gradeDef = useMemo(() => student ? gradeDefinitions[student.grade] : undefined, [student, gradeDefinitions]);
+
+    const allExamsData = useMemo(() => {
+        if (!student) return null;
+        const studentPerformance = student.academicPerformance || [];
+        
+        const getResultsForTerm = (termId: string): SubjectMark[] => {
+            const exam = studentPerformance.find(e => e.id === termId);
+            return exam?.results.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null) || [];
+        };
+
+        return {
+            term1: getResultsForTerm('terminal1'),
+            term2: getResultsForTerm('terminal2'),
+            term3: getResultsForTerm('terminal3'),
+        };
+    }, [student]);
+
+    const summaryData = useMemo(() => {
+        if (!student || !allExamsData || !gradeDef) return null;
+
+        let grandTotal = 0;
+        let maxGrandTotal = 0;
+        
+        // ONLY use final term data for summary
+        const finalTermResults = allExamsData.term3;
+
+        gradeDef.subjects.forEach(subjectDef => {
+            const finalTermMarks = getSplitMarks(subjectDef.name, finalTermResults, subjectDef);
+            grandTotal += finalTermMarks.total ?? 0;
+            maxGrandTotal += finalTermMarks.fullTotal ?? 0;
+        });
+        
+        const percentage = maxGrandTotal > 0 ? (grandTotal / maxGrandTotal) * 100 : 0;
+        
+        const result = percentage >= 33 ? "PASS" : "FAIL";
+        
+        const getRemarks = (p: number, res: string) => {
+            if (res === 'FAIL') return 'Requires serious attention';
+            if (p >= 90) return 'Outstanding'; if (p >= 80) return 'Excellent'; if (p >= 70) return 'Very Good';
+            if (p >= 60) return 'Good'; if (p >= 50) return 'Satisfactory';
+            return 'Needs Improvement';
+        };
+        
+        return {
+            grandTotal,
+            maxGrandTotal,
+            percentage: percentage.toFixed(2),
+            result,
+            remarks: getRemarks(percentage, result),
+        };
+    }, [student, allExamsData, gradeDef]);
+
+     const hasActivityMarks = useMemo(() => gradeDef?.subjects.some(s => s.activityFullMarks > 0) ?? false, [gradeDef]);
+
+    const termTotals = useMemo(() => {
+        if (!gradeDef || !allExamsData) return { t1: 0, t2: 0, t3: 0, max: 0 };
+        let t1 = 0, t2 = 0, t3 = 0, max = 0;
+        gradeDef.subjects.forEach(subjectDef => {
+            t1 += getSplitMarks(subjectDef.name, allExamsData.term1, subjectDef).total ?? 0;
+            t2 += getSplitMarks(subjectDef.name, allExamsData.term2, subjectDef).total ?? 0;
+            t3 += getSplitMarks(subjectDef.name, allExamsData.term3, subjectDef).total ?? 0;
+            max += subjectDef.examFullMarks + subjectDef.activityFullMarks;
+        });
+        return { t1, t2, t3, max };
+    }, [gradeDef, allExamsData]);
+
+    if (!student || !gradeDef || !summaryData) {
+        return (
+            <div className="text-center bg-white p-10 rounded-xl shadow-lg">
+                <h2 className="text-2xl font-bold text-red-600">Report Card Data Not Found</h2>
+                <p className="text-slate-500 mt-2">The requested student or exam data is incomplete.</p>
+                <button onClick={() => navigate('/')} className="mt-6 flex items-center mx-auto justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 transition">
+                    <BackIcon className="w-5 h-5" />
+                    Return to Dashboard
+                </button>
+            </div>
+        );
+    }
+    
+    const DetailItem: React.FC<{label: string, value?: string | number}> = ({ label, value }) => (
+        <div><span className="font-semibold text-slate-800">{label}:</span> <span className="text-slate-800">{value || 'N/A'}</span></div>
+    );
+     const SummaryItem: React.FC<{ label: string; value: string | number; color?: string; }> = ({ label, value, color = 'text-slate-800' }) => (
+        <div className="bg-slate-50 p-3 rounded-lg">
+            <div className="text-sm text-slate-500">{label}</div>
+            <div className={`text-lg font-bold ${color}`}>{value}</div>
+        </div>
+    );
+    
+    return (
+      <div className="printable-area">
+        <div className="mb-6 flex justify-between items-center print:hidden">
+            <button onClick={() => navigate(`/report-card/${student.id}`)} className="flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-800 transition-colors">
+                <BackIcon className="w-5 h-5" /> Back to Reports List
+            </button>
+            <div className="flex items-center gap-4">
+                 <Link to="/" className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition-colors" title="Go to Home/Dashboard">
+                    <HomeIcon className="w-5 h-5" /> <span>Home</span>
+                </Link>
+                <button onClick={() => window.print()} className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 flex items-center">
+                    <PrinterIcon className="w-5 h-5" /><span className="ml-2">Print This Report</span>
+                </button>
+            </div>
+        </div>
+        
+        <div className="bg-white p-8 rounded-xl shadow-lg print:shadow-none print:rounded-none" id="report-card">
+            <style>{`
+              @page { size: A4; margin: 1.5cm; }
+            `}</style>
+            <header className="text-center border-b-4 border-sky-700 pb-4 mb-6">
+                <h1 className="text-4xl font-bold text-sky-800">Bethel Mission School</h1>
+                <p className="text-lg font-semibold text-slate-600">Champhai, Mizoram</p>
+                <p className="text-sm text-slate-500">DISE Code 15040100705</p>
+                <h2 className="text-2xl font-semibold text-slate-600 mt-4">Annual Progress Report Card</h2>
+                <p className="text-lg text-slate-500">Academic Year: {academicYear}</p>
+            </header>
+
+            <section className="mb-6 p-4 border border-slate-300 rounded-lg">
+                <h3 className="text-xl font-bold text-slate-700 mb-4">Student Information</h3>
+                <div className="flex flex-col sm:flex-row gap-6 items-start">
+                    <div className="w-32 h-40 flex-shrink-0">
+                        <PhotoWithFallback src={student.photographUrl} alt={`${student.name}'s photograph`} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-md flex-grow">
+                       <DetailItem label="Name" value={student.name} />
+                       <DetailItem label="Student ID" value={formatStudentId(student, academicYear)} />
+                       <DetailItem label="Grade" value={student.grade} />
+                       <DetailItem label="Roll No." value={String(student.rollNo)} />
+                       <DetailItem label="Date of Birth" value={student.dateOfBirth} />
+                       <DetailItem label="Father's Name" value={student.fatherName} />
+                    </div>
+                </div>
+            </section>
+            
+            <section className="mb-6">
+                 <h3 className="text-xl font-bold text-slate-700 mb-2 text-center">Academic Performance</h3>
+                 <table className="min-w-full border-collapse border border-slate-400 text-sm">
+                    <thead className="bg-slate-100 font-semibold text-slate-800">
+                        <tr>
+                            <th rowSpan={hasActivityMarks ? 2 : 1} className="border border-slate-300 px-2 py-1 text-left align-bottom">Subject</th>
+                            <th colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center">I Term</th>
+                            <th colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center">II Term</th>
+                            <th colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center">Final Term</th>
+                        </tr>
+                        {hasActivityMarks && (
+                            <tr>
+                                <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Exam</th>
+                                <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Act.</th>
+                                <th className="border border-slate-300 px-2 py-1 text-slate-800">Total</th>
+                                <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Exam</th>
+                                <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Act.</th>
+                                <th className="border border-slate-300 px-2 py-1 text-slate-800">Total</th>
+                                <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Exam</th>
+                                <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Act.</th>
+                                <th className="border border-slate-300 px-2 py-1 text-slate-800">Total</th>
+                            </tr>
+                        )}
+                    </thead>
+                    <tbody>
+                        {gradeDef.subjects.map((subjectDef) => {
+                            const term1 = getSplitMarks(subjectDef.name, allExamsData.term1, subjectDef);
+                            const term2 = getSplitMarks(subjectDef.name, allExamsData.term2, subjectDef);
+                            const term3 = getSplitMarks(subjectDef.name, allExamsData.term3, subjectDef);
+
+                            return (
+                                <tr key={subjectDef.name}>
+                                    <td className="border border-slate-300 px-2 py-1 text-left text-slate-800">{subjectDef.name}</td>
+                                    {/* Term 1 */}
+                                    {hasActivityMarks ? (
+                                        <>
+                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term1.exam ?? '-'}</td>
+                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term1.activity ?? '-'}</td>
+                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800 font-semibold">{term1.total ?? '-'}</td>
+                                        </>
+                                    ) : (
+                                        <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term1.total ?? '-'}</td>
+                                    )}
+                                    {/* Term 2 */}
+                                     {hasActivityMarks ? (
+                                        <>
+                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term2.exam ?? '-'}</td>
+                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term2.activity ?? '-'}</td>
+                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800 font-semibold">{term2.total ?? '-'}</td>
+                                        </>
+                                    ) : (
+                                        <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term2.total ?? '-'}</td>
+                                    )}
+                                    {/* Term 3 */}
+                                     {hasActivityMarks ? (
+                                        <>
+                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term3.exam ?? '-'}</td>
+                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term3.activity ?? '-'}</td>
+                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800 font-semibold">{term3.total ?? '-'}</td>
+                                        </>
+                                    ) : (
+                                        <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term3.total ?? '-'}</td>
+                                    )}
+                                </tr>
+                            )
+                        })}
+                    </tbody>
+                    <tfoot className="bg-slate-100 font-bold">
+                        <tr>
+                            <td className="border border-slate-300 px-2 py-1 text-left text-slate-900">Total</td>
+                             <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center text-slate-900">{termTotals.t1} / {termTotals.max}</td>
+                             <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center text-slate-900">{termTotals.t2} / {termTotals.max}</td>
+                             <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center text-slate-900">{termTotals.t3} / {termTotals.max}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </section>
+
+             <section>
+                <h3 className="text-xl font-bold text-slate-700 mb-4 text-center">Annual Result Summary (Based on Final Term)</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <SummaryItem label="Final Term Total" value={`${summaryData.grandTotal} / ${summaryData.maxGrandTotal}`} />
+                    <SummaryItem label="Final Term Percentage" value={`${summaryData.percentage}%`} />
+                    <SummaryItem 
+                        label="Final Result" 
+                        value={summaryData.result} 
+                        color={summaryData.result === 'PASS' ? 'text-emerald-600' : 'text-red-600'}
+                    />
+                    <SummaryItem label="Annual Rank" value="--" />
+                    <div className="col-span-full">
+                         <SummaryItem label="Remarks" value={summaryData.remarks} />
+                    </div>
+                </div>
+            </section>
+
+            <footer className="mt-12 pt-6 border-t-2 border-slate-300 text-center text-sm text-slate-500">
+                <div className="flex justify-around items-end" style={{minHeight: '60px'}}>
+                    <div className="w-1/3 pt-8 border-t border-slate-400">Class Teacher's Signature</div>
+                    <div className="w-1/3 pt-8 border-t border-slate-400">Principal's Signature</div>
+                </div>
+                <p className="mt-8">&copy;{new Date().getFullYear()} Bethel Mission School. All rights reserved.</p>
+            </footer>
+        </div>
+      </div>
+    );
+};
+
+export default PrintableReportCardPage;

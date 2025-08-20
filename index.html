@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-g" />
+    <link rel="icon" href="https://fav.farm/🏫" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bethel Mission School - Student DB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root {
+        --primary: #0ea5e9; /* sky-500 */
+        --primary-dark: #0284c7; /* sky-600 */
+        --primary-light: #f0f9ff; /* sky-50 */
+        --secondary: #f59e0b; /* amber-500 */
+        --success: #10b981; /* emerald-500 */
+        --danger: #ef4444; /* red-500 */
+        --warning: #f97316; /* orange-500 */
+        --info: #6366f1; /* indigo-500 */
+        --light: #f8fafc; /* slate-50 */
+        --dark: #1e293b; /* slate-800 */
+        --body-bg: #f1f5f9; /* slate-100 */
+        --card-bg: #ffffff;
+        --text-main: #0f172a; /* slate-900 */
+        --text-muted: #64748b; /* slate-500 */
+        --border-color: #e2e8f0; /* slate-200 */
+      }
+
+      /* Brighter Scrollbar */
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #e0f2fe; /* primary-light, but lighter */
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 5px;
+        border: 2px solid #e0f2fe;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-dark);
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in {
+        animation: fadeIn 0.5s ease-out forwards;
+      }
+      
+      /* Base button style */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1.2rem;
+        font-weight: 600;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        transition: all 0.2s ease-in-out;
+        border: 1px solid transparent;
+      }
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      }
+      .btn-primary {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--primary);
+      }
+      .btn-primary:hover {
+        background-color: var(--primary-dark);
+        border-color: var(--primary-dark);
+      }
+      .btn-secondary {
+        background-color: var(--card-bg);
+        color: var(--text-main);
+        border-color: var(--border-color);
+      }
+      .btn-secondary:hover {
+        background-color: var(--light);
+        border-color: #cbd5e1;
+      }
+      
+      /* General component styles */
+      .card {
+        background-color: var(--card-bg);
+        border-radius: 0.75rem; /* 12px */
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+        transition: all 0.3s ease;
+      }
+      .card:hover {
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      }
+      
+      input[type=text], input[type=email], input[type=password], input[type=tel], input[type=number], input[type=date], select, textarea {
+        border-radius: 0.5rem;
+        border: 1px solid var(--border-color);
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      input:focus, select:focus, textarea:focus {
+        --tw-ring-color: var(--primary);
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 2px var(--primary-light) !important;
+      }
+      
+      /* Hide number input spinners */
+      input[type=number]::-webkit-inner-spin-button,
+      input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      input[type=number] {
+        -moz-appearance: textfield; /* Firefox */
+      }
+
+      /* --- Print Styles --- */
+      @media print {
+        header, .print-hidden, .print\:hidden { display: none !important; }
+        .fixed { display: none !important; }
+        main > * { display: none; }
+        main .printable-area { display: block !important; height: 100%; width: 100%; }
+        body, #root, #root > div {
+          background-color: white !important;
+          padding: 0 !important; margin: 0 !important;
+          box-shadow: none !important; border: none !important;
+        }
+        main { padding: 0 !important; margin: 0 !important; }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
+    "react/": "https://esm.sh/react@^19.1.1/",
+    "react": "https://esm.sh/react@^19.1.1",
+    "react-router-dom": "https://esm.sh/react-router-dom@6.25.1",
+    "@google/genai": "https://esm.sh/@google/genai"
+  }
+}
+</script>
+</head>
+  <body class="antialiased" style="background-color: var(--body-bg); color: var(--text-main);">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
