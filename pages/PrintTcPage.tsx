@@ -86,14 +86,11 @@ const PrintTcPage: React.FC<PrintTcPageProps> = ({ tcRecords }) => {
             `}</style>
             
             <header className="text-center mb-8">
-                <div className="flex justify-center items-center gap-4">
-                    <img src="https://i.postimg.cc/qt00dty5/logo.png" alt="Bethel Mission School Logo" className="h-20 w-20" />
-                    <div>
-                        <h1 className="text-4xl font-bold text-sky-800 tracking-wide">Bethel Mission School</h1>
-                        <p className="text-slate-800">Affiliated with the Council for the Indian School Certificate Examinations</p>
-                        <p className="text-slate-700 text-sm">Main Road, Cityville, State, PIN 123456</p>
-                    </div>
-                </div>
+                <img 
+                    src="https://i.postimg.cc/KKNZD4NB/bms-letterhead.png" 
+                    alt="Bethel Mission School Banner" 
+                    className="w-full h-auto"
+                />
                 <div className="mt-6">
                     <h2 className="text-2xl font-semibold inline-block border-b-2 border-slate-700 px-8 pb-1">TRANSFER CERTIFICATE</h2>
                 </div>
