@@ -8,17 +8,27 @@ const AcademicYearForm: React.FC<AcademicYearFormProps> = ({ onSetAcademicYear }
   const [year, setYear] = useState('');
   const [error, setError] = useState('');
 
-  const validateYear = (input: string): boolean => {
-    return /^\d{4}-\d{4}$/.test(input);
+  const generateAcademicYears = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    // Generate a few years before and after the current year
+    for (let i = -2; i <= 3; i++) {
+        const startYear = currentYear + i;
+        const endYear = startYear + 1;
+        years.push(`${startYear}-${endYear}`);
+    }
+    return years;
   };
+
+  const academicYears = generateAcademicYears();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateYear(year)) {
+    if (year) {
       setError('');
       onSetAcademicYear(year);
     } else {
-      setError('Please use the format YYYY-YYYY (e.g., 2024-2025).');
+      setError('Please select an academic year.');
     }
   };
 
@@ -31,7 +41,7 @@ const AcademicYearForm: React.FC<AcademicYearFormProps> = ({ onSetAcademicYear }
               🗓️
             </div>
             <h1 className="text-3xl font-bold text-slate-800">Set Academic Year</h1>
-            <p className="text-slate-500 mt-2">Please enter the current academic year to continue.</p>
+            <p className="text-slate-500 mt-2">Please select the current academic year to continue.</p>
           </div>
           {error && (
             <p className="bg-red-100 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded-r-lg relative mb-4" role="alert">
@@ -43,21 +53,25 @@ const AcademicYearForm: React.FC<AcademicYearFormProps> = ({ onSetAcademicYear }
               <label className="block text-slate-700 text-sm font-bold mb-2" htmlFor="academicYear">
                 Academic Year
               </label>
-              <input
-                className="shadow-sm appearance-none border border-slate-300 rounded-lg w-full py-3 px-4 text-slate-700 leading-tight focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+              <select
+                className="shadow-sm appearance-none bg-white border border-slate-300 rounded-lg w-full py-3 px-4 text-slate-700 leading-tight focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                 id="academicYear"
-                type="text"
-                placeholder="e.g., 2024-2025"
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
                 required
                 autoFocus
-              />
+              >
+                <option value="" disabled className="text-slate-400">-- Select an Academic Year --</option>
+                {academicYears.map(y => (
+                    <option key={y} value={y} className="text-black">{y}</option>
+                ))}
+              </select>
             </div>
             <div className="flex items-center justify-between mt-6">
               <button
-                className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors"
+                className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed"
                 type="submit"
+                disabled={!year}
               >
                 Set Year & Continue
               </button>
