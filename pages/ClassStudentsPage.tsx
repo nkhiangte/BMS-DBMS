@@ -1,9 +1,8 @@
 
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, Staff, EmploymentStatus } from '../types';
-import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon } from '../components/Icons';
+import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon } from '../components/Icons';
 import { formatStudentId, calculateDues } from '../utils';
 import EditSubjectsModal from '../components/EditSubjectsModal';
 
@@ -15,9 +14,10 @@ interface ClassStudentsPageProps {
   academicYear: string;
   onOpenImportModal: (grade: Grade | null) => void;
   onOpenTransferModal: (student: Student) => void;
+  onDelete: (student: Student) => void;
 }
 
-const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal, onOpenTransferModal }) => {
+const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal, onOpenTransferModal, onDelete }) => {
   const { grade } = useParams<{ grade: string }>();
   const navigate = useNavigate();
   const decodedGrade = grade ? decodeURIComponent(grade) as Grade : '' as Grade;
@@ -212,10 +212,16 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.fatherName}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button onClick={() => onOpenTransferModal(student)} className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors" title="Transfer Student">
-                            <TransferIcon className="w-4 h-4" />
-                            <span>Transfer</span>
-                        </button>
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => onOpenTransferModal(student)} className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors" title="Transfer Student">
+                                <TransferIcon className="w-4 h-4" />
+                                <span>Transfer</span>
+                            </button>
+                            <button onClick={() => onDelete(student)} className="flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-800 transition-colors" title="Remove Incorrect Entry">
+                                <TrashIcon className="w-4 h-4" />
+                                <span>Remove</span>
+                            </button>
+                        </div>
                     </td>
                   </tr>
                 )})}

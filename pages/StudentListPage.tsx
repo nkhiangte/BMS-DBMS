@@ -1,3 +1,5 @@
+
+
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Student } from '../types';
@@ -9,11 +11,10 @@ interface StudentListPageProps {
   students: Student[];
   onAdd: () => void;
   onEdit: (student: Student) => void;
-  onDelete: (student: Student) => void;
   academicYear: string;
 }
 
-const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEdit, onDelete, academicYear }) => {
+const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEdit, academicYear }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState<string>('');
   const navigate = useNavigate();
@@ -92,7 +93,6 @@ const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEd
       <StudentTable
         students={filteredStudents}
         onEdit={onEdit}
-        onDelete={onDelete}
         academicYear={academicYear}
       />
     </div>

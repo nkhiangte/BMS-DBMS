@@ -1,5 +1,4 @@
 
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, User, Role, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType } from './types';
@@ -52,6 +51,16 @@ import HostelHealthPage from './pages/HostelHealthPage';
 import HostelCommunicationPage from './pages/HostelCommunicationPage';
 import HostelSettingsPage from './pages/HostelSettingsPage';
 
+// Helper for localStorage persistence
+const getInitialState = <T,>(key: string, initialValue: T): T => {
+    try {
+        const item = window.localStorage.getItem(key);
+        return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+        console.warn(`Error reading localStorage key “${key}”:`, error);
+        return initialValue;
+    }
+};
 
 const App: React.FC = () => {
     // --- AUTHENTICATION STATE ---
@@ -63,30 +72,30 @@ const App: React.FC = () => {
 
     // --- APPLICATION STATE & LOGIC ---
     const [academicYear, setAcademicYear] = useState<string | null>(null);
-    const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
+    const [students, setStudents] = useState<Student[]>(() => getInitialState('students', INITIAL_STUDENTS));
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
     const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
-    const [tcRecords, setTcRecords] = useState<TcRecord[]>([]);
-    const [gradeDefinitions, setGradeDefinitions] = useState<Record<Grade, GradeDefinition>>(GRADE_DEFINITIONS);
+    const [tcRecords, setTcRecords] = useState<TcRecord[]>(() => getInitialState('tcRecords', []));
+    const [gradeDefinitions, setGradeDefinitions] = useState<Record<Grade, GradeDefinition>>(() => getInitialState('gradeDefinitions', GRADE_DEFINITIONS));
 
     // --- Staff Management State ---
-    const [staff, setStaff] = useState<Staff[]>(INITIAL_STAFF);
+    const [staff, setStaff] = useState<Staff[]>(() => getInitialState('staff', INITIAL_STAFF));
     const [isStaffFormModalOpen, setIsStaffFormModalOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
     
     // --- Inventory Management State ---
-    const [inventory, setInventory] = useState<InventoryItem[]>(INITIAL_INVENTORY);
+    const [inventory, setInventory] = useState<InventoryItem[]>(() => getInitialState('inventory', INITIAL_INVENTORY));
     const [isInventoryFormModalOpen, setIsInventoryFormModalOpen] = useState(false);
     const [editingInventoryItem, setEditingInventoryItem] = useState<InventoryItem | null>(null);
     const [deletingInventoryItem, setDeletingInventoryItem] = useState<InventoryItem | null>(null);
 
     // --- Hostel Management State ---
-    const [hostelResidents, setHostelResidents] = useState<HostelResident[]>(INITIAL_HOSTEL_RESIDENTS);
-    const [hostelRooms, setHostelRooms] = useState<HostelRoom[]>(INITIAL_HOSTEL_ROOMS);
-    const [hostelStaff, setHostelStaff] = useState<HostelStaff[]>(INITIAL_HOSTEL_STAFF);
-    const [hostelInventory, setHostelInventory] = useState<HostelInventoryItem[]>(INITIAL_HOSTEL_INVENTORY);
-    const [hostelStockLogs, setHostelStockLogs] = useState<StockLog[]>(INITIAL_STOCK_LOGS);
+    const [hostelResidents, setHostelResidents] = useState<HostelResident[]>(() => getInitialState('hostelResidents', INITIAL_HOSTEL_RESIDENTS));
+    const [hostelRooms, setHostelRooms] = useState<HostelRoom[]>(() => getInitialState('hostelRooms', INITIAL_HOSTEL_ROOMS));
+    const [hostelStaff, setHostelStaff] = useState<HostelStaff[]>(() => getInitialState('hostelStaff', INITIAL_HOSTEL_STAFF));
+    const [hostelInventory, setHostelInventory] = useState<HostelInventoryItem[]>(() => getInitialState('hostelInventory', INITIAL_HOSTEL_INVENTORY));
+    const [hostelStockLogs, setHostelStockLogs] = useState<StockLog[]>(() => getInitialState('hostelStockLogs', INITIAL_STOCK_LOGS));
 
     // --- Import Modal State ---
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -94,6 +103,19 @@ const App: React.FC = () => {
 
     // --- Transfer Modal State ---
     const [transferringStudent, setTransferringStudent] = useState<Student | null>(null);
+
+    // --- Data Persistence Effects ---
+    useEffect(() => { localStorage.setItem('students', JSON.stringify(students)); }, [students]);
+    useEffect(() => { localStorage.setItem('tcRecords', JSON.stringify(tcRecords)); }, [tcRecords]);
+    useEffect(() => { localStorage.setItem('gradeDefinitions', JSON.stringify(gradeDefinitions)); }, [gradeDefinitions]);
+    useEffect(() => { localStorage.setItem('staff', JSON.stringify(staff)); }, [staff]);
+    useEffect(() => { localStorage.setItem('inventory', JSON.stringify(inventory)); }, [inventory]);
+    useEffect(() => { localStorage.setItem('hostelResidents', JSON.stringify(hostelResidents)); }, [hostelResidents]);
+    useEffect(() => { localStorage.setItem('hostelRooms', JSON.stringify(hostelRooms)); }, [hostelRooms]);
+    useEffect(() => { localStorage.setItem('hostelStaff', JSON.stringify(hostelStaff)); }, [hostelStaff]);
+    useEffect(() => { localStorage.setItem('hostelInventory', JSON.stringify(hostelInventory)); }, [hostelInventory]);
+    useEffect(() => { localStorage.setItem('hostelStockLogs', JSON.stringify(hostelStockLogs)); }, [hostelStockLogs]);
+
 
     // --- AUTHENTICATION LOGIC ---
      useEffect(() => {
@@ -249,6 +271,13 @@ const App: React.FC = () => {
         closeModal();
     }, [editingStudent, closeModal]);
 
+    const handleDeleteConfirm = useCallback(() => {
+        if (deletingStudent) {
+            setStudents(prev => prev.filter(s => s.id !== deletingStudent.id));
+            closeModal();
+        }
+    }, [deletingStudent, closeModal]);
+
     const handleBulkAddStudents = useCallback((studentsData: Omit<Student, 'id'>[]) => {
         const newStudentsWithIds = studentsData.map((s, index) => ({
             ...s,
@@ -256,13 +285,6 @@ const App: React.FC = () => {
         }));
         setStudents(prev => [...prev, ...newStudentsWithIds]);
     }, []);
-
-    const handleDeleteConfirm = useCallback(() => {
-        if (deletingStudent) {
-            setStudents(prev => prev.filter(s => s.id !== deletingStudent.id));
-            closeModal();
-        }
-    }, [deletingStudent, closeModal]);
 
     const handleAcademicUpdate = useCallback((studentId: number, academicPerformance: Exam[]) => {
         setStudents(prev =>
@@ -494,15 +516,15 @@ const App: React.FC = () => {
                     )}
                     <Routes>
                         <Route path="/" element={<DashboardPage user={user!} onAddStudent={openAddModal} studentCount={students.filter(s => s.status === StudentStatus.ACTIVE).length} academicYear={academicYear!} onSetAcademicYear={handleSetAcademicYear} />} />
-                        <Route path="/students" element={<StudentListPage students={students.filter(s => s.status === StudentStatus.ACTIVE)} onAdd={openAddModal} onEdit={openEditModal} onDelete={openDeleteConfirm} academicYear={academicYear!} />} />
-                        <Route path="/student/:studentId" element={<StudentDetailPage students={students} onEdit={openEditModal} onDelete={openDeleteConfirm} academicYear={academicYear!} />} />
+                        <Route path="/students" element={<StudentListPage students={students.filter(s => s.status === StudentStatus.ACTIVE)} onAdd={openAddModal} onEdit={openEditModal} academicYear={academicYear!} />} />
+                        <Route path="/student/:studentId" element={<StudentDetailPage students={students} onEdit={openEditModal} academicYear={academicYear!} />} />
                         <Route path="/reports/search" element={<ReportSearchPage students={students} academicYear={academicYear!} />} />
                         <Route path="/reports/class-statement/:grade/:examId" element={<ClassMarkStatementPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onUpdateClassMarks={handleUpdateClassMarks} />} />
                         <Route path="/report-card/:studentId" element={<ProgressReportPage students={students} academicYear={academicYear!} />} />
                         <Route path="/report-card/:studentId/:examId" element={<PrintableReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
                         <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={students} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
                         <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={openImportModal} />} />
-                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={openImportModal} onOpenTransferModal={openTransferModal} />} />
+                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={openImportModal} onOpenTransferModal={openTransferModal} onDelete={openDeleteConfirm} />} />
                         <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={openAddStaffModal} onEdit={openEditStaffModal} />} />
                         <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={openEditStaffModal} gradeDefinitions={gradeDefinitions} />} />
                         <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
@@ -561,14 +583,14 @@ const App: React.FC = () => {
                     student={editingStudent}
                 />
             )}
-            {deletingStudent && (
+             {deletingStudent && (
                 <ConfirmationModal
                     isOpen={!!deletingStudent}
                     onClose={closeModal}
                     onConfirm={handleDeleteConfirm}
-                    title="Delete Student Record"
+                    title="Remove Student Record"
                 >
-                    <p>Are you sure you want to permanently delete the record for <strong>{deletingStudent.name}</strong>? This action cannot be undone.</p>
+                    <p>Are you sure you want to remove <strong>{deletingStudent.name}</strong>? This action is for correcting incorrect entries and cannot be undone.</p>
                 </ConfirmationModal>
             )}
              {isStaffFormModalOpen && (

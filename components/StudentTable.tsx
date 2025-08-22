@@ -1,18 +1,18 @@
 
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Student } from '../types';
-import { EditIcon, TrashIcon } from './Icons';
+import { EditIcon } from './Icons';
 import { formatStudentId } from '../utils';
 
 interface StudentTableProps {
   students: Student[];
   onEdit: (student: Student) => void;
-  onDelete: (student: Student) => void;
   academicYear: string;
 }
 
-const StudentTable: React.FC<StudentTableProps> = ({ students, onEdit, onDelete, academicYear }) => {
+const StudentTable: React.FC<StudentTableProps> = ({ students, onEdit, academicYear }) => {
   if (students.length === 0) {
     return (
       <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-lg">
@@ -53,9 +53,6 @@ const StudentTable: React.FC<StudentTableProps> = ({ students, onEdit, onDelete,
                 <div className="flex items-center justify-end gap-4">
                   <button onClick={() => onEdit(student)} className="text-sky-600 hover:text-sky-800 transition-colors" title="Edit">
                     <EditIcon className="w-5 h-5" />
-                  </button>
-                  <button onClick={() => onDelete(student)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete">
-                    <TrashIcon className="w-5 h-5" />
                   </button>
                 </div>
               </td>

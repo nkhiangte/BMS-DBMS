@@ -1,13 +1,14 @@
+
+
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student } from '../types';
-import { BackIcon, EditIcon, TrashIcon, UserIcon, AcademicCapIcon, DocumentReportIcon, HomeIcon, CurrencyDollarIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons';
+import { BackIcon, EditIcon, UserIcon, AcademicCapIcon, DocumentReportIcon, HomeIcon, CurrencyDollarIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons';
 import { formatStudentId, calculateDues } from '../utils';
 
 interface StudentDetailPageProps {
   students: Student[];
   onEdit: (student: Student) => void;
-  onDelete: (student: Student) => void;
   academicYear: string;
 }
 
@@ -54,18 +55,11 @@ const DetailSection: React.FC<{title: string, children: React.ReactNode}> = ({ t
 )
 
 
-const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit, onDelete, academicYear }) => {
+const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit, academicYear }) => {
   const { studentId } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
   
   const student = students.find(s => s.id === Number(studentId));
-
-  const handleDelete = () => {
-    if (student) {
-      onDelete(student);
-      navigate('/');
-    }
-  }
 
   if (!student) {
     return (
@@ -134,13 +128,6 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit,
                 <AcademicCapIcon className="h-5 w-5" />
                 Academics
               </Link>
-              <button
-                onClick={handleDelete}
-                className="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-4 py-2 bg-rose-600 text-white font-semibold rounded-lg shadow-md hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition hover:-translate-y-0.5"
-              >
-                <TrashIcon className="h-5 w-5" />
-                Delete Record
-              </button>
            </div>
         </div>
       </div>
