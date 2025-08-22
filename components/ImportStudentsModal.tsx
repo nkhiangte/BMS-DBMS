@@ -1,10 +1,11 @@
 
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Student, Grade, StudentStatus, Gender, Category } from '../types';
+import { Student, Grade, StudentStatus, Gender, Category, BloodGroup } from '../types';
 import { createDefaultFeePayments } from '../utils';
 import { ArrowUpOnSquareIcon, XIcon, CheckCircleIcon, XCircleIcon } from './Icons';
-import { GENDER_LIST, CATEGORY_LIST } from '../constants';
+import { GENDER_LIST, CATEGORY_LIST, BLOOD_GROUP_LIST } from '../constants';
 
 interface ImportStudentsModalProps {
     isOpen: boolean;
@@ -18,7 +19,10 @@ interface ImportStudentsModalProps {
 type ParsedStudent = Omit<Student, 'id'> & { errors: string[] };
 
 const CSV_HEADERS = [
-    'Roll No', 'Name', 'Contact', 'DOB (YYYY-MM-DD)', 'Gender', 'Address', 'Aadhaar', 'PEN', 'Category', 'Religion', 'Father Name', 'Father Occupation', 'Father Aadhaar', 'Mother Name', 'Mother Occupation', 'Mother Aadhaar'
+    'Roll No', 'Name', "Date of birth", 'Gender', 'Aadhaar No', "Father's name", "Mother's name", 
+    "Father's Occupation", "Mother's Occupation", "Father's Aadhaar", "Mother's Aadhaar", 
+    "Guardian's name", 'Address', 'Contact No', 'PEN', 'Category', 'Religion', 
+    'CWSN (Yes/No)', 'Blood Group', 'Last School Attended', 'Health Issues', 'Achievements'
 ];
 
 const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClose, onImport, grade, allStudents, allGrades }) => {
@@ -111,7 +115,7 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
 
         const lines = csvText.trim().replace(/\r\n/g, '\n').split('\n');
         const headerLine = lines.shift()?.trim() || '';
-        const headers = headerLine.split(',').map(h => h.trim());
+        const headers = parseCsvLine(headerLine);
 
         const requiredHeaders = ['Roll No', 'Name'];
         for (const reqHeader of requiredHeaders) {
@@ -129,8 +133,8 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
             
             const values = parseCsvLine(line);
 
-            if (values.length !== headers.length) {
-                console.warn(`Skipping malformed CSV line #${index + 2}: incorrect number of columns. Expected ${headers.length}, got ${values.length}. Line: "${line}"`);
+            if (values.length > headers.length) {
+                console.warn(`Skipping malformed CSV line #${index + 2}: more columns than headers. Expected ${headers.length}, got ${values.length}. Line: "${line}"`);
                 return;
             }
 
@@ -169,26 +173,52 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
                     errors.push(`Invalid category: "${categoryInput}".`);
                 }
             }
+            
+            const cwsnInput = row['CWSN (Yes/No)']?.toLowerCase();
+            let parsedCwsn: 'Yes' | 'No' = 'No';
+            if (cwsnInput) {
+                if (cwsnInput === 'yes') {
+                    parsedCwsn = 'Yes';
+                } else if (cwsnInput !== 'no' && cwsnInput !== '') {
+                    errors.push(`Invalid CWSN value: "${row['CWSN (Yes/No)']}". Use Yes or No.`);
+                }
+            }
+
+            const bloodGroupInput = row['Blood Group']?.toUpperCase();
+            let parsedBloodGroup: BloodGroup | undefined;
+            if (bloodGroupInput) {
+                if (BLOOD_GROUP_LIST.includes(bloodGroupInput as BloodGroup)) {
+                    parsedBloodGroup = bloodGroupInput as BloodGroup;
+                } else {
+                    errors.push(`Invalid Blood Group: "${row['Blood Group']}".`);
+                }
+            }
 
             const student: ParsedStudent = {
                 rollNo: rollNo || 0,
                 name: name || '',
                 grade: targetGrade,
-                contact: row['Contact'] || '',
+                contact: row['Contact No'] || '',
                 photographUrl: '',
-                dateOfBirth: row['DOB (YYYY-MM-DD)'] || '',
+                dateOfBirth: row['Date of birth'] || '',
                 gender: parsedGender || Gender.MALE,
                 address: row['Address'] || '',
-                aadhaarNumber: row['Aadhaar'] || '',
+                aadhaarNumber: row['Aadhaar No'] || '',
                 pen: row['PEN'] || '',
                 category: parsedCategory || Category.GENERAL,
                 religion: row['Religion'] || '',
-                fatherName: row['Father Name'] || '',
-                fatherOccupation: row['Father Occupation'] || '',
-                fatherAadhaar: row['Father Aadhaar'] || '',
-                motherName: row['Mother Name'] || '',
-                motherOccupation: row['Mother Occupation'] || '',
-                motherAadhaar: row['Mother Aadhaar'] || '',
+                fatherName: row["Father's name"] || '',
+                fatherOccupation: row["Father's Occupation"] || '',
+                fatherAadhaar: row["Father's Aadhaar"] || '',
+                motherName: row["Mother's name"] || '',
+                motherOccupation: row["Mother's Occupation"] || '',
+                motherAadhaar: row["Mother's Aadhaar"] || '',
+                guardianName: row["Guardian's name"] || '',
+                lastSchoolAttended: row['Last School Attended'] || '',
+                healthConditions: row['Health Issues'] || '',
+                achievements: row['Achievements'] || '',
+                bloodGroup: parsedBloodGroup,
+                cwsn: parsedCwsn,
                 academicPerformance: [],
                 feePayments: createDefaultFeePayments(),
                 status: StudentStatus.ACTIVE,

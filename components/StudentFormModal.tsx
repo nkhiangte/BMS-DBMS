@@ -1,7 +1,8 @@
 
+
 import React, { useState, useEffect, FormEvent, useRef } from 'react';
-import { Grade, Student, Gender, StudentStatus, Category } from '../types';
-import { GRADES_LIST, GENDER_LIST, CATEGORY_LIST } from '../constants';
+import { Grade, Student, Gender, StudentStatus, Category, BloodGroup } from '../types';
+import { GRADES_LIST, GENDER_LIST, CATEGORY_LIST, BLOOD_GROUP_LIST } from '../constants';
 import { ChevronDownIcon, ChevronUpIcon, UserIcon } from './Icons';
 
 interface StudentFormModalProps {
@@ -56,6 +57,9 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
     lastSchoolAttended: '',
     healthConditions: '',
     status: StudentStatus.ACTIVE,
+    bloodGroup: undefined,
+    cwsn: 'No',
+    achievements: '',
   });
 
   const [formData, setFormData] = useState(getInitialFormData());
@@ -106,6 +110,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
         grade: formData.grade as Grade,
         gender: formData.gender as Gender,
         category: formData.category as Category,
+        bloodGroup: formData.bloodGroup || undefined,
     };
     onSubmit(submissionData);
   };
@@ -170,6 +175,20 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
               <div>
                 <label htmlFor="pen" className="block text-sm font-bold text-slate-800">Permanent Education No. (PEN)</label>
                 <input type="text" name="pen" id="pen" value={formData.pen} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm" required />
+              </div>
+               <div>
+                <label htmlFor="bloodGroup" className="block text-sm font-bold text-slate-800">Blood Group</label>
+                <select name="bloodGroup" id="bloodGroup" value={formData.bloodGroup || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm">
+                  <option value="">-- Select --</option>
+                  {BLOOD_GROUP_LIST.map(bg => <option key={bg} value={bg}>{bg}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="cwsn" className="block text-sm font-bold text-slate-800">CWSN?</label>
+                <select name="cwsn" id="cwsn" value={formData.cwsn} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm">
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-bold text-slate-800">Student Photograph</label>
@@ -255,6 +274,10 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                 <div className="md:col-span-2">
                     <label htmlFor="lastSchoolAttended" className="block text-sm font-bold text-slate-800">Last School Attended (Optional)</label>
                     <input type="text" name="lastSchoolAttended" id="lastSchoolAttended" value={formData.lastSchoolAttended} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
+                </div>
+                 <div className="md:col-span-2">
+                    <label htmlFor="achievements" className="block text-sm font-bold text-slate-800">Achievements (Optional)</label>
+                    <textarea name="achievements" id="achievements" value={formData.achievements} onChange={handleChange} rows={2} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
                 </div>
                  <div className="md:col-span-2">
                     <label htmlFor="healthConditions" className="block text-sm font-bold text-slate-800">Health Conditions (Optional)</label>

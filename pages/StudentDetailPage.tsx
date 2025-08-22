@@ -1,5 +1,6 @@
 
 
+
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student } from '../types';
@@ -140,6 +141,8 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit,
               <DetailItem label="Gender" value={student.gender} />
               <DetailItem label="Aadhaar Number" value={student.aadhaarNumber} />
               <DetailItem label="Contact Number" value={student.contact} />
+              <DetailItem label="Blood Group" value={student.bloodGroup} />
+              <DetailItem label="CWSN" value={student.cwsn} />
               <div className="sm:col-span-2 lg:col-span-3">
                 <DetailItem label="Address" value={student.address} />
               </div>
@@ -187,6 +190,9 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit,
 
           <DetailSection title="Academic & Health">
               <DetailItem label="Last School Attended" value={student.lastSchoolAttended} />
+              <div className="sm:col-span-2 lg:col-span-3">
+                <DetailItem label="Achievements" value={student.achievements} />
+              </div>
               <div className="sm:col-span-2 lg:col-span-3">
                 <DetailItem label="Health Conditions" value={student.healthConditions} />
               </div>

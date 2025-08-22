@@ -1,6 +1,7 @@
 
 
 
+
 export enum Grade {
   NURSERY = "Nursery",
   KINDERGARTEN = "Kindergarten",
@@ -208,6 +209,8 @@ export interface Student {
   pen: string; // Permanent Education Number
   category: Category;
   religion: string;
+  bloodGroup?: BloodGroup;
+  cwsn?: 'Yes' | 'No'; // Children with Special Needs
 
 
   // Parent Information
@@ -225,6 +228,7 @@ export interface Student {
   // Academic & Health (optional)
   lastSchoolAttended?: string;
   healthConditions?: string;
+  achievements?: string;
 
   // Academic Performance
   academicPerformance?: Exam[];
