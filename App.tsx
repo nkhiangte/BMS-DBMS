@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, User, Role, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType } from './types';
@@ -32,6 +33,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import InventoryPage from './pages/InventoryPage';
 import InventoryFormModal from './components/InventoryFormModal';
+import ImportStudentsModal from './components/ImportStudentsModal';
 import { calculateStudentResult, getNextGrade, createDefaultFeePayments } from './utils';
 
 // Hostel Management Pages
@@ -83,6 +85,10 @@ const App: React.FC = () => {
     const [hostelStaff, setHostelStaff] = useState<HostelStaff[]>(INITIAL_HOSTEL_STAFF);
     const [hostelInventory, setHostelInventory] = useState<HostelInventoryItem[]>(INITIAL_HOSTEL_INVENTORY);
     const [hostelStockLogs, setHostelStockLogs] = useState<StockLog[]>(INITIAL_STOCK_LOGS);
+
+    // --- Import Modal State ---
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [importTargetGrade, setImportTargetGrade] = useState<Grade | null>(null);
 
     // --- AUTHENTICATION LOGIC ---
      useEffect(() => {
@@ -217,6 +223,8 @@ const App: React.FC = () => {
         setIsInventoryFormModalOpen(false);
         setEditingInventoryItem(null);
         setDeletingInventoryItem(null);
+        setIsImportModalOpen(false);
+        setImportTargetGrade(null);
     }, []);
 
     const handleFormSubmit = useCallback((studentData: Omit<Student, 'id'>) => {
@@ -234,6 +242,14 @@ const App: React.FC = () => {
         }
         closeModal();
     }, [editingStudent, closeModal]);
+
+    const handleBulkAddStudents = useCallback((studentsData: Omit<Student, 'id'>[]) => {
+        const newStudentsWithIds = studentsData.map((s, index) => ({
+            ...s,
+            id: Date.now() + index,
+        }));
+        setStudents(prev => [...prev, ...newStudentsWithIds]);
+    }, []);
 
     const handleDeleteConfirm = useCallback(() => {
         if (deletingStudent) {
@@ -429,6 +445,11 @@ const App: React.FC = () => {
         handleLogout();
     }, [students, gradeDefinitions, academicYear, handleLogout]);
 
+    const openImportModal = useCallback((grade: Grade) => {
+        setImportTargetGrade(grade);
+        setIsImportModalOpen(true);
+    }, []);
+
     const MainAppContent = () => {
         const location = useLocation();
         const navigate = useNavigate();
@@ -460,7 +481,7 @@ const App: React.FC = () => {
                         <Route path="/report-card/:studentId/:examId" element={<PrintableReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
                         <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={students} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
                         <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} />} />
-                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} />} />
+                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={openImportModal} />} />
                         <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={openAddStaffModal} onEdit={openEditStaffModal} />} />
                         <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={openEditStaffModal} gradeDefinitions={gradeDefinitions} />} />
                         <Route path="/subjects" element={<ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} />} />
@@ -494,6 +515,13 @@ const App: React.FC = () => {
                 <StudentFormModal isOpen={isFormModalOpen} onClose={closeModal} onSubmit={handleFormSubmit} student={editingStudent} />
                 <StaffFormModal isOpen={isStaffFormModalOpen} onClose={closeModal} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions} />
                 <InventoryFormModal isOpen={isInventoryFormModalOpen} onClose={closeModal} onSubmit={handleInventoryFormSubmit} item={editingInventoryItem} />
+                <ImportStudentsModal 
+                    isOpen={isImportModalOpen} 
+                    onClose={closeModal}
+                    onImport={handleBulkAddStudents}
+                    grade={importTargetGrade!}
+                    existingStudentsInGrade={students.filter(s => s.grade === importTargetGrade)}
+                />
                 <ConfirmationModal isOpen={!!deletingStudent} onClose={closeModal} onConfirm={handleDeleteConfirm} title="Delete Student"><p>Are you sure you want to delete the record for <span className="font-bold">{deletingStudent?.name}</span>? This action cannot be undone.</p></ConfirmationModal>
                 <ConfirmationModal isOpen={!!deletingInventoryItem} onClose={closeModal} onConfirm={handleDeleteInventoryConfirm} title="Delete Inventory Item"><p>Are you sure you want to delete the record for <span className="font-bold">{deletingInventoryItem?.name}</span>? This action cannot be undone.</p></ConfirmationModal>
             </div>
