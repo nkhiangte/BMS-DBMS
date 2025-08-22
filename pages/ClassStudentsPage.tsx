@@ -13,7 +13,7 @@ interface ClassStudentsPageProps {
   gradeDefinitions: Record<Grade, GradeDefinition>;
   onUpdateGradeDefinition: (grade: Grade, newDefinition: GradeDefinition) => void;
   academicYear: string;
-  onOpenImportModal: (grade: Grade) => void;
+  onOpenImportModal: (grade: Grade | null) => void;
 }
 
 const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal }) => {

@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Student, Grade, StudentStatus, Gender, Category } from '../types';
 import { createDefaultFeePayments } from '../utils';
@@ -10,8 +10,9 @@ interface ImportStudentsModalProps {
     isOpen: boolean;
     onClose: () => void;
     onImport: (students: Omit<Student, 'id'>[]) => void;
-    grade: Grade;
-    existingStudentsInGrade: Student[];
+    grade: Grade | null;
+    allStudents: Student[];
+    allGrades: Grade[];
 }
 
 type ParsedStudent = Omit<Student, 'id'> & { errors: string[] };
@@ -20,7 +21,7 @@ const CSV_HEADERS = [
     'Roll No', 'Name', 'Contact', 'DOB (YYYY-MM-DD)', 'Gender', 'Address', 'Aadhaar', 'PEN', 'Category', 'Religion', 'Father Name', 'Father Occupation', 'Father Aadhaar', 'Mother Name', 'Mother Occupation', 'Mother Aadhaar'
 ];
 
-const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClose, onImport, grade, existingStudentsInGrade }) => {
+const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClose, onImport, grade, allStudents, allGrades }) => {
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -28,8 +29,9 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
     const [parsedStudents, setParsedStudents] = useState<ParsedStudent[]>([]);
     const [parseError, setParseError] = useState<string>('');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [selectedGrade, setSelectedGrade] = useState<Grade | ''>('');
 
-    const existingRollNos = useMemo(() => new Set(existingStudentsInGrade.map(s => s.rollNo)), [existingStudentsInGrade]);
+    const targetGrade = useMemo(() => grade || selectedGrade, [grade, selectedGrade]);
 
     const resetState = useCallback(() => {
         setFile(null);
@@ -38,12 +40,28 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
         setIsProcessing(false);
     }, []);
 
+    useEffect(() => {
+        if (isOpen) {
+            setSelectedGrade(grade || '');
+        } else {
+            resetState();
+        }
+    }, [isOpen, grade, resetState]);
+
+    const existingStudentsInGrade = useMemo(() => {
+        if (!targetGrade) return [];
+        return allStudents.filter(s => s.grade === targetGrade);
+    }, [allStudents, targetGrade]);
+
+    const existingRollNos = useMemo(() => new Set(existingStudentsInGrade.map(s => s.rollNo)), [existingStudentsInGrade]);
+
     const handleClose = () => {
         resetState();
         onClose();
     };
 
     const handleDownloadTemplate = () => {
+        if (!targetGrade) return;
         const csvContent = CSV_HEADERS.join(',');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
@@ -51,13 +69,18 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
             URL.revokeObjectURL(link.href);
         }
         link.href = URL.createObjectURL(blob);
-        link.download = `student_import_template_${grade}.csv`;
+        link.download = `student_import_template_${targetGrade}.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
 
     const parseCSV = useCallback((csvText: string): void => {
+        if (!targetGrade) {
+            setParseError('Cannot parse file: No class selected.');
+            return;
+        }
+
         const lines = csvText.trim().split('\n');
         const headerLine = lines.shift()?.trim().split(',') || [];
         const headers = headerLine.map(h => h.trim());
@@ -73,7 +96,7 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
         const importedRollNos = new Set<number>();
         const students: ParsedStudent[] = [];
 
-        lines.forEach((line, index) => {
+        lines.forEach((line) => {
             if (!line.trim()) return;
             const values = line.split(',');
             const row: Record<string, string> = {};
@@ -82,7 +105,6 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
             });
 
             const errors: string[] = [];
-
             const rollNo = parseInt(row['Roll No'], 10);
             if (isNaN(rollNo)) errors.push('Invalid Roll No.');
             if (existingRollNos.has(rollNo)) errors.push('Roll No already exists in this class.');
@@ -105,7 +127,7 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
             const student: ParsedStudent = {
                 rollNo: rollNo || 0,
                 name: name || '',
-                grade,
+                grade: targetGrade,
                 contact: row['Contact'] || '',
                 photographUrl: '',
                 dateOfBirth: row['DOB (YYYY-MM-DD)'] || '',
@@ -130,7 +152,7 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
         });
 
         setParsedStudents(students);
-    }, [grade, existingRollNos]);
+    }, [targetGrade, existingRollNos]);
     
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         resetState();
@@ -159,12 +181,12 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
     
     const handleImportClick = () => {
         const validStudents = parsedStudents.filter(s => s.errors.length === 0);
-        if(validStudents.length > 0) {
+        if(validStudents.length > 0 && targetGrade) {
             onImport(validStudents);
             navigate(
                 location.pathname,
                 { 
-                    state: { message: `${validStudents.length} students imported successfully to ${grade}!` },
+                    state: { message: `${validStudents.length} students imported successfully to ${targetGrade}!` },
                     replace: true,
                 }
             );
@@ -172,7 +194,6 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
         }
     };
 
-    const totalErrors = useMemo(() => parsedStudents.reduce((acc, s) => acc + s.errors.length, 0), [parsedStudents]);
     const validStudentCount = useMemo(() => parsedStudents.filter(s => s.errors.length === 0).length, [parsedStudents]);
 
     if (!isOpen) return null;
@@ -181,24 +202,45 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4" onClick={handleClose}>
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col h-full max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 <div className="p-6 border-b flex justify-between items-center">
-                    <h2 className="text-2xl font-bold text-slate-800">Import Students to {grade}</h2>
+                    <h2 className="text-2xl font-bold text-slate-800">Import Students {targetGrade ? `to ${targetGrade}` : ''}</h2>
                     <button onClick={handleClose} className="p-2 text-slate-600 hover:bg-slate-100 rounded-full"><XIcon className="w-5 h-5"/></button>
                 </div>
                 <div className="p-6 space-y-4 overflow-y-auto flex-grow">
-                    <div className="bg-sky-50 p-4 rounded-lg border border-sky-200">
-                        <h3 className="font-bold text-sky-800">Instructions</h3>
-                        <ol className="list-decimal list-inside text-sm text-sky-700 mt-2 space-y-1">
-                            <li>Download the CSV template to ensure correct formatting.</li>
-                            <li>Fill in the student details. <strong>Roll No</strong> and <strong>Name</strong> are required.</li>
-                            <li>Save the file as a CSV (Comma-Separated Values).</li>
-                            <li>Upload the file below. The system will validate it before importing.</li>
-                        </ol>
-                        <button onClick={handleDownloadTemplate} className="mt-3 text-sm font-semibold text-sky-700 hover:underline">Download Template</button>
-                    </div>
+                    {!grade && (
+                        <div className="p-4 rounded-lg bg-slate-50 border">
+                            <label htmlFor="grade-selector" className="block text-sm font-bold text-slate-800">1. Select Target Class</label>
+                            <p className="text-xs text-slate-600 mb-2">Choose the class you want to import students into.</p>
+                            <select
+                                id="grade-selector"
+                                value={selectedGrade}
+                                onChange={e => {
+                                    setSelectedGrade(e.target.value as Grade);
+                                    resetState();
+                                }}
+                                className="w-full mt-1 block border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                            >
+                                <option value="" disabled>-- Select a Class --</option>
+                                {allGrades.map(g => <option key={g} value={g}>{g}</option>)}
+                            </select>
+                        </div>
+                    )}
+                    
+                    <div className={!targetGrade ? 'opacity-50 pointer-events-none' : ''}>
+                        <div className="bg-sky-50 p-4 rounded-lg border border-sky-200">
+                            <h3 className="font-bold text-sky-800">2. Download & Prepare File</h3>
+                            <ol className="list-decimal list-inside text-sm text-sky-700 mt-2 space-y-1">
+                                <li>Download the CSV template to ensure correct formatting.</li>
+                                <li>Fill in the student details. <strong>Roll No</strong> and <strong>Name</strong> are required.</li>
+                                <li>Save the file as a CSV (Comma-Separated Values).</li>
+                                <li>Upload the file below. The system will validate it before importing.</li>
+                            </ol>
+                            <button onClick={handleDownloadTemplate} className="mt-3 text-sm font-semibold text-sky-700 hover:underline">Download Template for {targetGrade}</button>
+                        </div>
 
-                    <div>
-                        <label className="block text-sm font-bold text-slate-800 mb-2">Upload CSV File</label>
-                        <input type="file" accept=".csv" onChange={handleFileChange} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"/>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-800 mb-2">3. Upload CSV File</label>
+                            <input type="file" accept=".csv" onChange={handleFileChange} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"/>
+                        </div>
                     </div>
                     
                     {isProcessing && <p className="text-center font-semibold text-slate-700">Processing file...</p>}
@@ -247,7 +289,7 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
                     <button type="button" onClick={handleClose} className="btn btn-secondary">
                         Cancel
                     </button>
-                    <button type="button" onClick={handleImportClick} className="btn btn-primary" disabled={totalErrors > 0 || parsedStudents.length === 0 || isProcessing}>
+                    <button type="button" onClick={handleImportClick} className="btn btn-primary" disabled={validStudentCount === 0 || isProcessing}>
                         <ArrowUpOnSquareIcon className="w-5 h-5"/>
                         Import {validStudentCount > 0 ? `${validStudentCount}` : ''} Students
                     </button>

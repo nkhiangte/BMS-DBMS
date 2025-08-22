@@ -446,7 +446,7 @@ const App: React.FC = () => {
         handleLogout();
     }, [students, gradeDefinitions, academicYear, handleLogout]);
 
-    const openImportModal = useCallback((grade: Grade) => {
+    const openImportModal = useCallback((grade: Grade | null) => {
         setImportTargetGrade(grade);
         setIsImportModalOpen(true);
     }, []);
@@ -455,7 +455,7 @@ const App: React.FC = () => {
         const location = useLocation();
         const navigate = useNavigate();
         const isPrintPage = (location.pathname.startsWith('/report-card/') && location.pathname.split('/').length > 3) || location.pathname.startsWith('/transfers/print') || location.pathname.startsWith('/reports/class-statement');
-        const notificationMessage = location.state?.message;
+        const notificationMessage = (location.state as { message?: string })?.message;
 
         useEffect(() => {
             if (notificationMessage) {
@@ -481,20 +481,20 @@ const App: React.FC = () => {
                         <Route path="/report-card/:studentId" element={<ProgressReportPage students={students} academicYear={academicYear!} />} />
                         <Route path="/report-card/:studentId/:examId" element={<PrintableReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
                         <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={students} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
-                        <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} />} />
+                        <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={openImportModal} />} />
                         <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={openImportModal} />} />
                         <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={openAddStaffModal} onEdit={openEditStaffModal} />} />
                         <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={openEditStaffModal} gradeDefinitions={gradeDefinitions} />} />
-                        <Route path="/subjects" element={<ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} />} />
-                        <Route path="/fees" element={<FeeManagementPage students={students} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} />} />
-                        <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={openAddInventoryModal} onEdit={openEditInventoryModal} onDelete={openDeleteInventoryConfirm} />} />
                         <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
-                        <Route path="/transfers/register" element={<TcRegistrationPage students={students.filter(s => s.status === StudentStatus.ACTIVE)} onSave={handleSaveTc} academicYear={academicYear!} />} />
-                        <Route path="/transfers/update" element={<UpdateTcPage tcRecords={tcRecords} onUpdate={handleUpdateTc} />} />
+                        <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear!} />} />
                         <Route path="/transfers/records" element={<AllTcRecordsPage tcRecords={tcRecords} />} />
                         <Route path="/transfers/print/:tcId" element={<PrintTcPage tcRecords={tcRecords} />} />
+                        <Route path="/transfers/update" element={<UpdateTcPage tcRecords={tcRecords} onUpdate={handleUpdateTc} />} />
+                        <Route path="/subjects" element={<ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} />} />
+                        <Route path="/fees" element={<FeeManagementPage students={students} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} />} />
                         <Route path="/promotion" element={<PromotionPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onPromoteStudents={handlePromoteStudents} />} />
                         <Route path="/change-password" element={<ChangePasswordPage onChangePassword={handleChangePassword} />} />
+                        <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={openAddInventoryModal} onEdit={openEditInventoryModal} onDelete={openDeleteInventoryConfirm} />} />
                         
                         {/* Hostel Routes */}
                         <Route path="/hostel" element={<HostelDashboardPage />} />
@@ -510,58 +510,85 @@ const App: React.FC = () => {
                         <Route path="/hostel/communication" element={<HostelCommunicationPage />} />
                         <Route path="/hostel/settings" element={<HostelSettingsPage />} />
 
-                        <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                 </main>
-                <StudentFormModal isOpen={isFormModalOpen} onClose={closeModal} onSubmit={handleFormSubmit} student={editingStudent} />
-                <StaffFormModal isOpen={isStaffFormModalOpen} onClose={closeModal} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions} />
-                <InventoryFormModal isOpen={isInventoryFormModalOpen} onClose={closeModal} onSubmit={handleInventoryFormSubmit} item={editingInventoryItem} />
-                <ImportStudentsModal 
-                    isOpen={isImportModalOpen} 
-                    onClose={closeModal}
-                    onImport={handleBulkAddStudents}
-                    grade={importTargetGrade!}
-                    existingStudentsInGrade={students.filter(s => s.grade === importTargetGrade)}
-                />
-                <ConfirmationModal isOpen={!!deletingStudent} onClose={closeModal} onConfirm={handleDeleteConfirm} title="Delete Student"><p>Are you sure you want to delete the record for <span className="font-bold">{deletingStudent?.name}</span>? This action cannot be undone.</p></ConfirmationModal>
-                <ConfirmationModal isOpen={!!deletingInventoryItem} onClose={closeModal} onConfirm={handleDeleteInventoryConfirm} title="Delete Inventory Item"><p>Are you sure you want to delete the record for <span className="font-bold">{deletingInventoryItem?.name}</span>? This action cannot be undone.</p></ConfirmationModal>
             </div>
         );
     }
-    
-    const SetAcademicYearContent = () => (
-        <div className="min-h-screen">
-           <Header user={user!} onLogout={handleLogout} />
-           <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-                <DashboardPage user={user!} onAddStudent={() => {}} studentCount={0} academicYear={null} onSetAcademicYear={handleSetAcademicYear} />
-           </main>
-       </div>
-   );
 
-    const AppRoutes = () => {
+    const LoginRedirect = () => {
         const location = useLocation();
-        useEffect(() => {
-            if (location.state?.message) {
-                setNotification(location.state.message);
-                // Clear the message from location state after a while
-                const timer = setTimeout(() => setNotification(''), 5000);
-                return () => clearTimeout(timer);
-            }
-        }, [location.state]);
-
-        return (
-            <Routes>
-                <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage onLogin={handleLogin} error={error} notification={notification} />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage onForgotPassword={handleForgotPassword} />} />
-                <Route path="/reset-password" element={passwordResetUser ? <ResetPasswordPage onResetPassword={handleResetPassword} /> : <Navigate to="/login" />} />
-                <Route path="/*" element={user ? (!academicYear ? <SetAcademicYearContent /> : <MainAppContent />) : <Navigate to="/login" state={{ from: location }} replace />} />
-            </Routes>
-        );
+        return <Navigate to={(location.state as { from?: string })?.from || '/'} />;
     };
 
     return (
         <Router>
-            <AppRoutes />
+            <Routes>
+                <Route path="/*" element={
+                    user ? <MainAppContent /> : <Navigate to="/login" state={{ from: window.location.hash.substring(1) || '/' }} />
+                }/>
+                <Route path="/login" element={
+                    !user ? <LoginPage onLogin={handleLogin} error={error} notification={notification} /> : <LoginRedirect />
+                }/>
+                <Route path="/forgot-password" element={<ForgotPasswordPage onForgotPassword={handleForgotPassword} />} />
+                <Route path="/reset-password" element={passwordResetUser ? <ResetPasswordPage onResetPassword={handleResetPassword} /> : <Navigate to="/login" />} />
+            </Routes>
+            {isFormModalOpen && (
+                <StudentFormModal
+                    isOpen={isFormModalOpen}
+                    onClose={closeModal}
+                    onSubmit={handleFormSubmit}
+                    student={editingStudent}
+                />
+            )}
+            {deletingStudent && (
+                <ConfirmationModal
+                    isOpen={!!deletingStudent}
+                    onClose={closeModal}
+                    onConfirm={handleDeleteConfirm}
+                    title="Delete Student Record"
+                >
+                    <p>Are you sure you want to permanently delete the record for <strong>{deletingStudent.name}</strong>? This action cannot be undone.</p>
+                </ConfirmationModal>
+            )}
+             {isStaffFormModalOpen && (
+                <StaffFormModal
+                    isOpen={isStaffFormModalOpen}
+                    onClose={closeModal}
+                    onSubmit={handleStaffFormSubmit}
+                    staffMember={editingStaff}
+                    allStaff={staff}
+                    gradeDefinitions={gradeDefinitions}
+                />
+            )}
+            {isInventoryFormModalOpen && (
+                <InventoryFormModal
+                    isOpen={isInventoryFormModalOpen}
+                    onClose={closeModal}
+                    onSubmit={handleInventoryFormSubmit}
+                    item={editingInventoryItem}
+                />
+            )}
+            {deletingInventoryItem && (
+                <ConfirmationModal
+                    isOpen={!!deletingInventoryItem}
+                    onClose={closeModal}
+                    onConfirm={handleDeleteInventoryConfirm}
+                    title="Delete Inventory Item"
+                >
+                    <p>Are you sure you want to delete the item <strong>{deletingInventoryItem.name}</strong>? This action cannot be undone.</p>
+                </ConfirmationModal>
+            )}
+            {isImportModalOpen && (
+                <ImportStudentsModal
+                    isOpen={isImportModalOpen}
+                    onClose={closeModal}
+                    onImport={handleBulkAddStudents}
+                    grade={importTargetGrade}
+                    allStudents={students}
+                    allGrades={GRADES_LIST}
+                />
+            )}
         </Router>
     );
 };
