@@ -35,6 +35,7 @@ import ChangePasswordPage from './pages/ChangePasswordPage';
 import InventoryPage from './pages/InventoryPage';
 import InventoryFormModal from './components/InventoryFormModal';
 import ImportStudentsModal from './components/ImportStudentsModal';
+import TransferStudentModal from './components/TransferStudentModal';
 import { calculateStudentResult, getNextGrade, createDefaultFeePayments } from './utils';
 
 // Hostel Management Pages
@@ -90,6 +91,9 @@ const App: React.FC = () => {
     // --- Import Modal State ---
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importTargetGrade, setImportTargetGrade] = useState<Grade | null>(null);
+
+    // --- Transfer Modal State ---
+    const [transferringStudent, setTransferringStudent] = useState<Student | null>(null);
 
     // --- AUTHENTICATION LOGIC ---
      useEffect(() => {
@@ -226,6 +230,7 @@ const App: React.FC = () => {
         setDeletingInventoryItem(null);
         setIsImportModalOpen(false);
         setImportTargetGrade(null);
+        setTransferringStudent(null);
     }, []);
 
     const handleFormSubmit = useCallback((studentData: Omit<Student, 'id'>) => {
@@ -451,6 +456,21 @@ const App: React.FC = () => {
         setIsImportModalOpen(true);
     }, []);
 
+    const openTransferModal = useCallback((student: Student) => {
+        setTransferringStudent(student);
+    }, []);
+
+    const handleTransferStudent = useCallback((studentId: number, newGrade: Grade, newRollNo: number) => {
+        setStudents(prev =>
+            prev.map(s =>
+                s.id === studentId
+                    ? { ...s, grade: newGrade, rollNo: newRollNo }
+                    : s
+            )
+        );
+        closeModal();
+    }, [closeModal]);
+
     const MainAppContent = () => {
         const location = useLocation();
         const navigate = useNavigate();
@@ -482,7 +502,7 @@ const App: React.FC = () => {
                         <Route path="/report-card/:studentId/:examId" element={<PrintableReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
                         <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={students} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
                         <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={openImportModal} />} />
-                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={openImportModal} />} />
+                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={openImportModal} onOpenTransferModal={openTransferModal} />} />
                         <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={openAddStaffModal} onEdit={openEditStaffModal} />} />
                         <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={openEditStaffModal} gradeDefinitions={gradeDefinitions} />} />
                         <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
@@ -585,6 +605,16 @@ const App: React.FC = () => {
                     onClose={closeModal}
                     onImport={handleBulkAddStudents}
                     grade={importTargetGrade}
+                    allStudents={students}
+                    allGrades={GRADES_LIST}
+                />
+            )}
+            {transferringStudent && (
+                <TransferStudentModal
+                    isOpen={!!transferringStudent}
+                    onClose={closeModal}
+                    onConfirm={handleTransferStudent}
+                    student={transferringStudent}
                     allStudents={students}
                     allGrades={GRADES_LIST}
                 />

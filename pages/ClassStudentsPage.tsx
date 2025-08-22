@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, Staff, EmploymentStatus } from '../types';
-import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon } from '../components/Icons';
+import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon } from '../components/Icons';
 import { formatStudentId, calculateDues } from '../utils';
 import EditSubjectsModal from '../components/EditSubjectsModal';
 
@@ -14,9 +14,10 @@ interface ClassStudentsPageProps {
   onUpdateGradeDefinition: (grade: Grade, newDefinition: GradeDefinition) => void;
   academicYear: string;
   onOpenImportModal: (grade: Grade | null) => void;
+  onOpenTransferModal: (student: Student) => void;
 }
 
-const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal }) => {
+const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal, onOpenTransferModal }) => {
   const { grade } = useParams<{ grade: string }>();
   const navigate = useNavigate();
   const decodedGrade = grade ? decodeURIComponent(grade) as Grade : '' as Grade;
@@ -181,6 +182,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                   <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Student ID</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Fee Status</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Father's Name</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
@@ -209,6 +211,12 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                         )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.fatherName}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <button onClick={() => onOpenTransferModal(student)} className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors" title="Transfer Student">
+                            <TransferIcon className="w-4 h-4" />
+                            <span>Transfer</span>
+                        </button>
+                    </td>
                   </tr>
                 )})}
               </tbody>
