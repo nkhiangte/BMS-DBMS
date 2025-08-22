@@ -114,14 +114,25 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
             const name = row['Name'];
             if (!name) errors.push('Name is required.');
 
-            const gender = (row['Gender'] || '').charAt(0).toUpperCase() + (row['Gender'] || '').slice(1).toLowerCase();
-            if (row['Gender'] && !GENDER_LIST.includes(gender as Gender)) {
-                errors.push(`Invalid gender: "${row['Gender']}".`);
+            const genderInput = row['Gender'];
+            let parsedGender: Gender | undefined;
+            if (genderInput) {
+                const formattedGender = genderInput.charAt(0).toUpperCase() + genderInput.slice(1).toLowerCase();
+                if (GENDER_LIST.includes(formattedGender as Gender)) {
+                    parsedGender = formattedGender as Gender;
+                } else {
+                    errors.push(`Invalid gender: "${genderInput}".`);
+                }
             }
             
-            const category = (row['Category'] || '').charAt(0).toUpperCase() + (row['Category'] || '').slice(1).toLowerCase();
-            if (row['Category'] && !CATEGORY_LIST.includes(category as Category)) {
-                 errors.push(`Invalid category: "${row['Category']}".`);
+            const categoryInput = row['Category'];
+            let parsedCategory: Category | undefined;
+            if (categoryInput) {
+                 if (CATEGORY_LIST.includes(categoryInput as Category)) {
+                    parsedCategory = categoryInput as Category;
+                } else {
+                    errors.push(`Invalid category: "${categoryInput}".`);
+                }
             }
 
             const student: ParsedStudent = {
@@ -131,11 +142,11 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
                 contact: row['Contact'] || '',
                 photographUrl: '',
                 dateOfBirth: row['DOB (YYYY-MM-DD)'] || '',
-                gender: gender as Gender || Gender.MALE,
+                gender: parsedGender || Gender.MALE,
                 address: row['Address'] || '',
                 aadhaarNumber: row['Aadhaar'] || '',
                 pen: row['PEN'] || '',
-                category: category as Category || Category.GENERAL,
+                category: parsedCategory || Category.GENERAL,
                 religion: row['Religion'] || '',
                 fatherName: row['Father Name'] || '',
                 fatherOccupation: row['Father Occupation'] || '',
