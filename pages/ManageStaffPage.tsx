@@ -1,22 +1,23 @@
 
 
-
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Staff, EmploymentStatus, Grade, GradeDefinition, Designation } from '../types';
-import { PlusIcon, SearchIcon, HomeIcon, BackIcon, EditIcon, UserIcon, BriefcaseIcon, PhoneIcon, MailIcon } from '../components/Icons';
+import { PlusIcon, SearchIcon, HomeIcon, BackIcon, EditIcon, UserIcon, BriefcaseIcon, PhoneIcon, MailIcon, TrashIcon, DocumentReportIcon } from '../components/Icons';
 
 interface ManageStaffPageProps {
   staff: Staff[];
   gradeDefinitions: Record<Grade, GradeDefinition>;
   onAdd: () => void;
   onEdit: (staffMember: Staff) => void;
+  onDelete: (staffMember: Staff) => void;
 }
 
 const StaffCard: React.FC<{ 
     staffMember: Staff;
     onEdit: (staffMember: Staff) => void; 
-}> = ({ staffMember, onEdit }) => {
+    onDelete: (staffMember: Staff) => void; 
+}> = ({ staffMember, onEdit, onDelete }) => {
     const { status, firstName, lastName, designation, department } = staffMember;
     const isActive = status === EmploymentStatus.ACTIVE;
     
@@ -28,53 +29,65 @@ const StaffCard: React.FC<{
     };
 
     return (
-        <Link to={`/staff/${staffMember.id}`} className="block group">
-            <div className={`bg-white rounded-xl shadow-lg p-5 flex flex-col transition-all duration-300 h-full ${!isActive ? 'opacity-70 bg-slate-50' : 'group-hover:shadow-xl group-hover:scale-[1.02]'}`}>
-                <div className="flex items-start gap-4 pb-4 border-b">
-                    <div className="w-20 h-20 rounded-full shadow-md border-2 border-white flex-shrink-0">
+        <div className={`bg-white rounded-xl shadow-lg p-5 flex flex-col transition-all duration-300 h-full ${!isActive ? 'opacity-70 bg-slate-50' : 'hover:shadow-xl hover:scale-[1.02]'}`}>
+            <div className="flex items-start gap-4 pb-4 border-b">
+                <div className="w-20 h-20 rounded-full shadow-md border-2 border-white flex-shrink-0">
+                    <Link to={`/staff/${staffMember.id}`} className="block w-full h-full">
                         <div className="relative w-full h-full bg-slate-200 rounded-full flex items-center justify-center">
                             {staffMember.photographUrl ? <img src={staffMember.photographUrl} alt={`${firstName} ${lastName}'s photograph`} className="h-full w-full object-cover rounded-full" onError={(e) => (e.currentTarget.style.display = 'none')} /> : null}
                             <div className={`absolute inset-0 flex items-center justify-center text-slate-600`}>
                                 <UserIcon className="w-2/3 h-2/3" />
                             </div>
                         </div>
+                    </Link>
+                </div>
+                <div className="flex-grow">
+                    <Link to={`/staff/${staffMember.id}`} className="block">
+                        <h3 className="text-xl font-bold text-slate-900 hover:text-sky-700">{firstName} {lastName}</h3>
+                    </Link>
+                    <p className="text-md text-sky-700 font-semibold">{designation}</p>
+                    <p className="text-sm text-slate-700">{department}</p>
+                    <div className={`mt-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold ${statusStyles[status] || statusStyles[EmploymentStatus.RETIRED]}`}>
+                        {status}
                     </div>
-                    <div className="flex-grow">
-                        <h3 className="text-xl font-bold text-slate-900">{firstName} {lastName}</h3>
-                        <p className="text-md text-sky-700 font-semibold">{designation}</p>
-                        <p className="text-sm text-slate-700">{department}</p>
-                        <div className={`mt-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold ${statusStyles[status] || statusStyles[EmploymentStatus.RETIRED]}`}>
-                            {status}
-                        </div>
-                    </div>
+                </div>
+                <div className="flex flex-col items-center gap-2 z-10">
                     <button 
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(staffMember); }} 
-                        className="p-2 text-slate-600 hover:bg-slate-100 rounded-full flex-shrink-0 z-10" 
+                        className="p-2 text-slate-600 hover:bg-slate-100 rounded-full flex-shrink-0" 
                         title="Edit Staff Details"
                     >
                         <EditIcon className="w-5 h-5"/>
                     </button>
-                </div>
-                <div className="mt-4 space-y-2 text-sm text-slate-800 flex-grow">
-                    <div className="flex items-center gap-2">
-                        <BriefcaseIcon className="w-4 h-4 text-slate-600 flex-shrink-0"/>
-                        <span>{staffMember.educationalQualification} ({staffMember.yearsOfExperience} yrs exp.)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <PhoneIcon className="w-4 h-4 text-slate-600 flex-shrink-0"/>
-                        <span>{staffMember.contactNumber}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <MailIcon className="w-4 h-4 text-slate-600 flex-shrink-0"/>
-                        <span className="hover:underline text-sky-700 truncate">{staffMember.emailAddress}</span>
-                    </div>
+                     <button 
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(staffMember); }} 
+                        className="p-2 text-red-600 hover:bg-red-100 rounded-full flex-shrink-0" 
+                        title="Remove Staff"
+                    >
+                        <TrashIcon className="w-5 h-5"/>
+                    </button>
                 </div>
             </div>
-        </Link>
+            <div className="mt-4 space-y-2 text-sm text-slate-800 flex-grow">
+                <div className="flex items-center gap-2">
+                    <BriefcaseIcon className="w-4 h-4 text-slate-600 flex-shrink-0"/>
+                    <span>{staffMember.educationalQualification} ({staffMember.yearsOfExperience} yrs exp.)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <PhoneIcon className="w-4 h-4 text-slate-600 flex-shrink-0"/>
+                    <span>{staffMember.contactNumber}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <MailIcon className="w-4 h-4 text-slate-600 flex-shrink-0"/>
+                    <a href={`mailto:${staffMember.emailAddress}`} className="hover:underline text-sky-700 truncate">{staffMember.emailAddress}</a>
+                </div>
+            </div>
+        </div>
     );
 };
 
-const StaffGrid: React.FC<{staff: Staff[], onEdit: (staffMember: Staff) => void, title?: string}> = ({ staff, onEdit, title }) => {
+
+const StaffGrid: React.FC<{staff: Staff[], onEdit: (staffMember: Staff) => void, onDelete: (staffMember: Staff) => void, title?: string}> = ({ staff, onEdit, onDelete, title }) => {
     if (staff.length === 0) {
         return <p className="text-slate-600 text-center py-4">{title ? `No staff found for ${title}.` : "No staff found."}</p>;
     }
@@ -85,13 +98,14 @@ const StaffGrid: React.FC<{staff: Staff[], onEdit: (staffMember: Staff) => void,
                     key={member.id}
                     staffMember={member}
                     onEdit={onEdit}
+                    onDelete={onDelete}
                 />
             ))}
         </div>
     )
 }
 
-const ManageStaffPage: React.FC<ManageStaffPageProps> = ({ staff, gradeDefinitions, onAdd, onEdit }) => {
+const ManageStaffPage: React.FC<ManageStaffPageProps> = ({ staff, gradeDefinitions, onAdd, onEdit, onDelete }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'teaching' | 'non-teaching'>('teaching');
   const navigate = useNavigate();
@@ -146,6 +160,13 @@ const ManageStaffPage: React.FC<ManageStaffPageProps> = ({ staff, gradeDefinitio
                         </div>
                         <input type="text" placeholder="Search by name..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition placeholder:text-slate-600" aria-label="Search staff by name" />
                     </div>
+                    <Link
+                        to="/staff/certificates"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition"
+                    >
+                        <DocumentReportIcon className="h-5 w-5" />
+                        Service Certificates
+                    </Link>
                     <button onClick={onAdd} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition">
                         <PlusIcon className="h-5 h-5" /> Add Staff
                     </button>
@@ -169,11 +190,11 @@ const ManageStaffPage: React.FC<ManageStaffPageProps> = ({ staff, gradeDefinitio
                 <div className="animate-fade-in space-y-8">
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800 mb-4 border-b pb-2">Confined Teachers (Nursery to Class II)</h2>
-                        <StaffGrid staff={confinedTeachers} onEdit={onEdit} title="Confined Teachers" />
+                        <StaffGrid staff={confinedTeachers} onEdit={onEdit} onDelete={onDelete} title="Confined Teachers" />
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800 mb-4 border-b pb-2">Subject Wise Teachers</h2>
-                        <StaffGrid staff={subjectTeachers} onEdit={onEdit} title="Subject Wise Teachers" />
+                        <StaffGrid staff={subjectTeachers} onEdit={onEdit} onDelete={onDelete} title="Subject Wise Teachers" />
                     </div>
                 </div>
             )}
@@ -181,15 +202,15 @@ const ManageStaffPage: React.FC<ManageStaffPageProps> = ({ staff, gradeDefinitio
                 <div className="animate-fade-in space-y-8">
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800 mb-4 border-b pb-2">Clerks</h2>
-                        <StaffGrid staff={clerks} onEdit={onEdit} title="Clerks" />
+                        <StaffGrid staff={clerks} onEdit={onEdit} onDelete={onDelete} title="Clerks" />
                     </div>
                      <div>
                         <h2 className="text-2xl font-bold text-slate-800 mb-4 border-b pb-2">Librarians</h2>
-                        <StaffGrid staff={librarians} onEdit={onEdit} title="Librarians" />
+                        <StaffGrid staff={librarians} onEdit={onEdit} onDelete={onDelete} title="Librarians" />
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold text-slate-800 mb-4 border-b pb-2">Sports Teachers</h2>
-                        <StaffGrid staff={sportsTeachers} onEdit={onEdit} title="Sports Teachers" />
+                        <StaffGrid staff={sportsTeachers} onEdit={onEdit} onDelete={onDelete} title="Sports Teachers" />
                     </div>
                 </div>
             )}

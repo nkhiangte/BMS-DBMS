@@ -1,7 +1,8 @@
 
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, User, Role, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType } from './types';
+import { Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, User, Role, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord } from './types';
 import { INITIAL_STUDENTS, GRADE_DEFINITIONS, INITIAL_STAFF, TERMINAL_EXAMS, GRADES_LIST, USERS, INITIAL_INVENTORY, INITIAL_HOSTEL_RESIDENTS, INITIAL_HOSTEL_ROOMS, INITIAL_HOSTEL_STAFF, INITIAL_HOSTEL_INVENTORY, INITIAL_STOCK_LOGS } from './constants';
 import Header from './components/Header';
 import StudentFormModal from './components/StudentFormModal';
@@ -36,6 +37,11 @@ import InventoryFormModal from './components/InventoryFormModal';
 import ImportStudentsModal from './components/ImportStudentsModal';
 import TransferStudentModal from './components/TransferStudentModal';
 import { calculateStudentResult, getNextGrade, createDefaultFeePayments } from './utils';
+
+// Staff Certificate Pages
+import StaffDocumentsPage from './pages/StaffDocumentsPage';
+import GenerateServiceCertificatePage from './pages/GenerateServiceCertificatePage';
+import PrintServiceCertificatePage from './pages/PrintServiceCertificatePage';
 
 // Hostel Management Pages
 import HostelDashboardPage from './pages/HostelDashboardPage';
@@ -83,6 +89,8 @@ const App: React.FC = () => {
     const [staff, setStaff] = useState<Staff[]>(() => getInitialState('staff', INITIAL_STAFF));
     const [isStaffFormModalOpen, setIsStaffFormModalOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+    const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
+    const [serviceCertificateRecords, setServiceCertificateRecords] = useState<ServiceCertificateRecord[]>(() => getInitialState('serviceCertificateRecords', []));
     
     // --- Inventory Management State ---
     const [inventory, setInventory] = useState<InventoryItem[]>(() => getInitialState('inventory', INITIAL_INVENTORY));
@@ -113,6 +121,7 @@ const App: React.FC = () => {
     useEffect(() => { localStorage.setItem('tcRecords', JSON.stringify(tcRecords)); }, [tcRecords]);
     useEffect(() => { localStorage.setItem('gradeDefinitions', JSON.stringify(gradeDefinitions)); }, [gradeDefinitions]);
     useEffect(() => { localStorage.setItem('staff', JSON.stringify(staff)); }, [staff]);
+    useEffect(() => { localStorage.setItem('serviceCertificateRecords', JSON.stringify(serviceCertificateRecords)); }, [serviceCertificateRecords]);
     useEffect(() => { localStorage.setItem('inventory', JSON.stringify(inventory)); }, [inventory]);
     useEffect(() => { localStorage.setItem('hostelResidents', JSON.stringify(hostelResidents)); }, [hostelResidents]);
     useEffect(() => { localStorage.setItem('hostelRooms', JSON.stringify(hostelRooms)); }, [hostelRooms]);
@@ -251,6 +260,7 @@ const App: React.FC = () => {
         setDeletingStudent(null);
         setIsStaffFormModalOpen(false);
         setEditingStaff(null);
+        setDeletingStaff(null);
         setIsInventoryFormModalOpen(false);
         setEditingInventoryItem(null);
         setDeletingInventoryItem(null);
@@ -329,6 +339,22 @@ const App: React.FC = () => {
         setIsStaffFormModalOpen(true);
     }, []);
 
+    const openDeleteStaffConfirm = useCallback((staffMember: Staff) => {
+        setDeletingStaff(staffMember);
+    }, []);
+
+    const handleDeleteStaffConfirm = useCallback(() => {
+        if (deletingStaff) {
+            setStaff(prev => prev.filter(s => s.id !== deletingStaff.id));
+            
+            const assignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === deletingStaff.id) as Grade | undefined;
+            if (assignedGradeKey) {
+                handleAssignClassToStaff(deletingStaff.id, null);
+            }
+            closeModal();
+        }
+    }, [deletingStaff, closeModal, gradeDefinitions, handleAssignClassToStaff]);
+
     const handleStaffFormSubmit = useCallback((staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => {
         let updatedStaffId: number;
         const finalAssignedGradeKey = staffData.status === EmploymentStatus.ACTIVE ? assignedGradeKey : null;
@@ -352,6 +378,19 @@ const App: React.FC = () => {
         handleAssignClassToStaff(updatedStaffId, finalAssignedGradeKey);
         closeModal();
     }, [editingStaff, closeModal, handleAssignClassToStaff]);
+
+    const handleSaveServiceCertificate = useCallback((certData: Omit<ServiceCertificateRecord, 'id'>) => {
+        const newRecord: ServiceCertificateRecord = { ...certData, id: Date.now() };
+        setServiceCertificateRecords(prev => [...prev, newRecord]);
+        
+        setStaff(prevStaff =>
+            prevStaff.map(s => 
+                s.id === certData.staffDetails.staffNumericId
+                ? { ...s, status: EmploymentStatus.RESIGNED }
+                : s
+            )
+        );
+    }, []);
     
     // --- Inventory Handlers ---
     const openAddInventoryModal = useCallback(() => {
@@ -518,7 +557,7 @@ const App: React.FC = () => {
     const MainAppContent = () => {
         const location = useLocation();
         const navigate = useNavigate();
-        const isPrintPage = (location.pathname.startsWith('/report-card/') && location.pathname.split('/').length > 3) || location.pathname.startsWith('/transfers/print') || location.pathname.startsWith('/reports/class-statement');
+        const isPrintPage = (location.pathname.startsWith('/report-card/') && location.pathname.split('/').length > 3) || location.pathname.startsWith('/transfers/print') || location.pathname.startsWith('/reports/class-statement') || location.pathname.startsWith('/staff/certificates/print');
         const notificationMessage = (location.state as { message?: string })?.message;
 
         useEffect(() => {
@@ -547,8 +586,11 @@ const App: React.FC = () => {
                         <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={students} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
                         <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={openImportModal} />} />
                         <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={openImportModal} onOpenTransferModal={openTransferModal} onDelete={openDeleteConfirm} />} />
-                        <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={openAddStaffModal} onEdit={openEditStaffModal} />} />
+                        <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={openAddStaffModal} onEdit={openEditStaffModal} onDelete={openDeleteStaffConfirm} />} />
                         <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={openEditStaffModal} gradeDefinitions={gradeDefinitions} />} />
+                        <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} />} />
+                        <Route path="/staff/certificates/generate" element={<GenerateServiceCertificatePage staff={staff} onSave={handleSaveServiceCertificate} />} />
+                        <Route path="/staff/certificates/print/:certId" element={<PrintServiceCertificatePage serviceCertificateRecords={serviceCertificateRecords} />} />
                         <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
                         <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear!} />} />
                         <Route path="/transfers/records" element={<AllTcRecordsPage tcRecords={tcRecords} />} />
@@ -634,6 +676,16 @@ const App: React.FC = () => {
                     allStaff={staff}
                     gradeDefinitions={gradeDefinitions}
                 />
+            )}
+             {deletingStaff && (
+                <ConfirmationModal
+                    isOpen={!!deletingStaff}
+                    onClose={closeModal}
+                    onConfirm={handleDeleteStaffConfirm}
+                    title="Remove Staff Record"
+                >
+                    <p>Are you sure you want to remove <strong>{deletingStaff.firstName} {deletingStaff.lastName}</strong>? This action is permanent and cannot be undone.</p>
+                </ConfirmationModal>
             )}
             {isInventoryFormModalOpen && (
                 <InventoryFormModal

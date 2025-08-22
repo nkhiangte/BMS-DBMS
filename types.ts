@@ -1,4 +1,5 @@
 
+
 export enum Grade {
   NURSERY = "Nursery",
   KINDERGARTEN = "Kindergarten",
@@ -286,6 +287,33 @@ export interface TcRecord {
   tcData: TcData;
   studentDetails: TcStudentDetails;
 }
+
+// --- Service Certificate Types ---
+export interface ServiceCertificateData {
+  refNo: string;
+  lastWorkingDay: string;
+  issueDate: string;
+  reasonForLeaving: string;
+  generalConduct: string;
+  remarks: string;
+}
+
+export interface ServiceCertificateStaffDetails {
+  staffId: string; // Formatted Employee ID: BMS-T-001
+  staffNumericId: number; // Original staff numeric ID
+  name: string;
+  gender: Gender;
+  designation: Designation;
+  dateOfJoining: string;
+  dateOfBirth: string;
+}
+
+export interface ServiceCertificateRecord {
+  id: number; // Use timestamp for unique ID
+  certData: ServiceCertificateData;
+  staffDetails: ServiceCertificateStaffDetails;
+}
+
 
 // --- NEW: Inventory Management Types ---
 export enum InventoryCategory {
