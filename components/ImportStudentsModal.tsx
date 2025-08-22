@@ -75,15 +75,43 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
         document.body.removeChild(link);
     };
 
+    const parseCsvLine = (line: string): string[] => {
+        const result: string[] = [];
+        let currentField = '';
+        let inQuotedField = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+
+            if (char === '"') {
+                if (inQuotedField && line[i + 1] === '"') {
+                    // Handle escaped quote "" by adding a single quote to the field
+                    currentField += '"';
+                    i++; // Skip the next quote character
+                } else {
+                    inQuotedField = !inQuotedField;
+                }
+            } else if (char === ',' && !inQuotedField) {
+                result.push(currentField.trim());
+                currentField = '';
+            } else {
+                currentField += char;
+            }
+        }
+        result.push(currentField.trim()); // Add the last field
+        return result;
+    };
+
+
     const parseCSV = useCallback((csvText: string): void => {
         if (!targetGrade) {
             setParseError('Cannot parse file: No class selected.');
             return;
         }
 
-        const lines = csvText.trim().split('\n');
-        const headerLine = lines.shift()?.trim().split(',') || [];
-        const headers = headerLine.map(h => h.trim());
+        const lines = csvText.trim().replace(/\r\n/g, '\n').split('\n');
+        const headerLine = lines.shift()?.trim() || '';
+        const headers = headerLine.split(',').map(h => h.trim());
 
         const requiredHeaders = ['Roll No', 'Name'];
         for (const reqHeader of requiredHeaders) {
@@ -96,12 +124,19 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
         const importedRollNos = new Set<number>();
         const students: ParsedStudent[] = [];
 
-        lines.forEach((line) => {
+        lines.forEach((line, index) => {
             if (!line.trim()) return;
-            const values = line.split(',');
+            
+            const values = parseCsvLine(line);
+
+            if (values.length !== headers.length) {
+                console.warn(`Skipping malformed CSV line #${index + 2}: incorrect number of columns. Expected ${headers.length}, got ${values.length}. Line: "${line}"`);
+                return;
+            }
+
             const row: Record<string, string> = {};
             headers.forEach((header, i) => {
-                row[header] = values[i]?.trim() || '';
+                row[header] = values[i] || '';
             });
 
             const errors: string[] = [];
