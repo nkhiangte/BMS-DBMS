@@ -103,6 +103,10 @@ const App: React.FC = () => {
 
     // --- Transfer Modal State ---
     const [transferringStudent, setTransferringStudent] = useState<Student | null>(null);
+    
+    // --- Confirmation Modal States ---
+    const [studentToConfirmEdit, setStudentToConfirmEdit] = useState<Student | null>(null);
+    const [pendingImportData, setPendingImportData] = useState<{ students: Omit<Student, 'id'>[], grade: Grade } | null>(null);
 
     // --- Data Persistence Effects ---
     useEffect(() => { localStorage.setItem('students', JSON.stringify(students)); }, [students]);
@@ -257,19 +261,28 @@ const App: React.FC = () => {
 
     const handleFormSubmit = useCallback((studentData: Omit<Student, 'id'>) => {
         if (editingStudent) {
-            setStudents(prev =>
-                prev.map(s =>
-                    s.id === editingStudent.id ? { ...s, ...studentData, id: s.id } : s
-                )
-            );
+            setStudentToConfirmEdit({ ...studentData, id: editingStudent.id });
+            setIsFormModalOpen(false);
+            setEditingStudent(null);
         } else {
             setStudents(prev => [
                 ...prev,
                 { ...studentData, id: Date.now() },
             ]);
+            closeModal();
         }
-        closeModal();
     }, [editingStudent, closeModal]);
+
+    const handleConfirmEdit = useCallback(() => {
+        if (studentToConfirmEdit) {
+            setStudents(prev =>
+                prev.map(s =>
+                    s.id === studentToConfirmEdit.id ? studentToConfirmEdit : s
+                )
+            );
+            setStudentToConfirmEdit(null);
+        }
+    }, [studentToConfirmEdit]);
 
     const handleDeleteConfirm = useCallback(() => {
         if (deletingStudent) {
@@ -278,13 +291,22 @@ const App: React.FC = () => {
         }
     }, [deletingStudent, closeModal]);
 
-    const handleBulkAddStudents = useCallback((studentsData: Omit<Student, 'id'>[]) => {
-        const newStudentsWithIds = studentsData.map((s, index) => ({
-            ...s,
-            id: Date.now() + index,
-        }));
-        setStudents(prev => [...prev, ...newStudentsWithIds]);
-    }, []);
+    const handleBulkAddStudents = useCallback((studentsData: Omit<Student, 'id'>[], grade: Grade) => {
+        setPendingImportData({ students: studentsData, grade });
+        closeModal();
+    }, [closeModal]);
+
+    const handleConfirmImport = useCallback(() => {
+        if (pendingImportData) {
+            const newStudentsWithIds = pendingImportData.students.map((s, index) => ({
+                ...s,
+                id: Date.now() + index,
+            }));
+            setStudents(prev => [...prev, ...newStudentsWithIds]);
+            setPendingImportData(null);
+        }
+    }, [pendingImportData]);
+
 
     const handleAcademicUpdate = useCallback((studentId: number, academicPerformance: Exam[]) => {
         setStudents(prev =>
@@ -593,6 +615,16 @@ const App: React.FC = () => {
                     <p>Are you sure you want to remove <strong>{deletingStudent.name}</strong>? This action is for correcting incorrect entries and cannot be undone.</p>
                 </ConfirmationModal>
             )}
+            {studentToConfirmEdit && (
+                <ConfirmationModal
+                    isOpen={!!studentToConfirmEdit}
+                    onClose={() => setStudentToConfirmEdit(null)}
+                    onConfirm={handleConfirmEdit}
+                    title="Confirm Changes"
+                >
+                    <p>Are you sure you want to save the changes for <strong>{studentToConfirmEdit.name}</strong>?</p>
+                </ConfirmationModal>
+            )}
              {isStaffFormModalOpen && (
                 <StaffFormModal
                     isOpen={isStaffFormModalOpen}
@@ -630,6 +662,16 @@ const App: React.FC = () => {
                     allStudents={students}
                     allGrades={GRADES_LIST}
                 />
+            )}
+            {pendingImportData && (
+                 <ConfirmationModal
+                    isOpen={!!pendingImportData}
+                    onClose={() => setPendingImportData(null)}
+                    onConfirm={handleConfirmImport}
+                    title="Confirm Student Import"
+                >
+                    <p>Are you sure you want to import <strong>{pendingImportData.students.length}</strong> students into <strong>{pendingImportData.grade}</strong>? This action cannot be easily undone.</p>
+                </ConfirmationModal>
             )}
             {transferringStudent && (
                 <TransferStudentModal

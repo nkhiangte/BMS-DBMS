@@ -1,6 +1,5 @@
 
-
-import { Grade, Student, Gender, Exam, Role, User, StudentStatus, Category, GradeDefinition, Staff, MaritalStatus, Department, Designation, EmployeeType, BloodGroup, EmploymentStatus, StaffType, InventoryItem, InventoryCategory, InventoryStatus, HostelBlock, HostelRoom, RoomType, HostelResident, HostelStaff, HostelStaffRole, PaymentStatus, HostelInventoryItem, HostelInventoryCategory, StockLog, StockLogType } from './types';
+import { Grade, Student, Gender, Exam, Role, User, StudentStatus, Category, GradeDefinition, Staff, MaritalStatus, Department, Designation, EmployeeType, BloodGroup, EmploymentStatus, StaffType, InventoryItem, InventoryCategory, InventoryStatus, HostelBlock, HostelRoom, RoomType, HostelResident, HostelStaff, HostelStaffRole, PaymentStatus, HostelInventoryItem, HostelInventoryCategory, StockLog, StockLogType, Qualification } from './types';
 
 export const USERS: User[] = [
     { id: 1, username: 'admin', password_plaintext: 'password', name: 'Principal', role: Role.ADMIN },
@@ -8,6 +7,7 @@ export const USERS: User[] = [
     { id: 3, username: 'teacher2', password_plaintext: 'teacher2', name: 'Mr. Smith', role: Role.TEACHER },
 ];
 
+export const QUALIFICATION_LIST: Qualification[] = Object.values(Qualification);
 export const MARITAL_STATUS_LIST: MaritalStatus[] = Object.values(MaritalStatus);
 export const DEPARTMENT_LIST: Department[] = Object.values(Department);
 export const DESIGNATION_LIST: Designation[] = Object.values(Designation);
@@ -34,7 +34,7 @@ export const INITIAL_STAFF: Staff[] = [
         emailAddress: 'evelyn.reed@bms.edu',
         permanentAddress: "12, Teacher's Colony, Cityville",
         currentAddress: "12, Teacher's Colony, Cityville",
-        educationalQualification: 'M.A. in English, B.Ed',
+        educationalQualification: Qualification.POST_GRADUATE,
         specialization: 'English Literature',
         yearsOfExperience: 10,
         previousExperience: '5 years at City Public School.',
@@ -65,7 +65,7 @@ export const INITIAL_STAFF: Staff[] = [
         emailAddress: 'samuel.grant@bms.edu',
         permanentAddress: '45, Scholars Avenue, Cityville',
         currentAddress: '45, Scholars Avenue, Cityville',
-        educationalQualification: 'M.Sc. in Mathematics, B.Ed',
+        educationalQualification: Qualification.POST_GRADUATE,
         specialization: 'Algebra',
         yearsOfExperience: 5,
         previousExperience: '2 years as a substitute teacher.',
@@ -96,7 +96,7 @@ export const INITIAL_STAFF: Staff[] = [
         emailAddress: 'clara.oswald@bms.edu',
         permanentAddress: '78, Park Street, Cityville',
         currentAddress: '78, Park Street, Cityville',
-        educationalQualification: 'M.Sc. in Physics, B.Ed',
+        educationalQualification: Qualification.POST_GRADUATE,
         specialization: 'Quantum Mechanics',
         yearsOfExperience: 4,
         previousExperience: '1 year at Riverdale High.',
@@ -127,7 +127,7 @@ export const INITIAL_STAFF: Staff[] = [
         emailAddress: 'ramesh.kumar@bms.edu',
         permanentAddress: '100, Admin Block, Cityville',
         currentAddress: '100, Admin Block, Cityville',
-        educationalQualification: 'B.Com',
+        educationalQualification: Qualification.GRADUATE,
         specialization: 'Accounting',
         yearsOfExperience: 15,
         previousExperience: '10 years at a government office.',

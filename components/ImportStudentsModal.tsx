@@ -1,7 +1,5 @@
 
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { Student, Grade, StudentStatus, Gender, Category, BloodGroup } from '../types';
 import { createDefaultFeePayments } from '../utils';
 import { ArrowUpOnSquareIcon, XIcon, CheckCircleIcon, XCircleIcon } from './Icons';
@@ -10,7 +8,7 @@ import { GENDER_LIST, CATEGORY_LIST, BLOOD_GROUP_LIST } from '../constants';
 interface ImportStudentsModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onImport: (students: Omit<Student, 'id'>[]) => void;
+    onImport: (students: Omit<Student, 'id'>[], grade: Grade) => void;
     grade: Grade | null;
     allStudents: Student[];
     allGrades: Grade[];
@@ -26,9 +24,6 @@ const CSV_HEADERS = [
 ];
 
 const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClose, onImport, grade, allStudents, allGrades }) => {
-    const navigate = useNavigate();
-    const location = useLocation();
-
     const [file, setFile] = useState<File | null>(null);
     const [parsedStudents, setParsedStudents] = useState<ParsedStudent[]>([]);
     const [parseError, setParseError] = useState<string>('');
@@ -258,15 +253,7 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
     const handleImportClick = () => {
         const validStudents = parsedStudents.filter(s => s.errors.length === 0);
         if(validStudents.length > 0 && targetGrade) {
-            onImport(validStudents);
-            navigate(
-                location.pathname,
-                { 
-                    state: { message: `${validStudents.length} students imported successfully to ${targetGrade}!` },
-                    replace: true,
-                }
-            );
-            handleClose();
+            onImport(validStudents, targetGrade as Grade);
         }
     };
 

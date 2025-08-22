@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect, FormEvent, useRef } from 'react';
-import { Staff, Grade, GradeDefinition, Gender, MaritalStatus, Department, Designation, EmployeeType, BloodGroup, EmploymentStatus } from '../types';
+import { Staff, Grade, GradeDefinition, Gender, MaritalStatus, Department, Designation, EmployeeType, BloodGroup, EmploymentStatus, StaffType, Qualification } from '../types';
 import { UserIcon, ChevronDownIcon, ChevronUpIcon } from './Icons';
 import { GRADES_LIST, GENDER_LIST, MARITAL_STATUS_LIST, DEPARTMENT_LIST, DESIGNATION_LIST, EMPLOYEE_TYPE_LIST, BLOOD_GROUP_LIST, EMPLOYMENT_STATUS_LIST } from '../constants';
 
@@ -54,7 +54,7 @@ const TeacherFormModal: React.FC<TeacherFormModalProps> = ({ isOpen, onClose, on
     employeeType: EmployeeType.FULL_TIME,
     status: EmploymentStatus.ACTIVE,
     subjectsTaught: [],
-    educationalQualification: '',
+    educationalQualification: Qualification.GRADUATE,
     specialization: '',
     aadhaarNumber: '',
     emergencyContactName: '',

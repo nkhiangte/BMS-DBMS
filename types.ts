@@ -1,7 +1,4 @@
 
-
-
-
 export enum Grade {
   NURSERY = "Nursery",
   KINDERGARTEN = "Kindergarten",
@@ -91,6 +88,19 @@ export enum EmployeeType {
     CONTRACT = "Contract",
 }
 
+export enum Qualification {
+    SSLC = "SSLC",
+    HSLC = "HSLC",
+    HSSLC = "HSSLC",
+    GRADUATE = "Graduate", // B.A, B.Sc, B.Com, etc.
+    POST_GRADUATE = "Post-Graduate", // M.A, M.Sc, etc.
+    B_ED = "B.Ed",
+    M_ED = "M.Ed",
+    PHD = "Ph.D.",
+    DIPLOMA = "Diploma",
+    OTHER = "Other",
+}
+
 export enum BloodGroup {
     A_POSITIVE = "A+",
     A_NEGATIVE = "A-",
@@ -127,7 +137,7 @@ export interface Staff {
     currentAddress: string;
     
     // 3. Qualifications & Experience
-    educationalQualification: string;
+    educationalQualification: Qualification;
     specialization: string;
     yearsOfExperience: number;
     previousExperience: string; // textarea for details
