@@ -1,4 +1,5 @@
 
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, Staff, EmploymentStatus } from '../types';
@@ -148,14 +149,14 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
           <div className="flex items-center gap-2">
              <button
                 onClick={() => onOpenImportModal(decodedGrade)}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-sm hover:bg-emerald-700 transition"
+                className="btn btn-primary bg-emerald-600 hover:bg-emerald-700"
               >
                 <ArrowUpOnSquareIcon className="w-5 h-5" />
                 Import Students
               </button>
              <button
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition"
+              className="btn btn-secondary"
             >
               <EditIcon className="w-5 h-5" />
               Edit Subjects
