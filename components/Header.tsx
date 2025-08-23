@@ -16,9 +16,9 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, className }) => {
     <header className={`bg-white sticky top-0 z-30 shadow-sm border-b border-slate-200 ${className || ''}`}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
         <Link to="/" title="Go to Dashboard" className="flex items-center gap-3">
-            <img src="https://i.postimg.cc/qt00dty5/logo.png" alt="Bethel Mission School Logo" className="h-12 w-12" />
+            <img src="https://i.postimg.cc/qt00dty5/logo.png" alt="Bethel Mission School Logo" className="h-10 w-10 sm:h-12 sm:w-12" />
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
+              <h1 className="text-lg sm:text-2xl font-bold text-slate-800">
                 Bethel Mission School
               </h1>
               <p className="text-xs sm:text-sm text-slate-600">Student Database Management</p>

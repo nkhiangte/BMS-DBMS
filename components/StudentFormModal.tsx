@@ -10,6 +10,49 @@ interface StudentFormModalProps {
   student: Student | null;
 }
 
+const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            if (!e.target?.result) {
+                return reject(new Error("FileReader did not return a result."));
+            }
+            const img = new Image();
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    return reject(new Error('Could not get canvas context'));
+                }
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = (err) => reject(err);
+            img.src = e.target.result as string;
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(file);
+    });
+};
+
+
 const AccordionSection: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -82,14 +125,23 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
     setFormData(prev => ({ ...prev, [name]: value }));
   };
   
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setFormData(prev => ({ ...prev, photographUrl: reader.result as string }));
-        };
-        reader.readAsDataURL(file);
+        try {
+            // Compress image to max 512x512, 80% JPEG quality
+            const compressedDataUrl = await resizeImage(file, 512, 512, 0.8);
+            setFormData(prev => ({ ...prev, photographUrl: compressedDataUrl }));
+        } catch (error) {
+            console.error("Error compressing image:", error);
+            alert("There was an error processing the image. It will be saved without compression.");
+            // Fallback to original method if compression fails
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData(prev => ({ ...prev, photographUrl: reader.result as string }));
+            };
+            reader.readAsDataURL(file);
+        }
     }
   };
 
