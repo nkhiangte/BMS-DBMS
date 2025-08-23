@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, FormEvent, useRef } from 'react';
 import { Grade, Student, Gender, StudentStatus, Category, BloodGroup } from '../types';
 import { GRADES_LIST, GENDER_LIST, CATEGORY_LIST, BLOOD_GROUP_LIST } from '../constants';
@@ -124,7 +122,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
          <div className="p-6 border-b">
              <h2 className="text-2xl font-bold text-slate-800">{student ? 'Edit Student' : 'Add New Student'}</h2>
          </div>
-          <div className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+          <div className="p-6 space-y-4 overflow-y-auto max-h-[90vh]">
             <AccordionSection title="Student Details" defaultOpen={true}>
               <div className="md:col-span-1">
                 <label htmlFor="name" className="block text-sm font-bold text-slate-800">Full Name</label>

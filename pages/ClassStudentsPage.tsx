@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, Staff, EmploymentStatus } from '../types';
@@ -173,61 +172,111 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
               <p className="text-slate-700 text-lg font-semibold">No active student records found for this class.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Roll No</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Name</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Student ID</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Fee Status</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Father's Name</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-slate-200">
-                {classStudents.map(student => {
+          <>
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+              {classStudents.map(student => {
                   const dues = calculateDues(student);
                   return (
-                  <tr key={student.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.rollNo}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">
-                      <Link to={`/student/${student.id}`} className="hover:underline text-sky-700 font-semibold">
-                        {student.name}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{formatStudentId(student, academicYear)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {dues.length === 0 ? (
-                            <div className="flex items-center gap-1.5 text-emerald-600">
-                                <CheckCircleIcon className="w-5 h-5" />
-                                <span className="font-medium">Cleared</span>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-1.5 text-amber-600">
-                                <XCircleIcon className="w-5 h-5" />
-                                <span className="font-medium">Dues Pending</span>
-                            </div>
-                        )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.fatherName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center gap-4">
-                            <button onClick={() => onOpenTransferModal(student)} className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors" title="Transfer Student">
-                                <TransferIcon className="w-4 h-4" />
-                                <span>Transfer</span>
-                            </button>
-                            <button onClick={() => onDelete(student)} className="flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-800 transition-colors" title="Remove Incorrect Entry">
-                                <TrashIcon className="w-4 h-4" />
-                                <span>Remove</span>
-                            </button>
-                        </div>
-                    </td>
+                      <div key={student.id} className="bg-slate-50 rounded-lg p-4 shadow-sm border border-slate-200">
+                          <div className="flex justify-between items-start">
+                              <div>
+                                  <Link to={`/student/${student.id}`} className="font-bold text-lg text-sky-700 hover:underline">
+                                      {student.name}
+                                  </Link>
+                                  <p className="text-sm text-slate-600">Roll No: {student.rollNo}</p>
+                                  <p className="text-sm font-mono text-slate-800">{formatStudentId(student, academicYear)}</p>
+                              </div>
+                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                  <button onClick={() => onOpenTransferModal(student)} className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50" title="Transfer Student">
+                                      <TransferIcon className="w-4 h-4" />
+                                      <span>Transfer</span>
+                                  </button>
+                                  <button onClick={() => onDelete(student)} className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50" title="Remove Incorrect Entry">
+                                      <TrashIcon className="w-4 h-4" />
+                                      <span>Remove</span>
+                                  </button>
+                              </div>
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-slate-200 space-y-2 text-sm">
+                              <p><span className="font-semibold text-slate-700">Father:</span> {student.fatherName}</p>
+                              <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-slate-700">Fee Status:</span>
+                                  {dues.length === 0 ? (
+                                      <div className="flex items-center gap-1.5 text-emerald-600">
+                                          <CheckCircleIcon className="w-5 h-5" />
+                                          <span className="font-medium">Cleared</span>
+                                      </div>
+                                  ) : (
+                                      <div className="flex items-center gap-1.5 text-amber-600">
+                                          <XCircleIcon className="w-5 h-5" />
+                                          <span className="font-medium">Dues Pending</span>
+                                      </div>
+                                  )}
+                              </div>
+                          </div>
+                      </div>
+                  )
+              })}
+            </div>
+            
+            {/* Desktop Table View */}
+            <div className="overflow-x-auto hidden md:block">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Roll No</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Student ID</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Fee Status</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Father's Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Actions</th>
                   </tr>
-                )})}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-200">
+                  {classStudents.map(student => {
+                    const dues = calculateDues(student);
+                    return (
+                    <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.rollNo}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">
+                        <Link to={`/student/${student.id}`} className="hover:underline text-sky-700 font-semibold">
+                          {student.name}
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{formatStudentId(student, academicYear)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {dues.length === 0 ? (
+                              <div className="flex items-center gap-1.5 text-emerald-600">
+                                  <CheckCircleIcon className="w-5 h-5" />
+                                  <span className="font-medium">Cleared</span>
+                              </div>
+                          ) : (
+                              <div className="flex items-center gap-1.5 text-amber-600">
+                                  <XCircleIcon className="w-5 h-5" />
+                                  <span className="font-medium">Dues Pending</span>
+                              </div>
+                          )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.fatherName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="flex items-center gap-4">
+                              <button onClick={() => onOpenTransferModal(student)} className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors" title="Transfer Student">
+                                  <TransferIcon className="w-4 h-4" />
+                                  <span>Transfer</span>
+                              </button>
+                              <button onClick={() => onDelete(student)} className="flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-800 transition-colors" title="Remove Incorrect Entry">
+                                  <TrashIcon className="w-4 h-4" />
+                                  <span>Remove</span>
+                              </button>
+                          </div>
+                      </td>
+                    </tr>
+                  )})}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
       <EditSubjectsModal

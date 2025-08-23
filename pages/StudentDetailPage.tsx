@@ -1,6 +1,3 @@
-
-
-
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student } from '../types';
@@ -105,7 +102,7 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit,
             <PhotoWithFallback src={student.photographUrl} alt={`${student.name}'s photograph`} />
         </div>
         <div className="text-center md:text-left flex-grow">
-          <h1 className="text-4xl font-bold text-slate-900">{student.name}</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900">{student.name}</h1>
           <p className="text-slate-700 text-lg mt-1">{student.grade} - ID: <span className="font-semibold">{formattedStudentId}</span></p>
            <div className="mt-6 flex flex-wrap gap-3 justify-center md:justify-start">
              <button
