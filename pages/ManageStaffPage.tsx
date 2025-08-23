@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Staff, EmploymentStatus, Grade, GradeDefinition, Designation } from '../types';
-import { PlusIcon, SearchIcon, HomeIcon, BackIcon, EditIcon, UserIcon, BriefcaseIcon, PhoneIcon, MailIcon, TrashIcon, DocumentReportIcon } from '../components/Icons';
+import { PlusIcon, SearchIcon, HomeIcon, BackIcon, EditIcon, UserIcon, BriefcaseIcon, PhoneIcon, MailIcon, TrashIcon, DocumentReportIcon, InboxArrowDownIcon } from '../components/Icons';
 
 interface ManageStaffPageProps {
   staff: Staff[];
@@ -136,6 +136,87 @@ const ManageStaffPage: React.FC<ManageStaffPageProps> = ({ staff, gradeDefinitio
   const librarians = useMemo(() => nonTeachingStaff.filter(s => s.designation === Designation.LIBRARIAN), [nonTeachingStaff]);
   const sportsTeachers = useMemo(() => nonTeachingStaff.filter(s => s.designation === Designation.SPORTS_TEACHER), [nonTeachingStaff]);
 
+  const handleDownloadCsv = () => {
+    const teachingStaffToDownload = staff.filter(s => s.staffType === 'Teaching');
+
+    if (teachingStaffToDownload.length === 0) {
+        alert("No teaching staff data available to download.");
+        return;
+    }
+
+    const headers = [
+        'EmployeeID', 'FirstName', 'LastName', 'Gender', 'DateOfBirth', 'Nationality', 
+        'MaritalStatus', 'BloodGroup', 'AadhaarNumber', 'ContactNumber', 'EmailAddress', 
+        'PermanentAddress', 'CurrentAddress', 'EducationalQualification', 'Specialization', 
+        'YearsOfExperience', 'PreviousExperience', 'DateOfJoining', 'Department', 'Designation', 
+        'EmployeeType', 'Status', 'SubjectsTaught', 'TeacherLicenseNumber', 'SalaryGrade', 
+        'BasicSalary', 'BankAccountNumber', 'BankName', 'PANNumber', 'EmergencyContactName', 
+        'EmergencyContactRelationship', 'EmergencyContactNumber', 'MedicalConditions'
+    ];
+
+    const escapeCsvField = (field: any): string => {
+        if (field === null || field === undefined) return '';
+        const stringField = String(field);
+        if (/[",\n\r]/.test(stringField)) {
+            return `"${stringField.replace(/"/g, '""')}"`;
+        }
+        return stringField;
+    };
+
+    const csvRows = [headers.join(',')];
+
+    for (const member of teachingStaffToDownload) {
+        const row = [
+            escapeCsvField(member.employeeId),
+            escapeCsvField(member.firstName),
+            escapeCsvField(member.lastName),
+            escapeCsvField(member.gender),
+            escapeCsvField(member.dateOfBirth),
+            escapeCsvField(member.nationality),
+            escapeCsvField(member.maritalStatus),
+            escapeCsvField(member.bloodGroup),
+            escapeCsvField(member.aadhaarNumber),
+            escapeCsvField(member.contactNumber),
+            escapeCsvField(member.emailAddress),
+            escapeCsvField(member.permanentAddress),
+            escapeCsvField(member.currentAddress),
+            escapeCsvField(member.educationalQualification),
+            escapeCsvField(member.specialization),
+            escapeCsvField(member.yearsOfExperience),
+            escapeCsvField(member.previousExperience),
+            escapeCsvField(member.dateOfJoining),
+            escapeCsvField(member.department),
+            escapeCsvField(member.designation),
+            escapeCsvField(member.employeeType),
+            escapeCsvField(member.status),
+            escapeCsvField(member.subjectsTaught.join('; ')),
+            escapeCsvField(member.teacherLicenseNumber),
+            escapeCsvField(member.salaryGrade),
+            escapeCsvField(member.basicSalary),
+            escapeCsvField(member.bankAccountNumber),
+            escapeCsvField(member.bankName),
+            escapeCsvField(member.panNumber),
+            escapeCsvField(member.emergencyContactName),
+            escapeCsvField(member.emergencyContactRelationship),
+            escapeCsvField(member.emergencyContactNumber),
+            escapeCsvField(member.medicalConditions)
+        ];
+        csvRows.push(row.join(','));
+    }
+
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([`\uFEFF${csvString}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'BMS_Teaching_Staff.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+
   return (
     <div className="space-y-6">
         <div className="bg-white rounded-xl shadow-lg p-6">
@@ -167,6 +248,10 @@ const ManageStaffPage: React.FC<ManageStaffPageProps> = ({ staff, gradeDefinitio
                         <DocumentReportIcon className="h-5 w-5" />
                         Service Certificates
                     </Link>
+                    <button onClick={handleDownloadCsv} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition">
+                        <InboxArrowDownIcon className="h-5 w-5" />
+                        Download CSV
+                    </button>
                     <button onClick={onAdd} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition">
                         <PlusIcon className="h-5 h-5" /> Add Staff
                     </button>
