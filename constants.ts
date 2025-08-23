@@ -205,6 +205,7 @@ export const INITIAL_INVENTORY: InventoryItem[] = [
 ];
 
 export const HOSTEL_BLOCK_LIST: HostelBlock[] = Object.values(HostelBlock);
+export const HOSTEL_STAFF_ROLE_LIST: HostelStaffRole[] = Object.values(HostelStaffRole);
 
 export const INITIAL_HOSTEL_ROOMS: HostelRoom[] = [
     { id: 1, block: HostelBlock.A, roomNumber: 101, type: RoomType.DORMITORY, capacity: 4, facilities: ['Fan'] },

@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, User, Role, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord } from './types';
+import { Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, User, Role, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
 import { INITIAL_STUDENTS, GRADE_DEFINITIONS, INITIAL_STAFF, TERMINAL_EXAMS, GRADES_LIST, USERS, INITIAL_INVENTORY, INITIAL_HOSTEL_RESIDENTS, INITIAL_HOSTEL_ROOMS, INITIAL_HOSTEL_STAFF, INITIAL_HOSTEL_INVENTORY, INITIAL_STOCK_LOGS } from './constants';
 import Header from './components/Header';
 import StudentFormModal from './components/StudentFormModal';
@@ -56,6 +56,7 @@ import HostelDisciplinePage from './pages/HostelDisciplinePage';
 import HostelHealthPage from './pages/HostelHealthPage';
 import HostelCommunicationPage from './pages/HostelCommunicationPage';
 import HostelSettingsPage from './pages/HostelSettingsPage';
+import HostelStaffFormModal from './components/HostelStaffFormModal';
 
 // Helper for localStorage persistence
 const getInitialState = <T,>(key: string, initialValue: T): T => {
@@ -104,6 +105,9 @@ const App: React.FC = () => {
     const [hostelStaff, setHostelStaff] = useState<HostelStaff[]>(() => getInitialState('hostelStaff', INITIAL_HOSTEL_STAFF));
     const [hostelInventory, setHostelInventory] = useState<HostelInventoryItem[]>(() => getInitialState('hostelInventory', INITIAL_HOSTEL_INVENTORY));
     const [hostelStockLogs, setHostelStockLogs] = useState<StockLog[]>(() => getInitialState('hostelStockLogs', INITIAL_STOCK_LOGS));
+    const [isHostelStaffFormModalOpen, setIsHostelStaffFormModalOpen] = useState(false);
+    const [editingHostelStaff, setEditingHostelStaff] = useState<HostelStaff | null>(null);
+    const [deletingHostelStaff, setDeletingHostelStaff] = useState<HostelStaff | null>(null);
 
     // --- Import Modal State ---
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -267,6 +271,9 @@ const App: React.FC = () => {
         setIsImportModalOpen(false);
         setImportTargetGrade(null);
         setTransferringStudent(null);
+        setIsHostelStaffFormModalOpen(false);
+        setEditingHostelStaff(null);
+        setDeletingHostelStaff(null);
     }, []);
 
     const handleFormSubmit = useCallback((studentData: Omit<Student, 'id'>) => {
@@ -430,7 +437,7 @@ const App: React.FC = () => {
         }
     }, [deletingInventoryItem, closeModal]);
 
-    // --- Hostel Inventory Handlers ---
+    // --- Hostel Handlers ---
     const handleUpdateHostelStock = useCallback((itemId: number, change: number, notes: string) => {
         let updatedItemName = '';
         setHostelInventory(prev => 
@@ -454,6 +461,43 @@ const App: React.FC = () => {
         };
         setHostelStockLogs(prev => [newLog, ...prev]);
     }, []);
+    
+    const openAddHostelStaffModal = useCallback(() => {
+        setEditingHostelStaff(null);
+        setIsHostelStaffFormModalOpen(true);
+    }, []);
+
+    const openEditHostelStaffModal = useCallback((staffMember: HostelStaff) => {
+        setEditingHostelStaff(staffMember);
+        setIsHostelStaffFormModalOpen(true);
+    }, []);
+
+    const openDeleteHostelStaffConfirm = useCallback((staffMember: HostelStaff) => {
+        setDeletingHostelStaff(staffMember);
+    }, []);
+
+    const handleHostelStaffFormSubmit = useCallback((staffData: Omit<HostelStaff, 'id' | 'paymentStatus' | 'attendancePercent'>) => {
+        if (editingHostelStaff) {
+            setHostelStaff(prev =>
+                prev.map(s =>
+                    s.id === editingHostelStaff.id ? { ...s, ...staffData, id: s.id } : s
+                )
+            );
+        } else {
+            setHostelStaff(prev => [
+                ...prev,
+                { ...staffData, id: Date.now(), paymentStatus: PaymentStatus.PENDING, attendancePercent: 100 },
+            ]);
+        }
+        closeModal();
+    }, [editingHostelStaff, closeModal]);
+
+    const handleDeleteHostelStaffConfirm = useCallback(() => {
+        if (deletingHostelStaff) {
+            setHostelStaff(prev => prev.filter(s => s.id !== deletingHostelStaff.id));
+            closeModal();
+        }
+    }, [deletingHostelStaff, closeModal]);
 
 
     const handleSaveTc = useCallback((tcData: Omit<TcRecord, 'id'>) => {
@@ -609,7 +653,7 @@ const App: React.FC = () => {
                         <Route path="/hostel/fees" element={<HostelFeePage />} />
                         <Route path="/hostel/attendance" element={<HostelAttendancePage />} />
                         <Route path="/hostel/mess" element={<HostelMessPage />} />
-                        <Route path="/hostel/staff" element={<HostelStaffPage staff={hostelStaff} />} />
+                        <Route path="/hostel/staff" element={<HostelStaffPage staff={hostelStaff} onAdd={openAddHostelStaffModal} onEdit={openEditHostelStaffModal} onDelete={openDeleteHostelStaffConfirm} />} />
                         <Route path="/hostel/inventory" element={<HostelInventoryPage inventory={hostelInventory} stockLogs={hostelStockLogs} onUpdateStock={handleUpdateHostelStock} />} />
                         <Route path="/hostel/discipline" element={<HostelDisciplinePage />} />
                         <Route path="/hostel/health" element={<HostelHealthPage />} />
@@ -734,6 +778,24 @@ const App: React.FC = () => {
                     allStudents={students}
                     allGrades={GRADES_LIST}
                 />
+            )}
+            {isHostelStaffFormModalOpen && (
+                <HostelStaffFormModal
+                    isOpen={isHostelStaffFormModalOpen}
+                    onClose={closeModal}
+                    onSubmit={handleHostelStaffFormSubmit}
+                    staffMember={editingHostelStaff}
+                />
+            )}
+            {deletingHostelStaff && (
+                <ConfirmationModal
+                    isOpen={!!deletingHostelStaff}
+                    onClose={closeModal}
+                    onConfirm={handleDeleteHostelStaffConfirm}
+                    title="Remove Hostel Staff"
+                >
+                    <p>Are you sure you want to remove <strong>{deletingHostelStaff.name}</strong>? This action cannot be undone.</p>
+                </ConfirmationModal>
             )}
         </Router>
     );
