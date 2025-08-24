@@ -57,7 +57,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
   };
   
   const handleTeacherSave = () => {
-    const newTeacherId = selectedTeacherId ? Number(selectedTeacherId) : undefined;
+    const newTeacherId = selectedTeacherId || undefined;
     const oldTeacherId = gradeDef.classTeacherId;
 
     if (newTeacherId === oldTeacherId) {

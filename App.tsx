@@ -62,65 +62,86 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ManageUsersPage from './pages/ManageUsersPage';
 import UserFormModal from './components/UserFormModal';
 
-// Local Storage Helper Functions
-const getFromLocalStorage = (key: string, initialValue: any) => {
-    try {
-        const item = window.localStorage.getItem(key);
-        return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-        console.error(`Error reading from localStorage key “${key}”:`, error);
-        return initialValue;
-    }
+// Firebase integration
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import 'firebase/compat/firestore';
+
+const firebaseConfig = {
+    apiKey: process.env.API_KEY,
+    authDomain: "bmsdb-4918a.firebaseapp.com",
+    databaseURL: "https://bmsdb-4918a-default-rtdb.firebaseio.com",
+    projectId: "bmsdb-4918a",
+    storageBucket: "bmsdb-4918a.appspot.com",
+    messagingSenderId: "351220627913",
+    appId: "1:351220627913:web:1ec56c71506df6cc995018",
+    measurementId: "G-FBG9BEQ1C3"
 };
 
-const saveToLocalStorage = (key: string, value: any) => {
-    try {
-        window.localStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-        console.error(`Error writing to localStorage key “${key}”:`, error);
-    }
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
+const db = firebase.firestore();
+const auth = firebase.auth();
+const collections = {
+    students: db.collection('students'),
+    staff: db.collection('staff'),
+    users: db.collection('users'),
+    tcRecords: db.collection('tcRecords'),
+    serviceCertificateRecords: db.collection('serviceCertificateRecords'),
+    inventory: db.collection('inventory'),
+    hostelResidents: db.collection('hostelResidents'),
+    hostelRooms: db.collection('hostelRooms'),
+    hostelStaff: db.collection('hostelStaff'),
+    hostelInventory: db.collection('hostelInventory'),
+    hostelStockLogs: db.collection('hostelStockLogs'),
+    settings: db.collection('settings'),
 };
 
 
 const App: React.FC = () => {
     // --- AUTHENTICATION STATE ---
     const [user, setUser] = useState<User | null>(null);
-    const [users, setUsers] = useState<User[]>(() => getFromLocalStorage('users', []));
+    const [isAppLoading, setIsAppLoading] = useState(true);
     const [error, setError] = useState('');
+    const [isFirstUserCheck, setIsFirstUserCheck] = useState(true);
+    const [isFirstUser, setIsFirstUser] = useState(false);
 
     // --- APPLICATION STATE & LOGIC ---
-    const [academicYear, setAcademicYear] = useState<string | null>(null);
-    const [students, setStudents] = useState<Student[]>(() => getFromLocalStorage('students', INITIAL_STUDENTS));
+    const [academicYear, setAcademicYear] = useState<string | null>(localStorage.getItem('academicYear'));
+    const [students, setStudents] = useState<Student[]>([]);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
     const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
-    const [tcRecords, setTcRecords] = useState<TcRecord[]>(() => getFromLocalStorage('tcRecords', []));
-    const [gradeDefinitions, setGradeDefinitions] = useState<Record<Grade, GradeDefinition>>(() => getFromLocalStorage('gradeDefinitions', GRADE_DEFINITIONS));
+    const [tcRecords, setTcRecords] = useState<TcRecord[]>([]);
+    const [gradeDefinitions, setGradeDefinitions] = useState<Record<Grade, GradeDefinition>>(GRADE_DEFINITIONS);
 
     // --- Staff Management State ---
-    const [staff, setStaff] = useState<Staff[]>(() => getFromLocalStorage('staff', INITIAL_STAFF));
+    const [staff, setStaff] = useState<Staff[]>([]);
     const [isStaffFormModalOpen, setIsStaffFormModalOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
     const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
-    const [serviceCertificateRecords, setServiceCertificateRecords] = useState<ServiceCertificateRecord[]>(() => getFromLocalStorage('serviceCertificateRecords', []));
+    const [serviceCertificateRecords, setServiceCertificateRecords] = useState<ServiceCertificateRecord[]>([]);
     
     // --- Inventory Management State ---
-    const [inventory, setInventory] = useState<InventoryItem[]>(() => getFromLocalStorage('inventory', INITIAL_INVENTORY));
+    const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [isInventoryFormModalOpen, setIsInventoryFormModalOpen] = useState(false);
     const [editingInventoryItem, setEditingInventoryItem] = useState<InventoryItem | null>(null);
     const [deletingInventoryItem, setDeletingInventoryItem] = useState<InventoryItem | null>(null);
 
     // --- Hostel Management State ---
-    const [hostelResidents, setHostelResidents] = useState<HostelResident[]>(() => getFromLocalStorage('hostelResidents', INITIAL_HOSTEL_RESIDENTS));
-    const [hostelRooms, setHostelRooms] = useState<HostelRoom[]>(() => getFromLocalStorage('hostelRooms', INITIAL_HOSTEL_ROOMS));
-    const [hostelStaff, setHostelStaff] = useState<HostelStaff[]>(() => getFromLocalStorage('hostelStaff', INITIAL_HOSTEL_STAFF));
-    const [hostelInventory, setHostelInventory] = useState<HostelInventoryItem[]>(() => getFromLocalStorage('hostelInventory', INITIAL_HOSTEL_INVENTORY));
-    const [hostelStockLogs, setHostelStockLogs] = useState<StockLog[]>(() => getFromLocalStorage('hostelStockLogs', INITIAL_STOCK_LOGS));
+    const [hostelResidents, setHostelResidents] = useState<HostelResident[]>([]);
+    const [hostelRooms, setHostelRooms] = useState<HostelRoom[]>([]);
+    const [hostelStaff, setHostelStaff] = useState<HostelStaff[]>([]);
+    const [hostelInventory, setHostelInventory] = useState<HostelInventoryItem[]>([]);
+    const [hostelStockLogs, setHostelStockLogs] = useState<StockLog[]>([]);
     const [isHostelStaffFormModalOpen, setIsHostelStaffFormModalOpen] = useState(false);
     const [editingHostelStaff, setEditingHostelStaff] = useState<HostelStaff | null>(null);
     const [deletingHostelStaff, setDeletingHostelStaff] = useState<HostelStaff | null>(null);
 
     // --- User Management State (Admin) ---
+    const [users, setUsers] = useState<User[]>([]);
     const [isUserFormModalOpen, setIsUserFormModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [deletingUser, setDeletingUser] = useState<User | null>(null);
@@ -140,102 +161,163 @@ const App: React.FC = () => {
     const [teacherAssignedGrade, setTeacherAssignedGrade] = useState<Grade | null>(null);
     const [visibleStudents, setVisibleStudents] = useState<Student[]>([]);
 
+    // --- FIREBASE DATA LISTENERS & SEEDING ---
+    useEffect(() => {
+        const seedCollection = async (ref: firebase.firestore.CollectionReference, initialData: any[]) => {
+            const snapshot = await ref.limit(1).get();
+            if (snapshot.empty) {
+                console.log(`Seeding ${ref.path}...`);
+                const batch = db.batch();
+                initialData.forEach(item => {
+                    const { id, ...data } = item;
+                    const docRef = ref.doc();
+                    batch.set(docRef, data);
+                });
+                await batch.commit();
+            }
+        };
 
-    // --- DATA PERSISTENCE TO LOCALSTORAGE ---
-    useEffect(() => { saveToLocalStorage('users', users); }, [users]);
-    useEffect(() => { saveToLocalStorage('students', students); }, [students]);
-    useEffect(() => { saveToLocalStorage('staff', staff); }, [staff]);
-    useEffect(() => { saveToLocalStorage('tcRecords', tcRecords); }, [tcRecords]);
-    useEffect(() => { saveToLocalStorage('gradeDefinitions', gradeDefinitions); }, [gradeDefinitions]);
-    useEffect(() => { saveToLocalStorage('serviceCertificateRecords', serviceCertificateRecords); }, [serviceCertificateRecords]);
-    useEffect(() => { saveToLocalStorage('inventory', inventory); }, [inventory]);
-    useEffect(() => { saveToLocalStorage('hostelResidents', hostelResidents); }, [hostelResidents]);
-    useEffect(() => { saveToLocalStorage('hostelRooms', hostelRooms); }, [hostelRooms]);
-    useEffect(() => { saveToLocalStorage('hostelStaff', hostelStaff); }, [hostelStaff]);
-    useEffect(() => { saveToLocalStorage('hostelInventory', hostelInventory); }, [hostelInventory]);
-    useEffect(() => { saveToLocalStorage('hostelStockLogs', hostelStockLogs); }, [hostelStockLogs]);
+        const setupListeners = () => {
+            const unsubscribers = Object.entries(collections).map(([name, ref]) => {
+                if (name === 'settings') return () => {};
+                const setState = (data: any) => {
+                    switch (name) {
+                        case 'students': setStudents(data); break;
+                        case 'staff': setStaff(data); break;
+                        case 'users': setUsers(data); break;
+                        case 'tcRecords': setTcRecords(data); break;
+                        case 'serviceCertificateRecords': setServiceCertificateRecords(data); break;
+                        case 'inventory': setInventory(data); break;
+                        case 'hostelResidents': setHostelResidents(data); break;
+                        case 'hostelRooms': setHostelRooms(data); break;
+                        case 'hostelStaff': setHostelStaff(data); break;
+                        case 'hostelInventory': setHostelInventory(data); break;
+                        case 'hostelStockLogs': setHostelStockLogs(data); break;
+                    }
+                };
+                return ref.onSnapshot(snapshot => {
+                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setState(data);
+                });
+            });
+
+            // Handle settings separately (single document)
+            const settingsDoc = collections.settings.doc('gradeDefinitions');
+            const unsubSettings = settingsDoc.onSnapshot(doc => {
+                if (doc.exists) {
+                    setGradeDefinitions(doc.data() as Record<Grade, GradeDefinition>);
+                } else {
+                    console.log('Seeding gradeDefinitions...');
+                    settingsDoc.set(GRADE_DEFINITIONS);
+                }
+            });
+            unsubscribers.push(unsubSettings);
+
+            return () => unsubscribers.forEach(unsub => unsub());
+        };
+
+        const initializeData = async () => {
+            await seedCollection(collections.students, INITIAL_STUDENTS);
+            await seedCollection(collections.staff, INITIAL_STAFF);
+            await seedCollection(collections.inventory, INITIAL_INVENTORY);
+            await seedCollection(collections.hostelRooms, INITIAL_HOSTEL_ROOMS);
+            await seedCollection(collections.hostelResidents, INITIAL_HOSTEL_RESIDENTS);
+            await seedCollection(collections.hostelStaff, INITIAL_HOSTEL_STAFF);
+            await seedCollection(collections.hostelInventory, INITIAL_HOSTEL_INVENTORY);
+            await seedCollection(collections.hostelStockLogs, INITIAL_STOCK_LOGS);
+        };
+
+        if (user) {
+            initializeData();
+            return setupListeners();
+        }
+    }, [user]);
 
     // --- AUTHENTICATION LOGIC ---
-     useEffect(() => {
-        const loggedInUser = sessionStorage.getItem('user');
-        if (loggedInUser) {
-            setUser(JSON.parse(loggedInUser));
-        }
-        
-        const storedYear = localStorage.getItem('academicYear');
-        if (storedYear) {
-            setAcademicYear(storedYear);
-        }
+    useEffect(() => {
+        const checkFirstUser = async () => {
+            const snapshot = await collections.users.limit(1).get();
+            setIsFirstUser(snapshot.empty);
+            setIsFirstUserCheck(false);
+        };
+        checkFirstUser();
+
+        const unsubscribe = auth.onAuthStateChanged(async (firebaseUser: firebase.User | null) => {
+            if (firebaseUser) {
+                const userDocRef = collections.users.doc(firebaseUser.uid);
+                const userDoc = await userDocRef.get();
+                if (userDoc.exists) {
+                    setUser({ id: userDoc.id, ...userDoc.data() } as User);
+                } else {
+                    await auth.signOut();
+                    setUser(null);
+                }
+            } else {
+                setUser(null);
+            }
+            setIsAppLoading(false);
+        });
+        return () => unsubscribe();
     }, []);
 
     // --- Filter students based on user role ---
     useEffect(() => {
         if (user?.role === Role.TEACHER) {
-            // Find the staff member record that corresponds to the logged-in user by matching names.
             const staffMemberForUser = staff.find(s => `${s.firstName} ${s.lastName}` === user.name);
             let assignedGrade: Grade | null = null;
-            
             if (staffMemberForUser) {
-                // If a staff member is found, find the grade they are assigned to as a class teacher.
                 const assignedGradeEntry = Object.entries(gradeDefinitions).find(
                     ([, def]) => def.classTeacherId === staffMemberForUser.id
                 );
                 assignedGrade = assignedGradeEntry ? assignedGradeEntry[0] as Grade : null;
             }
-            
             setTeacherAssignedGrade(assignedGrade);
-
-            if (assignedGrade) {
-                // Filter students to show only those in the assigned grade.
-                setVisibleStudents(students.filter(s => s.grade === assignedGrade));
-            } else {
-                // If no grade is assigned, or the teacher isn't in the staff list, show no students.
-                setVisibleStudents([]);
-            }
-        } else { // For Admins or other roles, show all students.
+            setVisibleStudents(assignedGrade ? students.filter(s => s.grade === assignedGrade) : []);
+        } else {
             setVisibleStudents(students);
             setTeacherAssignedGrade(null);
         }
     }, [user, students, gradeDefinitions, staff]);
 
 
-    const handleRegister = useCallback((name: string, username: string, password: string): Promise<{ success: boolean; message?: string }> => {
-        if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
-            return Promise.resolve({ success: false, message: 'Username already exists.' });
+    const handleRegister = useCallback(async (name: string, username: string, password: string): Promise<{ success: boolean; message?: string }> => {
+        try {
+            const snapshot = await collections.users.where('username', '==', username).get();
+            if (!snapshot.empty) {
+                return { success: false, message: 'Username already exists.' };
+            }
+
+            const role = isFirstUser ? Role.ADMIN : Role.TEACHER; // This logic remains for setup
+            
+            const userCredential = await auth.createUserWithEmailAndPassword(`${username}@bms.local`, password);
+            const firebaseUser = userCredential.user;
+
+            if (firebaseUser) {
+                const newUser: Omit<User, 'id'> = { name, username, role };
+                await collections.users.doc(firebaseUser.uid).set(newUser);
+                setIsFirstUser(false);
+                return { success: true, message: 'Admin account created successfully! Please log in.' };
+            }
+            return { success: false, message: 'Could not create user.' };
+        } catch (error: any) {
+            return { success: false, message: error.message };
         }
+    }, [isFirstUser]);
 
-        // This function is now only for the first user, who becomes admin.
-        const role = users.length === 0 ? Role.ADMIN : Role.TEACHER;
-
-        const newUser: User = {
-            id: String(Date.now()),
-            name,
-            username,
-            password_plaintext: password,
-            role
-        };
-        
-        setUsers(prevUsers => [...prevUsers, newUser]);
-
-        return Promise.resolve({ success: true, message: 'Admin account created successfully! Please log in.' });
-    }, [users]);
-
-    const handleLogin = useCallback((username: string, password: string) => {
-        const foundUser = users.find(u => u.username === username && u.password_plaintext === password);
-        if (foundUser) {
-            setUser(foundUser);
-            sessionStorage.setItem('user', JSON.stringify(foundUser));
+    const handleLogin = useCallback(async (username: string, password: string) => {
+        try {
+            await auth.signInWithEmailAndPassword(`${username}@bms.local`, password);
             setError('');
-        } else {
+        } catch (error: any) {
             setError('Invalid username or password');
             setTimeout(() => setError(''), 3000);
         }
-    }, [users]);
+    }, []);
 
-    const handleLogout = useCallback(() => {
+    const handleLogout = useCallback(async () => {
+        await auth.signOut();
         setUser(null);
         setAcademicYear(null);
-        sessionStorage.removeItem('user');
         localStorage.removeItem('academicYear');
     }, []);
 
@@ -244,484 +326,325 @@ const App: React.FC = () => {
         localStorage.setItem('academicYear', year);
     }, []);
     
-    const handleForgotPassword = useCallback(async (username: string, newPassword: string): Promise<{ success: boolean; message?: string }> => {
-        const userExists = users.some(u => u.username.toLowerCase() === username.toLowerCase());
-        if (!userExists) {
-            return { success: false, message: "Username not found." };
+    const handleForgotPassword = useCallback(async (username: string): Promise<{ success: boolean; message?: string }> => {
+        try {
+            await auth.sendPasswordResetEmail(`${username}@bms.local`);
+            return { success: true, message: "Password reset email sent. Please check your inbox." };
+        } catch (error: any) {
+            if (error.code === 'auth/user-not-found') {
+                return { success: false, message: "Username not found." };
+            }
+            return { success: false, message: error.message };
         }
-
-        setUsers(prevUsers =>
-            prevUsers.map(u =>
-                u.username.toLowerCase() === username.toLowerCase()
-                    ? { ...u, password_plaintext: newPassword }
-                    : u
-            )
-        );
-        return { success: true };
-    }, [users]);
+    }, []);
 
     const handleChangePassword = useCallback(async (userId: string, oldPassword: string, newPassword: string): Promise<{ success: boolean; message?: string }> => {
-        const userToUpdate = users.find(u => u.id === userId);
-        if (!userToUpdate) {
-            return { success: false, message: "User not found. Please log in again." };
-        }
-        if (userToUpdate.password_plaintext !== oldPassword) {
-            return { success: false, message: "Incorrect current password." };
-        }
-
-        setUsers(prevUsers =>
-            prevUsers.map(u =>
-                u.id === userId
-                    ? { ...u, password_plaintext: newPassword }
-                    : u
-            )
-        );
-
-        setTimeout(() => {
-            handleLogout();
-        }, 1800);
-
-        return { success: true };
-    }, [users, handleLogout]);
-
-
-    const handleUpdateGradeDefinition = useCallback((grade: Grade, newDefinition: GradeDefinition) => {
-        setGradeDefinitions(prev => ({
-            ...prev,
-            [grade]: newDefinition,
-        }));
-    }, []);
-
-    const handleAssignClassToStaff = useCallback((staffId: number, newGradeKey: Grade | null) => {
-        setGradeDefinitions(prevDefs => {
-            const newDefs = sanitizeForJson(prevDefs);
-            
-            const oldGradeKey = Object.keys(newDefs).find(g => newDefs[g as Grade]?.classTeacherId === staffId) as Grade | undefined;
-            if (oldGradeKey) {
-                delete newDefs[oldGradeKey].classTeacherId;
+        const firebaseUser = auth.currentUser;
+        if (!firebaseUser || !firebaseUser.email) return { success: false, message: "User not found." };
+        
+        try {
+            const credential = firebase.auth.EmailAuthProvider.credential(firebaseUser.email, oldPassword);
+            await firebaseUser.reauthenticateWithCredential(credential);
+            await firebaseUser.updatePassword(newPassword);
+            setTimeout(() => handleLogout(), 1800);
+            return { success: true };
+        } catch(error: any) {
+             if (error.code === 'auth/wrong-password') {
+                return { success: false, message: "Incorrect current password." };
             }
+            return { success: false, message: error.message };
+        }
+    }, [handleLogout]);
 
-            if (newGradeKey) {
-                const otherStaffAssigned = Object.keys(newDefs).find(g => newDefs[g as Grade]?.classTeacherId && g === newGradeKey);
-                if(otherStaffAssigned) {
-                    delete newDefs[otherStaffAssigned as Grade].classTeacherId;
-                }
-                
-                newDefs[newGradeKey].classTeacherId = staffId;
-            }
 
-            return newDefs;
-        });
-    }, []);
+    const handleUpdateGradeDefinition = useCallback(async (grade: Grade, newDefinition: GradeDefinition) => {
+        const newDefs = { ...gradeDefinitions, [grade]: newDefinition };
+        await collections.settings.doc('gradeDefinitions').set(newDefs);
+    }, [gradeDefinitions]);
 
-    const openAddModal = useCallback(() => {
-        setEditingStudent(null);
-        setIsFormModalOpen(true);
-    }, []);
+    const handleAssignClassToStaff = useCallback(async (staffId: string, newGradeKey: Grade | null) => {
+        const newDefs = sanitizeForJson(gradeDefinitions);
+        const oldGradeKey = Object.keys(newDefs).find(g => newDefs[g as Grade]?.classTeacherId === staffId) as Grade | undefined;
+        if (oldGradeKey) delete newDefs[oldGradeKey].classTeacherId;
 
-    const openEditModal = useCallback((student: Student) => {
-        setEditingStudent(sanitizeForJson(student));
-        setIsFormModalOpen(true);
-    }, []);
+        if (newGradeKey) {
+            const otherStaffAssigned = Object.keys(newDefs).find(g => newDefs[g as Grade]?.classTeacherId && g === newGradeKey);
+            if(otherStaffAssigned) delete newDefs[otherStaffAssigned as Grade].classTeacherId;
+            newDefs[newGradeKey].classTeacherId = staffId;
+        }
+        await collections.settings.doc('gradeDefinitions').set(newDefs);
+    }, [gradeDefinitions]);
 
-    const openDeleteConfirm = useCallback((student: Student) => {
-        setDeletingStudent(student);
-    }, []);
+    const openAddModal = useCallback(() => { setEditingStudent(null); setIsFormModalOpen(true); }, []);
+    const openEditModal = useCallback((student: Student) => { setEditingStudent(sanitizeForJson(student)); setIsFormModalOpen(true); }, []);
+    const openDeleteConfirm = useCallback((student: Student) => { setDeletingStudent(student); }, []);
 
     const closeModal = useCallback(() => {
-        setIsFormModalOpen(false);
-        setEditingStudent(null);
-        setDeletingStudent(null);
-        setIsStaffFormModalOpen(false);
-        setEditingStaff(null);
-        setDeletingStaff(null);
-        setIsInventoryFormModalOpen(false);
-        setEditingInventoryItem(null);
-        setDeletingInventoryItem(null);
-        setIsImportModalOpen(false);
-        setImportTargetGrade(null);
-        setTransferringStudent(null);
-        setIsHostelStaffFormModalOpen(false);
-        setEditingHostelStaff(null);
-        setDeletingHostelStaff(null);
-        setIsUserFormModalOpen(false);
-        setEditingUser(null);
-        setDeletingUser(null);
+        setIsFormModalOpen(false); setEditingStudent(null); setDeletingStudent(null);
+        setIsStaffFormModalOpen(false); setEditingStaff(null); setDeletingStaff(null);
+        setIsInventoryFormModalOpen(false); setEditingInventoryItem(null); setDeletingInventoryItem(null);
+        setIsImportModalOpen(false); setImportTargetGrade(null); setTransferringStudent(null);
+        setIsHostelStaffFormModalOpen(false); setEditingHostelStaff(null); setDeletingHostelStaff(null);
+        setIsUserFormModalOpen(false); setEditingUser(null); setDeletingUser(null);
     }, []);
 
-    const handleFormSubmit = useCallback((studentData: Omit<Student, 'id'>) => {
+    const handleFormSubmit = useCallback(async (studentData: Omit<Student, 'id'>) => {
         if (editingStudent) {
             setStudentToConfirmEdit({ ...studentData, id: editingStudent.id });
             setIsFormModalOpen(false);
             setEditingStudent(null);
         } else {
-            setStudents(prev => [
-                ...prev,
-                { ...studentData, id: Date.now() },
-            ]);
+            await collections.students.add(studentData);
             closeModal();
         }
     }, [editingStudent, closeModal]);
 
-    const handleConfirmEdit = useCallback(() => {
+    const handleConfirmEdit = useCallback(async () => {
         if (studentToConfirmEdit) {
-            setStudents(prev =>
-                prev.map(s =>
-                    s.id === studentToConfirmEdit.id ? studentToConfirmEdit : s
-                )
-            );
+            const { id, ...data } = studentToConfirmEdit;
+            await collections.students.doc(id).update(data);
             setStudentToConfirmEdit(null);
         }
     }, [studentToConfirmEdit]);
 
-    const handleDeleteConfirm = useCallback(() => {
+    const handleDeleteConfirm = useCallback(async () => {
         if (deletingStudent) {
-            setStudents(prev => prev.filter(s => s.id !== deletingStudent.id));
+            await collections.students.doc(deletingStudent.id).delete();
             closeModal();
         }
     }, [deletingStudent, closeModal]);
 
-    const handleBulkAddStudents = useCallback((studentsData: Omit<Student, 'id'>[], grade: Grade) => {
-        setPendingImportData({ students: studentsData, grade });
+    const handleBulkAddStudents = useCallback(async (studentsData: Omit<Student, 'id'>[]) => {
+        const batch = db.batch();
+        studentsData.forEach(student => {
+            const docRef = collections.students.doc();
+            batch.set(docRef, student);
+        });
+        await batch.commit();
         closeModal();
     }, [closeModal]);
 
-    const handleConfirmImport = useCallback(() => {
+    const handleConfirmImport = useCallback(async () => {
         if (pendingImportData) {
-            const newStudentsWithIds = pendingImportData.students.map((s, index) => ({
-                ...s,
-                id: Date.now() + index,
-            }));
-            setStudents(prev => [...prev, ...newStudentsWithIds]);
+            await handleBulkAddStudents(pendingImportData.students);
             setPendingImportData(null);
         }
-    }, [pendingImportData]);
+    }, [pendingImportData, handleBulkAddStudents]);
 
 
-    const handleAcademicUpdate = useCallback((studentId: number, academicPerformance: Exam[]) => {
-        setStudents(prev =>
-            prev.map(s =>
-                s.id === studentId
-                    ? { ...sanitizeForJson(s), academicPerformance }
-                    : s
-            )
-        );
+    const handleAcademicUpdate = useCallback(async (studentId: string, academicPerformance: Exam[]) => {
+        await collections.students.doc(studentId).update({ academicPerformance });
     }, []);
 
     // --- User Management Handlers (Admin) ---
-    const openAddUserModal = useCallback(() => {
-        setEditingUser(null);
-        setIsUserFormModalOpen(true);
-    }, []);
+    const openAddUserModal = useCallback(() => { setEditingUser(null); setIsUserFormModalOpen(true); }, []);
+    const openEditUserModal = useCallback((userToEdit: User) => { setEditingUser(userToEdit); setIsUserFormModalOpen(true); }, []);
+    const openDeleteUserConfirm = useCallback((userToDelete: User) => { setDeletingUser(userToDelete); }, []);
 
-    const openEditUserModal = useCallback((userToEdit: User) => {
-        setEditingUser(userToEdit);
-        setIsUserFormModalOpen(true);
-    }, []);
-
-    const openDeleteUserConfirm = useCallback((userToDelete: User) => {
-        setDeletingUser(userToDelete);
-    }, []);
-
-    const handleUserFormSubmit = useCallback((
-        userData: Omit<User, 'id' | 'role' | 'password_plaintext'> & { password_plaintext?: string },
-        role: Role
-    ) => {
+    const handleUserFormSubmit = useCallback(async (userData: Omit<User, 'id' | 'role' | 'password_plaintext'> & { password?: string }, role: Role) => {
+        // NOTE: Firebase Admin SDK is needed to change user emails/passwords from backend.
+        // This implementation will only manage user data in Firestore. Passwords must be managed by users.
         if (editingUser) {
-            setUsers(prev => prev.map(u => u.id === editingUser.id ? {
-                ...editingUser,
-                name: userData.name,
-                username: userData.username,
-                role: role,
-                password_plaintext: userData.password_plaintext || editingUser.password_plaintext
-            } : u));
+            await collections.users.doc(editingUser.id).update({ name: userData.name, username: userData.username, role });
         } else {
-            const newUser: User = {
-                id: String(Date.now()),
-                name: userData.name,
-                username: userData.username,
-                password_plaintext: userData.password_plaintext!,
-                role: role,
-            };
-            setUsers(prev => [...prev, newUser]);
+            // New user creation must go through register flow with password.
+            // This is a simplified version for admin panel.
+            alert("User creation through this form is not implemented for Firebase. Please use the registration page for the first user.");
         }
         closeModal();
     }, [editingUser, closeModal]);
     
-    const handleDeleteUserConfirm = useCallback(() => {
+    const handleDeleteUserConfirm = useCallback(async () => {
         if (deletingUser) {
             if (user?.id === deletingUser.id) {
                 alert("You cannot delete your own account.");
-                closeModal();
-                return;
+                closeModal(); return;
             }
-            setUsers(prev => prev.filter(u => u.id !== deletingUser.id));
+            // Deleting from Auth requires Admin SDK. This will only delete from Firestore.
+            await collections.users.doc(deletingUser.id).delete();
+            alert("User deleted from database. Auth user may still exist.");
             closeModal();
         }
     }, [deletingUser, user, closeModal]);
 
     // --- Staff Handlers ---
-    const openAddStaffModal = useCallback(() => {
-        setEditingStaff(null);
-        setIsStaffFormModalOpen(true);
-    }, []);
+    const openAddStaffModal = useCallback(() => { setEditingStaff(null); setIsStaffFormModalOpen(true); }, []);
+    const openEditStaffModal = useCallback((staffMember: Staff) => { setEditingStaff(sanitizeForJson(staffMember)); setIsStaffFormModalOpen(true); }, []);
+    const openDeleteStaffConfirm = useCallback((staffMember: Staff) => { setDeletingStaff(staffMember); }, []);
 
-    const openEditStaffModal = useCallback((staffMember: Staff) => {
-        setEditingStaff(sanitizeForJson(staffMember));
-        setIsStaffFormModalOpen(true);
-    }, []);
-
-    const openDeleteStaffConfirm = useCallback((staffMember: Staff) => {
-        setDeletingStaff(staffMember);
-    }, []);
-
-    const handleDeleteStaffConfirm = useCallback(() => {
+    const handleDeleteStaffConfirm = useCallback(async () => {
         if (deletingStaff) {
-            setStaff(prev => prev.filter(s => s.id !== deletingStaff.id));
-            
+            await collections.staff.doc(deletingStaff.id).delete();
             const assignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === deletingStaff.id) as Grade | undefined;
             if (assignedGradeKey) {
-                handleAssignClassToStaff(deletingStaff.id, null);
+                await handleAssignClassToStaff(deletingStaff.id, null);
             }
             closeModal();
         }
     }, [deletingStaff, closeModal, gradeDefinitions, handleAssignClassToStaff]);
 
-    const handleStaffFormSubmit = useCallback((staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => {
-        let updatedStaffId: number;
+    const handleStaffFormSubmit = useCallback(async (staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => {
         const finalAssignedGradeKey = staffData.status === EmploymentStatus.ACTIVE ? assignedGradeKey : null;
-
         if (editingStaff) {
-            updatedStaffId = editingStaff.id;
-            setStaff(prev =>
-                prev.map(t =>
-                    t.id === editingStaff.id ? { ...t, ...staffData, id: t.id } : t
-                )
-            );
+            await collections.staff.doc(editingStaff.id).update(staffData);
+            await handleAssignClassToStaff(editingStaff.id, finalAssignedGradeKey);
         } else {
-            const newId = Date.now();
-            updatedStaffId = newId;
-            setStaff(prev => [
-                ...prev,
-                { ...staffData, id: newId },
-            ]);
+            const newDoc = await collections.staff.add(staffData);
+            await handleAssignClassToStaff(newDoc.id, finalAssignedGradeKey);
         }
-
-        handleAssignClassToStaff(updatedStaffId, finalAssignedGradeKey);
         closeModal();
     }, [editingStaff, closeModal, handleAssignClassToStaff]);
 
-    const handleSaveServiceCertificate = useCallback((certData: Omit<ServiceCertificateRecord, 'id'>) => {
-        const newRecord: ServiceCertificateRecord = { ...certData, id: Date.now() };
-        setServiceCertificateRecords(prev => [...prev, newRecord]);
-        
-        setStaff(prevStaff =>
-            prevStaff.map(s => 
-                s.id === certData.staffDetails.staffNumericId
-                ? { ...sanitizeForJson(s), status: EmploymentStatus.RESIGNED }
-                : s
-            )
-        );
+    const handleSaveServiceCertificate = useCallback(async (certData: Omit<ServiceCertificateRecord, 'id'>) => {
+        await collections.serviceCertificateRecords.add(certData);
+        await collections.staff.doc(certData.staffDetails.staffId).update({ status: EmploymentStatus.RESIGNED });
     }, []);
     
     // --- Inventory Handlers ---
-    const openAddInventoryModal = useCallback(() => {
-        setEditingInventoryItem(null);
-        setIsInventoryFormModalOpen(true);
-    }, []);
+    const openAddInventoryModal = useCallback(() => { setEditingInventoryItem(null); setIsInventoryFormModalOpen(true); }, []);
+    const openEditInventoryModal = useCallback((item: InventoryItem) => { setEditingInventoryItem(sanitizeForJson(item)); setIsInventoryFormModalOpen(true); }, []);
+    const openDeleteInventoryConfirm = useCallback((item: InventoryItem) => { setDeletingInventoryItem(item); }, []);
 
-    const openEditInventoryModal = useCallback((item: InventoryItem) => {
-        setEditingInventoryItem(sanitizeForJson(item));
-        setIsInventoryFormModalOpen(true);
-    }, []);
-
-    const openDeleteInventoryConfirm = useCallback((item: InventoryItem) => {
-        setDeletingInventoryItem(item);
-    }, []);
-
-    const handleInventoryFormSubmit = useCallback((itemData: Omit<InventoryItem, 'id'>) => {
+    const handleInventoryFormSubmit = useCallback(async (itemData: Omit<InventoryItem, 'id'>) => {
         if (editingInventoryItem) {
-            setInventory(prev =>
-                prev.map(i =>
-                    i.id === editingInventoryItem.id ? { ...i, ...itemData, id: i.id } : i
-                )
-            );
+            await collections.inventory.doc(editingInventoryItem.id).update(itemData);
         } else {
-            setInventory(prev => [
-                ...prev,
-                { ...itemData, id: Date.now() },
-            ]);
+            await collections.inventory.add(itemData);
         }
         closeModal();
     }, [editingInventoryItem, closeModal]);
 
-    const handleDeleteInventoryConfirm = useCallback(() => {
+    const handleDeleteInventoryConfirm = useCallback(async () => {
         if (deletingInventoryItem) {
-            setInventory(prev => prev.filter(i => i.id !== deletingInventoryItem.id));
+            await collections.inventory.doc(deletingInventoryItem.id).delete();
             closeModal();
         }
     }, [deletingInventoryItem, closeModal]);
 
     // --- Hostel Handlers ---
-    const handleUpdateHostelStock = useCallback((itemId: number, change: number, notes: string) => {
-        let updatedItemName = '';
-        setHostelInventory(prev => 
-            prev.map(item => {
-                if (item.id === itemId) {
-                    updatedItemName = item.name;
-                    return { ...sanitizeForJson(item), currentStock: item.currentStock + change };
-                }
-                return item;
-            })
-        );
+    const handleUpdateHostelStock = useCallback(async (itemId: string, change: number, notes: string) => {
+        const itemRef = collections.hostelInventory.doc(itemId);
+        await db.runTransaction(async (transaction: firebase.firestore.Transaction) => {
+            const itemDoc = await transaction.get(itemRef);
+            if (!itemDoc.exists) throw "Item does not exist!";
+            const itemData = itemDoc.data() as HostelInventoryItem;
+            const newStock = itemData.currentStock + change;
+            transaction.update(itemRef, { currentStock: newStock });
 
-        const newLog: StockLog = {
-            id: Date.now(),
-            itemId: itemId,
-            itemName: updatedItemName,
-            type: change > 0 ? StockLogType.IN : StockLogType.OUT,
-            quantity: Math.abs(change),
-            date: new Date().toISOString(),
-            notes: notes,
-        };
-        setHostelStockLogs(prev => [newLog, ...prev]);
+            const newLog = {
+                itemId,
+                itemName: itemData.name,
+                type: change > 0 ? StockLogType.IN : StockLogType.OUT,
+                quantity: Math.abs(change),
+                date: new Date().toISOString(),
+                notes,
+            };
+            const logRef = collections.hostelStockLogs.doc();
+            transaction.set(logRef, newLog);
+        });
     }, []);
     
-    const openAddHostelStaffModal = useCallback(() => {
-        setEditingHostelStaff(null);
-        setIsHostelStaffFormModalOpen(true);
-    }, []);
+    const openAddHostelStaffModal = useCallback(() => { setEditingHostelStaff(null); setIsHostelStaffFormModalOpen(true); }, []);
+    const openEditHostelStaffModal = useCallback((staffMember: HostelStaff) => { setEditingHostelStaff(sanitizeForJson(staffMember)); setIsHostelStaffFormModalOpen(true); }, []);
+    const openDeleteHostelStaffConfirm = useCallback((staffMember: HostelStaff) => { setDeletingHostelStaff(staffMember); }, []);
 
-    const openEditHostelStaffModal = useCallback((staffMember: HostelStaff) => {
-        setEditingHostelStaff(sanitizeForJson(staffMember));
-        setIsHostelStaffFormModalOpen(true);
-    }, []);
-
-    const openDeleteHostelStaffConfirm = useCallback((staffMember: HostelStaff) => {
-        setDeletingHostelStaff(staffMember);
-    }, []);
-
-    const handleHostelStaffFormSubmit = useCallback((staffData: Omit<HostelStaff, 'id' | 'paymentStatus' | 'attendancePercent'>) => {
+    const handleHostelStaffFormSubmit = useCallback(async (staffData: Omit<HostelStaff, 'id' | 'paymentStatus' | 'attendancePercent'>) => {
         if (editingHostelStaff) {
-            setHostelStaff(prev =>
-                prev.map(s =>
-                    s.id === editingHostelStaff.id ? { ...s, ...staffData, id: s.id } : s
-                )
-            );
+            await collections.hostelStaff.doc(editingHostelStaff.id).update(staffData);
         } else {
-            setHostelStaff(prev => [
-                ...prev,
-                { ...staffData, id: Date.now(), paymentStatus: PaymentStatus.PENDING, attendancePercent: 100 },
-            ]);
+            const newStaff = { ...staffData, paymentStatus: PaymentStatus.PENDING, attendancePercent: 100 };
+            await collections.hostelStaff.add(newStaff);
         }
         closeModal();
     }, [editingHostelStaff, closeModal]);
 
-    const handleDeleteHostelStaffConfirm = useCallback(() => {
+    const handleDeleteHostelStaffConfirm = useCallback(async () => {
         if (deletingHostelStaff) {
-            setHostelStaff(prev => prev.filter(s => s.id !== deletingHostelStaff.id));
+            await collections.hostelStaff.doc(deletingHostelStaff.id).delete();
             closeModal();
         }
     }, [deletingHostelStaff, closeModal]);
 
 
-    const handleSaveTc = useCallback((tcData: Omit<TcRecord, 'id'>) => {
-        const newRecord: TcRecord = { ...tcData, id: Date.now() };
-        setTcRecords(prev => [...prev, newRecord]);
-        setStudents(prevStudents =>
-            prevStudents.map(s => 
-                s.id === tcData.studentDetails.studentNumericId
-                ? { ...sanitizeForJson(s), status: StudentStatus.TRANSFERRED, transferDate: tcData.tcData.issueDate }
-                : s
-            )
-        );
-    }, []);
-
-    const handleUpdateTc = useCallback((updatedTc: TcRecord) => {
-        setTcRecords(prev => 
-            prev.map(record => record.id === updatedTc.id ? updatedTc : record)
-        );
-    }, []);
-
-    const handleUpdateFeePayments = useCallback((studentId: number, feePayments: FeePayments) => {
-        setStudents(prev =>
-            prev.map(s =>
-                s.id === studentId ? { ...sanitizeForJson(s), feePayments } : s
-            )
-        );
-    }, []);
-
-    const handleUpdateClassMarks = useCallback((marksByStudentId: Map<number, SubjectMark[]>, examId: string) => {
-        setStudents(prevStudents => {
-            return prevStudents.map(student => {
-                if (marksByStudentId.has(student.id)) {
-                    const newMarks = marksByStudentId.get(student.id)!;
-                    const updatedStudent = sanitizeForJson(student);
-                    const performance = updatedStudent.academicPerformance || [];
-                    const examIndex = performance.findIndex((e: Exam) => e.id === examId);
-                    const examName = TERMINAL_EXAMS.find(e => e.id === examId)?.name || 'Unknown Exam';
-                    const cleanedNewMarks = newMarks.filter(m => m.marks != null || m.examMarks != null || m.activityMarks != null);
-
-                    if (examIndex > -1) {
-                        performance[examIndex].results = cleanedNewMarks;
-                    } else {
-                        performance.push({ id: examId, name: examName, results: cleanedNewMarks });
-                    }
-                    updatedStudent.academicPerformance = performance;
-                    return updatedStudent;
-                }
-                return student;
-            });
+    const handleSaveTc = useCallback(async (tcData: Omit<TcRecord, 'id'>) => {
+        await collections.tcRecords.add(tcData);
+        await collections.students.doc(tcData.studentDetails.studentId).update({ 
+            status: StudentStatus.TRANSFERRED, 
+            transferDate: tcData.tcData.issueDate 
         });
     }, []);
 
-    const handlePromoteStudents = useCallback(() => {
-        const finalExamId = 'terminal3';
-        const updatedStudents = students.map(student => {
-            if (student.status !== StudentStatus.ACTIVE) return student;
+    const handleUpdateTc = useCallback(async (updatedTc: TcRecord) => {
+        const { id, ...data } = updatedTc;
+        await collections.tcRecords.doc(id).update(data);
+    }, []);
 
-            const sanitizedStudent = sanitizeForJson(student);
+    const handleUpdateFeePayments = useCallback(async (studentId: string, feePayments: FeePayments) => {
+        await collections.students.doc(studentId).update({ feePayments });
+    }, []);
+
+    const handleUpdateClassMarks = useCallback(async (marksByStudentId: Map<string, SubjectMark[]>, examId: string) => {
+        const batch = db.batch();
+        marksByStudentId.forEach((newMarks, studentId) => {
+            const student = students.find(s => s.id === studentId);
+            if (!student) return;
+            
+            const performance = student.academicPerformance || [];
+            const examIndex = performance.findIndex((e: Exam) => e.id === examId);
+            const examName = TERMINAL_EXAMS.find(e => e.id === examId)?.name || 'Unknown Exam';
+            const cleanedNewMarks = newMarks.filter(m => m.marks != null || m.examMarks != null || m.activityMarks != null);
+
+            if (examIndex > -1) {
+                performance[examIndex].results = cleanedNewMarks;
+            } else {
+                performance.push({ id: examId, name: examName, results: cleanedNewMarks });
+            }
+            
+            batch.update(collections.students.doc(studentId), { academicPerformance: performance });
+        });
+        await batch.commit();
+    }, [students]);
+
+    const handlePromoteStudents = useCallback(async () => {
+        const finalExamId = 'terminal3';
+        const batch = db.batch();
+
+        students.forEach(student => {
+            if (student.status !== StudentStatus.ACTIVE) return;
+
             const gradeDef = gradeDefinitions[student.grade];
             const finalExam = student.academicPerformance?.find(e => e.id === finalExamId);
             
             if (!finalExam || !gradeDef) {
-                return { ...sanitizedStudent, academicPerformance: [], feePayments: createDefaultFeePayments() };
+                 batch.update(collections.students.doc(student.id), { academicPerformance: [], feePayments: createDefaultFeePayments() });
+                 return;
             }
     
             const { finalResult } = calculateStudentResult(finalExam.results, gradeDef, student.grade);
     
             if (finalResult === 'FAIL') {
-                return { ...sanitizedStudent, academicPerformance: [], feePayments: createDefaultFeePayments() };
+                 batch.update(collections.students.doc(student.id), { academicPerformance: [], feePayments: createDefaultFeePayments() });
             } else {
                 if (student.grade === Grade.X) {
-                    return { ...sanitizedStudent, status: StudentStatus.TRANSFERRED, transferDate: `Graduated in ${academicYear}`, academicPerformance: [], feePayments: createDefaultFeePayments() };
+                    batch.update(collections.students.doc(student.id), { status: StudentStatus.TRANSFERRED, transferDate: `Graduated in ${academicYear}`, academicPerformance: [], feePayments: createDefaultFeePayments() });
                 } else {
                     const nextGrade = getNextGrade(student.grade);
-                    return nextGrade ? { ...sanitizedStudent, grade: nextGrade, rollNo: student.rollNo, academicPerformance: [], feePayments: createDefaultFeePayments() } : student;
+                    if (nextGrade) {
+                        batch.update(collections.students.doc(student.id), { grade: nextGrade, academicPerformance: [], feePayments: createDefaultFeePayments() });
+                    }
                 }
             }
         });
-        setStudents(updatedStudents);
+
+        await batch.commit();
         handleLogout();
     }, [students, gradeDefinitions, academicYear, handleLogout]);
 
-    const openImportModal = useCallback((grade: Grade | null) => {
-        setImportTargetGrade(grade);
-        setIsImportModalOpen(true);
-    }, []);
+    const openImportModal = useCallback((grade: Grade | null) => { setImportTargetGrade(grade); setIsImportModalOpen(true); }, []);
+    const openTransferModal = useCallback((student: Student) => { setTransferringStudent(student); }, []);
 
-    const openTransferModal = useCallback((student: Student) => {
-        setTransferringStudent(student);
-    }, []);
-
-    const handleTransferStudent = useCallback((studentId: number, newGrade: Grade, newRollNo: number) => {
-        setStudents(prev =>
-            prev.map(s =>
-                s.id === studentId
-                    ? { ...sanitizeForJson(s), grade: newGrade, rollNo: newRollNo }
-                    : s
-            )
-        );
+    const handleTransferStudent = useCallback(async (studentId: string, newGrade: Grade, newRollNo: number) => {
+        await collections.students.doc(studentId).update({ grade: newGrade, rollNo: newRollNo });
         closeModal();
     }, [closeModal]);
 
@@ -800,22 +723,27 @@ const App: React.FC = () => {
         );
     }
 
-    const LoginRedirect = () => {
-        const location = useLocation();
-        return <Navigate to={(location.state as { from?: string })?.from || '/'} />;
-    };
+    if (isAppLoading || isFirstUserCheck) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-slate-100">
+                <div className="text-center">
+                    <svg className="animate-spin h-10 w-10 text-sky-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p className="mt-4 text-lg font-semibold text-slate-700">Loading Application...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <Router>
             <Routes>
-                <Route path="/register" element={!user ? (users.length > 0 ? <Navigate to="/login" /> : <RegisterPage onRegister={handleRegister} />) : <Navigate to="/" />} />
-                <Route path="/forgot-password" element={!user ? <ForgotPasswordPage users={users} onResetPassword={handleForgotPassword} /> : <Navigate to="/" />} />
-                <Route path="/*" element={
-                    user ? <MainAppContent /> : <Navigate to="/login" state={{ from: window.location.hash.substring(1) || '/' }} />
-                }/>
-                <Route path="/login" element={
-                    !user ? <LoginPage onLogin={handleLogin} error={error} /> : <LoginRedirect />
-                }/>
+                <Route path="/register" element={!user ? (isFirstUser ? <RegisterPage onRegister={handleRegister} /> : <Navigate to="/login" />) : <Navigate to="/" />} />
+                <Route path="/forgot-password" element={!user ? <ForgotPasswordPage onResetPassword={handleForgotPassword} /> : <Navigate to="/" />} />
+                <Route path="/login" element={!user ? <LoginPage onLogin={handleLogin} error={error} isFirstUser={isFirstUser} /> : <Navigate to="/" />} />
+                <Route path="/*" element={user ? <MainAppContent /> : <Navigate to="/login" state={{ from: window.location.hash.substring(1) || '/' }} />} />
             </Routes>
             {isFormModalOpen && (
                 <StudentFormModal
@@ -828,126 +756,55 @@ const App: React.FC = () => {
                 />
             )}
              {deletingStudent && (
-                <ConfirmationModal
-                    isOpen={!!deletingStudent}
-                    onClose={closeModal}
-                    onConfirm={handleDeleteConfirm}
-                    title="Remove Student Record"
-                >
+                <ConfirmationModal isOpen={!!deletingStudent} onClose={closeModal} onConfirm={handleDeleteConfirm} title="Remove Student Record">
                     <p>Are you sure you want to remove <strong>{deletingStudent.name}</strong>? This action is for correcting incorrect entries and cannot be undone.</p>
                 </ConfirmationModal>
             )}
             {studentToConfirmEdit && (
-                <ConfirmationModal
-                    isOpen={!!studentToConfirmEdit}
-                    onClose={() => setStudentToConfirmEdit(null)}
-                    onConfirm={handleConfirmEdit}
-                    title="Confirm Changes"
-                >
+                <ConfirmationModal isOpen={!!studentToConfirmEdit} onClose={() => setStudentToConfirmEdit(null)} onConfirm={handleConfirmEdit} title="Confirm Changes">
                     <p>Are you sure you want to save the changes for <strong>{studentToConfirmEdit.name}</strong>?</p>
                 </ConfirmationModal>
             )}
              {isStaffFormModalOpen && (
-                <StaffFormModal
-                    isOpen={isStaffFormModalOpen}
-                    onClose={closeModal}
-                    onSubmit={handleStaffFormSubmit}
-                    staffMember={editingStaff}
-                    allStaff={staff}
-                    gradeDefinitions={gradeDefinitions}
-                />
+                <StaffFormModal isOpen={isStaffFormModalOpen} onClose={closeModal} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions} />
             )}
              {deletingStaff && (
-                <ConfirmationModal
-                    isOpen={!!deletingStaff}
-                    onClose={closeModal}
-                    onConfirm={handleDeleteStaffConfirm}
-                    title="Remove Staff Record"
-                >
+                <ConfirmationModal isOpen={!!deletingStaff} onClose={closeModal} onConfirm={handleDeleteStaffConfirm} title="Remove Staff Record">
                     <p>Are you sure you want to remove <strong>{deletingStaff.firstName} {deletingStaff.lastName}</strong>? This action is permanent and cannot be undone.</p>
                 </ConfirmationModal>
             )}
             {isInventoryFormModalOpen && (
-                <InventoryFormModal
-                    isOpen={isInventoryFormModalOpen}
-                    onClose={closeModal}
-                    onSubmit={handleInventoryFormSubmit}
-                    item={editingInventoryItem}
-                />
+                <InventoryFormModal isOpen={isInventoryFormModalOpen} onClose={closeModal} onSubmit={handleInventoryFormSubmit} item={editingInventoryItem} />
             )}
             {deletingInventoryItem && (
-                <ConfirmationModal
-                    isOpen={!!deletingInventoryItem}
-                    onClose={closeModal}
-                    onConfirm={handleDeleteInventoryConfirm}
-                    title="Delete Inventory Item"
-                >
+                <ConfirmationModal isOpen={!!deletingInventoryItem} onClose={closeModal} onConfirm={handleDeleteInventoryConfirm} title="Delete Inventory Item">
                     <p>Are you sure you want to delete the item <strong>{deletingInventoryItem.name}</strong>? This action cannot be undone.</p>
                 </ConfirmationModal>
             )}
             {isImportModalOpen && (
-                <ImportStudentsModal
-                    isOpen={isImportModalOpen}
-                    onClose={closeModal}
-                    onImport={handleBulkAddStudents}
-                    grade={importTargetGrade}
-                    allStudents={students}
-                    allGrades={GRADES_LIST}
-                />
+                <ImportStudentsModal isOpen={isImportModalOpen} onClose={closeModal} onImport={(students, grade) => setPendingImportData({students, grade})} grade={importTargetGrade} allStudents={students} allGrades={GRADES_LIST} />
             )}
             {pendingImportData && (
-                 <ConfirmationModal
-                    isOpen={!!pendingImportData}
-                    onClose={() => setPendingImportData(null)}
-                    onConfirm={handleConfirmImport}
-                    title="Confirm Student Import"
-                >
+                 <ConfirmationModal isOpen={!!pendingImportData} onClose={() => setPendingImportData(null)} onConfirm={handleConfirmImport} title="Confirm Student Import">
                     <p>Are you sure you want to import <strong>{pendingImportData.students.length}</strong> students into <strong>{pendingImportData.grade}</strong>? This action cannot be easily undone.</p>
                 </ConfirmationModal>
             )}
             {transferringStudent && (
-                <TransferStudentModal
-                    isOpen={!!transferringStudent}
-                    onClose={closeModal}
-                    onConfirm={handleTransferStudent}
-                    student={transferringStudent}
-                    allStudents={students}
-                    allGrades={GRADES_LIST}
-                />
+                <TransferStudentModal isOpen={!!transferringStudent} onClose={closeModal} onConfirm={handleTransferStudent} student={transferringStudent} allStudents={students} allGrades={GRADES_LIST} />
             )}
             {isHostelStaffFormModalOpen && (
-                <HostelStaffFormModal
-                    isOpen={isHostelStaffFormModalOpen}
-                    onClose={closeModal}
-                    onSubmit={handleHostelStaffFormSubmit}
-                    staffMember={editingHostelStaff}
-                />
+                <HostelStaffFormModal isOpen={isHostelStaffFormModalOpen} onClose={closeModal} onSubmit={handleHostelStaffFormSubmit} staffMember={editingHostelStaff} />
             )}
             {deletingHostelStaff && (
-                <ConfirmationModal
-                    isOpen={!!deletingHostelStaff}
-                    onClose={closeModal}
-                    onConfirm={handleDeleteHostelStaffConfirm}
-                    title="Remove Hostel Staff"
-                >
+                <ConfirmationModal isOpen={!!deletingHostelStaff} onClose={closeModal} onConfirm={handleDeleteHostelStaffConfirm} title="Remove Hostel Staff">
                     <p>Are you sure you want to remove <strong>{deletingHostelStaff.name}</strong>? This action cannot be undone.</p>
                 </ConfirmationModal>
             )}
             {isUserFormModalOpen && (
-                <UserFormModal
-                    isOpen={isUserFormModalOpen}
-                    onClose={closeModal}
-                    onSubmit={handleUserFormSubmit}
-                    user={editingUser}
-                />
+                <UserFormModal isOpen={isUserFormModalOpen} onClose={closeModal} onSubmit={handleUserFormSubmit} user={editingUser} />
             )}
             {deletingUser && (
-                <ConfirmationModal
-                    isOpen={!!deletingUser}
-                    onClose={closeModal}
-                    onConfirm={handleDeleteUserConfirm}
-                    title="Delete User"
-                >
+                <ConfirmationModal isOpen={!!deletingUser} onClose={closeModal} onConfirm={handleDeleteUserConfirm} title="Delete User">
                     <p>Are you sure you want to delete the user <strong>{deletingUser.name}</strong>? This action cannot be undone.</p>
                 </ConfirmationModal>
             )}

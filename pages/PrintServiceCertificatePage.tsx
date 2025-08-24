@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ServiceCertificateRecord } from '../types';
@@ -23,7 +24,7 @@ const PrintServiceCertificatePage: React.FC<PrintServiceCertificatePageProps> = 
     const { certId } = useParams<{ certId: string }>();
     const navigate = useNavigate();
 
-    const record = serviceCertificateRecords.find(r => r.id === Number(certId));
+    const record = serviceCertificateRecords.find(r => r.id === certId);
 
     if (!record) {
         return (
@@ -99,7 +100,7 @@ const PrintServiceCertificatePage: React.FC<PrintServiceCertificatePageProps> = 
 
             <div className="flex justify-between text-sm mb-8">
                 <p><strong>Ref. No:</strong> {certData.refNo}</p>
-                <p><strong>Employee ID:</strong> {staffDetails.staffId}</p>
+                <p><strong>Employee ID:</strong> {staffDetails.staffIdFormatted}</p>
             </div>
 
             <main className="space-y-3 text-md leading-relaxed">

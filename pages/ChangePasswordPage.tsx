@@ -1,4 +1,5 @@
 
+
 import React, { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User } from '../types';
@@ -27,8 +28,8 @@ const ChangePasswordPage: React.FC<ChangePasswordPageProps> = ({ user, onChangeP
       setError('New passwords do not match.');
       return;
     }
-    if (!newPassword || newPassword.length < 4) {
-      setError('Password must be at least 4 characters long.');
+    if (!newPassword || newPassword.length < 6) {
+      setError('Password must be at least 6 characters long.');
       return;
     }
 
@@ -38,9 +39,7 @@ const ChangePasswordPage: React.FC<ChangePasswordPageProps> = ({ user, onChangeP
 
     if (result.success) {
       setSuccess('Password changed successfully! You will be logged out shortly.');
-      setTimeout(() => {
-         navigate('/login', { state: { message: 'Password changed. Please log in again.' } });
-      }, 2000);
+      // The logout and redirect is handled in the App component's callback
     } else {
       setError(result.message || 'Failed to change password.');
     }

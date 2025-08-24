@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Exam, SubjectMark, Grade, GradeDefinition } from '../types';
@@ -9,7 +10,7 @@ import { formatStudentId } from '../utils';
 
 interface AcademicPerformancePageProps {
   students: Student[];
-  onUpdateAcademic: (studentId: number, performance: Exam[]) => void;
+  onUpdateAcademic: (studentId: string, performance: Exam[]) => void;
   gradeDefinitions: Record<Grade, GradeDefinition>;
   academicYear: string;
 }
@@ -18,7 +19,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
   const { studentId } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
 
-  const student = useMemo(() => students.find(s => s.id === Number(studentId)), [students, studentId]);
+  const student = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
   
   const [isEditing, setIsEditing] = useState(false);
   const [performanceData, setPerformanceData] = useState<Exam[]>([]);

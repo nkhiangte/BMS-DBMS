@@ -22,7 +22,7 @@ const PrintTcPage: React.FC<PrintTcPageProps> = ({ tcRecords }) => {
     const { tcId } = useParams<{ tcId: string }>();
     const navigate = useNavigate();
 
-    const record = tcRecords.find(r => r.id === Number(tcId));
+    const record = tcRecords.find(r => r.id === tcId);
 
     if (!record) {
         return (
@@ -98,7 +98,7 @@ const PrintTcPage: React.FC<PrintTcPageProps> = ({ tcRecords }) => {
 
             <div className="flex justify-between text-sm mb-8">
                 <p><strong>Ref. No:</strong> {tcData.refNo}</p>
-                <p><strong>Student ID:</strong> {studentDetails.studentId}</p>
+                <p><strong>Student ID:</strong> {studentDetails.studentIdFormatted}</p>
             </div>
 
             <main className="space-y-3 text-md leading-relaxed">

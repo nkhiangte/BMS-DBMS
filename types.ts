@@ -47,10 +47,10 @@ export enum Category {
 
 export interface User {
   id: string;
-  username: string;
-  password_plaintext: string;
+  username: string; // This will be used as the email for Firebase Auth
   name: string;
   role: Role;
+  // password_plaintext is no longer stored
 }
 
 // --- NEW Enums for Teacher ---
@@ -116,7 +116,7 @@ export enum BloodGroup {
 export type StaffType = 'Teaching' | 'Non-Teaching';
 
 export interface Staff {
-    id: number;
+    id: string;
     staffType: StaffType;
 
     // 1. Personal Details
@@ -177,7 +177,7 @@ export interface SubjectDefinition {
 // UPDATED: GradeDefinition now contains subjects and an optional class teacher ID.
 export interface GradeDefinition {
   subjects: SubjectDefinition[];
-  classTeacherId?: number;
+  classTeacherId?: string;
 }
 
 
@@ -205,7 +205,7 @@ export interface FeePayments {
 }
 
 export interface Student {
-  id: number;
+  id: string;
   rollNo: number;
   name: string;
   grade: Grade;
@@ -269,8 +269,8 @@ export interface TcData {
 }
 
 export interface TcStudentDetails {
-  studentId: string; // Formatted ID: BMS...
-  studentNumericId: number; // Original student numeric ID
+  studentIdFormatted: string; // Formatted ID: BMS...
+  studentId: string; // Original student ID from Firestore
   rollNo: number;
   name: string;
   gender: Gender;
@@ -283,7 +283,7 @@ export interface TcStudentDetails {
 }
 
 export interface TcRecord {
-  id: number; // Use timestamp for unique ID
+  id: string; 
   tcData: TcData;
   studentDetails: TcStudentDetails;
 }
@@ -299,8 +299,8 @@ export interface ServiceCertificateData {
 }
 
 export interface ServiceCertificateStaffDetails {
-  staffId: string; // Formatted Employee ID: BMS-T-001
-  staffNumericId: number; // Original staff numeric ID
+  staffIdFormatted: string; // Formatted Employee ID: BMS-T-001
+  staffId: string; // Original staff ID from Firestore
   name: string;
   gender: Gender;
   designation: Designation;
@@ -309,7 +309,7 @@ export interface ServiceCertificateStaffDetails {
 }
 
 export interface ServiceCertificateRecord {
-  id: number; // Use timestamp for unique ID
+  id: string; 
   certData: ServiceCertificateData;
   staffDetails: ServiceCertificateStaffDetails;
 }
@@ -335,7 +335,7 @@ export enum InventoryStatus {
 }
 
 export interface InventoryItem {
-    id: number;
+    id: string;
     name: string;
     category: InventoryCategory;
     subCategory?: string;
@@ -361,7 +361,7 @@ export enum RoomType {
 }
 
 export interface HostelRoom {
-    id: number;
+    id: string;
     block: HostelBlock;
     roomNumber: number;
     type: RoomType;
@@ -370,10 +370,10 @@ export interface HostelRoom {
 }
 
 export interface HostelResident {
-    id: number; // Unique resident ID
-    studentId: number; // Links to Student interface
+    id: string; // Unique resident ID
+    studentId: string; // Links to Student interface
     hostelRegistrationId: string; // e.g., BMS-H-001
-    roomId: number; // Links to HostelRoom interface
+    roomId: string; // Links to HostelRoom interface
     dateOfJoining: string; // YYYY-MM-DD
 }
 
@@ -392,7 +392,7 @@ export enum PaymentStatus {
 }
 
 export interface HostelStaff {
-    id: number;
+    id: string;
     name: string;
     gender: Gender;
     role: HostelStaffRole;
@@ -420,7 +420,7 @@ export enum StockLogType {
 }
 
 export interface HostelInventoryItem {
-    id: number;
+    id: string;
     name: string;
     category: HostelInventoryCategory;
     currentStock: number;
@@ -429,8 +429,8 @@ export interface HostelInventoryItem {
 }
 
 export interface StockLog {
-    id: number; // Timestamp
-    itemId: number;
+    id: string;
+    itemId: string;
     itemName: string;
     type: StockLogType;
     quantity: number;

@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { TcRecord } from '../types';
@@ -57,9 +58,9 @@ const AllTcRecordsPage: React.FC<AllTcRecordsPageProps> = ({ tcRecords }) => {
               {tcRecords.map(record => (
                 <tr key={record.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-700">{record.tcData.refNo}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-800">{record.studentDetails.studentId}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-800">{record.studentDetails.studentIdFormatted}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <Link to={`/student/${record.studentDetails.studentNumericId}`} className="hover:underline text-sky-700 font-semibold">
+                    <Link to={`/student/${record.studentDetails.studentId}`} className="hover:underline text-sky-700 font-semibold">
                         {record.studentDetails.name}
                     </Link>
                   </td>

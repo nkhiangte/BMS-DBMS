@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, FormEvent } from 'react';
 import { User, Role } from '../types';
 
@@ -68,10 +69,12 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ isOpen, onClose, onSubmit
               <label htmlFor="username" className="block text-sm font-bold text-slate-800">Username</label>
               <input type="text" name="username" id="username" value={formData.username} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
             </div>
-            <div>
-              <label htmlFor="password_plaintext" className="block text-sm font-bold text-slate-800">Password</label>
-              <input type="password" name="password_plaintext" id="password_plaintext" value={formData.password_plaintext} placeholder={user ? 'Leave blank to keep current password' : ''} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required={!user} />
-            </div>
+            { !user && (
+                 <div>
+                    <label htmlFor="password_plaintext" className="block text-sm font-bold text-slate-800">Password</label>
+                    <input type="password" name="password_plaintext" id="password_plaintext" value={formData.password_plaintext} placeholder="Password required for new user" className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required={!user} />
+                </div>
+            )}
             <div>
               <label htmlFor="role" className="block text-sm font-bold text-slate-800">Role</label>
               <select name="role" id="role" value={formData.role} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">

@@ -1,13 +1,15 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 interface LoginPageProps {
   onLogin: (username: string, password: string) => void;
   error: string;
+  isFirstUser: boolean;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error, isFirstUser }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [notification, setNotification] = useState('');
@@ -92,9 +94,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
                 <Link to="/forgot-password" className="font-bold text-slate-600 hover:text-sky-800 transition-colors">
                     Forgot Password?
                 </Link>
-                <span className="text-slate-600 text-right">
-                    Contact an admin to create an account.
-                </span>
+                {isFirstUser ? (
+                    <Link to="/register" className="font-bold text-emerald-600 hover:text-emerald-800 transition-colors">
+                        Create Admin Account
+                    </Link>
+                ) : (
+                    <span className="text-slate-600 text-right">
+                        Contact an admin to create an account.
+                    </span>
+                )}
             </div>
           </form>
         </div>

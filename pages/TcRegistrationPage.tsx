@@ -1,4 +1,3 @@
-
 import React, { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Student, TcRecord, Grade } from '../types';
@@ -143,8 +142,8 @@ const TcRegistrationPage: React.FC<TcRegistrationPageProps> = ({ students, onSav
     const tcRecord: Omit<TcRecord, 'id'> = {
         tcData: formData,
         studentDetails: {
-            studentId: formatStudentId(student, academicYear),
-            studentNumericId: student.id,
+            studentIdFormatted: formatStudentId(student, academicYear),
+            studentId: student.id,
             rollNo: student.rollNo,
             name: student.name,
             gender: student.gender,

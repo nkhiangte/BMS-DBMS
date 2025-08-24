@@ -14,7 +14,7 @@ const ProgressReportPage: React.FC<ProgressReportPageProps> = ({ students, acade
     const { studentId } = useParams<{ studentId: string }>();
     const navigate = useNavigate();
 
-    const student = useMemo(() => students.find(s => s.id === Number(studentId)), [students, studentId]);
+    const student = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
     
     if (!student) {
         return (

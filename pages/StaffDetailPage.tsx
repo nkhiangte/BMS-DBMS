@@ -44,7 +44,7 @@ const StaffDetailPage: React.FC<StaffDetailPageProps> = ({ staff, onEdit, gradeD
   const { staffId } = useParams<{ staffId: string }>();
   const navigate = useNavigate();
   
-  const staffMember = staff.find(s => s.id === Number(staffId));
+  const staffMember = staff.find(s => s.id === staffId);
 
   const assignedClass = useMemo(() => {
     if (!staffMember) return null;

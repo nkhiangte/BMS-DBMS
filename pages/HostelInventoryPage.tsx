@@ -7,7 +7,7 @@ import StockUpdateModal from '../components/StockUpdateModal';
 interface HostelInventoryPageProps {
     inventory: HostelInventoryItem[];
     stockLogs: StockLog[];
-    onUpdateStock: (itemId: number, change: number, notes: string) => void;
+    onUpdateStock: (itemId: string, change: number, notes: string) => void;
 }
 
 const StatCard: React.FC<{ title: string; value: number; icon: React.ReactNode; color: string; }> = ({ title, value, icon, color }) => (

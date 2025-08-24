@@ -57,7 +57,7 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit,
   const { studentId } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
   
-  const student = students.find(s => s.id === Number(studentId));
+  const student = students.find(s => s.id === studentId);
 
   if (!student) {
     return (

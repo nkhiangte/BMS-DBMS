@@ -4,7 +4,7 @@ import { Student, Grade } from '../types';
 interface TransferStudentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (studentId: number, newGrade: Grade, newRollNo: number) => void;
+  onConfirm: (studentId: string, newGrade: Grade, newRollNo: number) => void;
   student: Student;
   allStudents: Student[];
   allGrades: Grade[];

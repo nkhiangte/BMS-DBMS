@@ -1,4 +1,3 @@
-
 import React, { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { TcRecord } from '../types';
@@ -60,7 +59,7 @@ const UpdateTcPage: React.FC<UpdateTcPageProps> = ({ tcRecords, onUpdate }) => {
       return;
     }
     
-    const record = tcRecords.find(r => r.studentDetails.studentId.toLowerCase() === studentIdInput.toLowerCase());
+    const record = tcRecords.find(r => r.studentDetails.studentIdFormatted.toLowerCase() === studentIdInput.toLowerCase());
 
     if (record) {
       setFoundRecord(record);
@@ -146,11 +145,11 @@ const UpdateTcPage: React.FC<UpdateTcPageProps> = ({ tcRecords, onUpdate }) => {
                     <legend className="text-lg font-bold text-slate-800 px-2">Student Details (Read-only)</legend>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
                         <ReadonlyField label="Ref. No" value={formData.refNo} />
-                        <ReadonlyField label="Student ID" value={foundRecord.studentDetails.studentId} />
+                        <ReadonlyField label="Student ID" value={foundRecord.studentDetails.studentIdFormatted} />
                         <div>
                             <label className="block text-sm font-bold text-slate-800">Name of Student</label>
                             <div className="mt-1 block w-full px-3 py-2 bg-slate-100 border border-slate-300 rounded-md shadow-sm sm:text-sm text-slate-800 min-h-[42px] flex items-center">
-                                <Link to={`/student/${foundRecord.studentDetails.studentNumericId}`} className="hover:underline text-sky-700 font-semibold" target="_blank" rel="noopener noreferrer">
+                                <Link to={`/student/${foundRecord.studentDetails.studentId}`} className="hover:underline text-sky-700 font-semibold" target="_blank" rel="noopener noreferrer">
                                     {foundRecord.studentDetails.name}
                                 </Link>
                             </div>

@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ServiceCertificateRecord } from '../types';
@@ -10,7 +11,7 @@ interface StaffDocumentsPageProps {
 
 const StaffDocumentsPage: React.FC<StaffDocumentsPageProps> = ({ serviceCertificateRecords }) => {
   const navigate = useNavigate();
-  const records = [...serviceCertificateRecords].sort((a,b) => b.id - a.id);
+  const records = [...serviceCertificateRecords].sort((a,b) => b.certData.issueDate.localeCompare(a.certData.issueDate));
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
@@ -67,9 +68,9 @@ const StaffDocumentsPage: React.FC<StaffDocumentsPageProps> = ({ serviceCertific
               {records.map(record => (
                 <tr key={record.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-700">{record.certData.refNo}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-800">{record.staffDetails.staffId}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-800">{record.staffDetails.staffIdFormatted}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <Link to={`/staff/${record.staffDetails.staffNumericId}`} className="hover:underline text-sky-700 font-semibold">
+                    <Link to={`/staff/${record.staffDetails.staffId}`} className="hover:underline text-sky-700 font-semibold">
                         {record.staffDetails.name}
                     </Link>
                   </td>

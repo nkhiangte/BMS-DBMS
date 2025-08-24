@@ -58,7 +58,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
     const { studentId } = useParams<{ studentId: string; examId: string }>();
     const navigate = useNavigate();
 
-    const student = useMemo(() => students.find(s => s.id === Number(studentId)), [students, studentId]);
+    const student = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
     const gradeDef = useMemo(() => student ? gradeDefinitions[student.grade] : undefined, [student, gradeDefinitions]);
 
     const allExamsData = useMemo(() => {

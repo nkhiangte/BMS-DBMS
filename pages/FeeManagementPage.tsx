@@ -8,7 +8,7 @@ import { FEE_STRUCTURE, TERMINAL_EXAMS } from '../constants';
 interface FeeManagementPageProps {
   students: Student[];
   academicYear: string;
-  onUpdateFeePayments: (studentId: number, payments: FeePayments) => void;
+  onUpdateFeePayments: (studentId: string, payments: FeePayments) => void;
 }
 
 const ReadonlyField: React.FC<{ label: string; value?: string | number }> = ({ label, value }) => (

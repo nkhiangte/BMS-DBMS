@@ -24,7 +24,7 @@ interface ClassMarkStatementPageProps {
   students: Student[];
   gradeDefinitions: Record<Grade, GradeDefinition>;
   academicYear: string;
-  onUpdateClassMarks: (marksByStudentId: Map<number, SubjectMark[]>, examId: string) => void;
+  onUpdateClassMarks: (marksByStudentId: Map<string, SubjectMark[]>, examId: string) => void;
 }
 
 const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ students, gradeDefinitions, academicYear, onUpdateClassMarks }) => {
@@ -32,7 +32,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
     const navigate = useNavigate();
 
     const [isEditing, setIsEditing] = useState(false);
-    const [editedMarks, setEditedMarks] = useState<Map<number, SubjectMark[]>>(new Map());
+    const [editedMarks, setEditedMarks] = useState<Map<string, SubjectMark[]>>(new Map());
 
     const grade = useMemo(() => encodedGrade ? decodeURIComponent(encodedGrade) as Grade : undefined, [encodedGrade]);
     const exam = useMemo(() => TERMINAL_EXAMS.find(e => e.id === examId), [examId]);
@@ -50,7 +50,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
     }, [gradeDef]);
 
     const initialMarksMap = useMemo(() => {
-        const markMap = new Map<number, SubjectMark[]>();
+        const markMap = new Map<string, SubjectMark[]>();
         if (!gradeDef) return markMap;
 
         classStudents.forEach(student => {
@@ -134,7 +134,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
         });
 
         const sortedByTotal = [...dataWithTotals].sort((a, b) => b.grandTotal - a.grandTotal);
-        const ranks = new Map<number, number>();
+        const ranks = new Map<string, number>();
         let currentRank = 1;
         for (let i = 0; i < sortedByTotal.length; i++) {
             if (sortedByTotal[i].grandTotal > 0) {
@@ -155,7 +155,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
         setEditedMarks(initialMarksMap);
     }, [initialMarksMap]);
 
-    const handleMarkChange = (studentId: number, subjectName: string, markType: 'marks' | 'examMarks' | 'activityMarks', value: string) => {
+    const handleMarkChange = (studentId: string, subjectName: string, markType: 'marks' | 'examMarks' | 'activityMarks', value: string) => {
         const numValue = value === '' ? undefined : parseInt(value, 10);
         
         setEditedMarks(prevMap => {
