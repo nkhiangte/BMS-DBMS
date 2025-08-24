@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Student } from '../types';
+import { Student, User, Role } from '../types';
 import { GRADES_LIST } from '../constants';
 import StudentTable from '../components/StudentTable';
 import { PlusIcon, SearchIcon, HomeIcon, BackIcon } from '../components/Icons';
@@ -12,9 +12,10 @@ interface StudentListPageProps {
   onAdd: () => void;
   onEdit: (student: Student) => void;
   academicYear: string;
+  user: User;
 }
 
-const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEdit, academicYear }) => {
+const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEdit, academicYear, user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState<string>('');
   const navigate = useNavigate();
@@ -49,7 +50,7 @@ const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEd
 
       <div className="flex flex-col md:flex-row gap-4 mb-6 items-center">
         <h2 className="text-2xl font-bold text-slate-800 md:flex-grow">
-          Active Students
+          {user.role === Role.ADMIN ? 'Active Students' : 'My Class Students'}
         </h2>
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
           {/* Search Bar */}
@@ -67,18 +68,20 @@ const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEd
             />
           </div>
 
-          {/* Grade Filter */}
-          <select
-            value={gradeFilter}
-            onChange={e => setGradeFilter(e.target.value)}
-            className="w-full sm:w-auto px-4 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-sky-500 focus:border-sky-500 transition"
-            aria-label="Filter students by grade"
-          >
-            <option value="">All Grades</option>
-            {GRADES_LIST.map(grade => (
-              <option key={grade} value={grade}>{grade}</option>
-            ))}
-          </select>
+          {/* Grade Filter - Admin only */}
+          {user.role === Role.ADMIN && (
+            <select
+              value={gradeFilter}
+              onChange={e => setGradeFilter(e.target.value)}
+              className="w-full sm:w-auto px-4 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-sky-500 focus:border-sky-500 transition"
+              aria-label="Filter students by grade"
+            >
+              <option value="">All Grades</option>
+              {GRADES_LIST.map(grade => (
+                <option key={grade} value={grade}>{grade}</option>
+              ))}
+            </select>
+          )}
 
           {/* Add Student Button */}
           <button

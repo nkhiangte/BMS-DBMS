@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, User, Role, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
@@ -135,7 +136,11 @@ const App: React.FC = () => {
     const [studentToConfirmEdit, setStudentToConfirmEdit] = useState<Student | null>(null);
     const [pendingImportData, setPendingImportData] = useState<{ students: Omit<Student, 'id'>[], grade: Grade } | null>(null);
 
-    
+    // --- ROLE-BASED ACCESS STATE ---
+    const [teacherAssignedGrade, setTeacherAssignedGrade] = useState<Grade | null>(null);
+    const [visibleStudents, setVisibleStudents] = useState<Student[]>([]);
+
+
     // --- DATA PERSISTENCE TO LOCALSTORAGE ---
     useEffect(() => { saveToLocalStorage('users', users); }, [users]);
     useEffect(() => { saveToLocalStorage('students', students); }, [students]);
@@ -162,6 +167,37 @@ const App: React.FC = () => {
             setAcademicYear(storedYear);
         }
     }, []);
+
+    // --- Filter students based on user role ---
+    useEffect(() => {
+        if (user?.role === Role.TEACHER) {
+            // Find the staff member record that corresponds to the logged-in user by matching names.
+            const staffMemberForUser = staff.find(s => `${s.firstName} ${s.lastName}` === user.name);
+            let assignedGrade: Grade | null = null;
+            
+            if (staffMemberForUser) {
+                // If a staff member is found, find the grade they are assigned to as a class teacher.
+                const assignedGradeEntry = Object.entries(gradeDefinitions).find(
+                    ([, def]) => def.classTeacherId === staffMemberForUser.id
+                );
+                assignedGrade = assignedGradeEntry ? assignedGradeEntry[0] as Grade : null;
+            }
+            
+            setTeacherAssignedGrade(assignedGrade);
+
+            if (assignedGrade) {
+                // Filter students to show only those in the assigned grade.
+                setVisibleStudents(students.filter(s => s.grade === assignedGrade));
+            } else {
+                // If no grade is assigned, or the teacher isn't in the staff list, show no students.
+                setVisibleStudents([]);
+            }
+        } else { // For Admins or other roles, show all students.
+            setVisibleStudents(students);
+            setTeacherAssignedGrade(null);
+        }
+    }, [user, students, gradeDefinitions, staff]);
+
 
     const handleRegister = useCallback((name: string, username: string, password: string): Promise<{ success: boolean; message?: string }> => {
         if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
@@ -711,35 +747,37 @@ const App: React.FC = () => {
                         </div>
                     )}
                     <Routes>
-                        <Route path="/" element={<DashboardPage user={user!} onAddStudent={openAddModal} studentCount={students.filter(s => s.status === StudentStatus.ACTIVE).length} academicYear={academicYear!} onSetAcademicYear={handleSetAcademicYear} />} />
-                        <Route path="/students" element={<StudentListPage students={students.filter(s => s.status === StudentStatus.ACTIVE)} onAdd={openAddModal} onEdit={openEditModal} academicYear={academicYear!} />} />
-                        <Route path="/student/:studentId" element={<StudentDetailPage students={students} onEdit={openEditModal} academicYear={academicYear!} />} />
-                        <Route path="/reports/search" element={<ReportSearchPage students={students} academicYear={academicYear!} />} />
-                        <Route path="/reports/class-statement/:grade/:examId" element={<ClassMarkStatementPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onUpdateClassMarks={handleUpdateClassMarks} />} />
-                        <Route path="/report-card/:studentId" element={<ProgressReportPage students={students} academicYear={academicYear!} />} />
-                        <Route path="/report-card/:studentId/:examId" element={<PrintableReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
-                        <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={students} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
-                        <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={openImportModal} />} />
-                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={openImportModal} onOpenTransferModal={openTransferModal} onDelete={openDeleteConfirm} />} />
+                        <Route path="/" element={<DashboardPage user={user!} onAddStudent={openAddModal} studentCount={visibleStudents.filter(s => s.status === StudentStatus.ACTIVE).length} academicYear={academicYear!} onSetAcademicYear={handleSetAcademicYear} />} />
+                        <Route path="/students" element={<StudentListPage students={visibleStudents.filter(s => s.status === StudentStatus.ACTIVE)} onAdd={openAddModal} onEdit={openEditModal} academicYear={academicYear!} user={user!} />} />
+                        <Route path="/student/:studentId" element={<StudentDetailPage students={visibleStudents} onEdit={openEditModal} academicYear={academicYear!} />} />
+                        <Route path="/reports/search" element={<ReportSearchPage students={visibleStudents} academicYear={academicYear!} user={user!} teacherAssignedGrade={teacherAssignedGrade} />} />
+                        <Route path="/reports/class-statement/:grade/:examId" element={<ClassMarkStatementPage students={visibleStudents} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onUpdateClassMarks={handleUpdateClassMarks} />} />
+                        <Route path="/report-card/:studentId" element={<ProgressReportPage students={visibleStudents} academicYear={academicYear!} />} />
+                        <Route path="/report-card/:studentId/:examId" element={<PrintableReportCardPage students={visibleStudents} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
+                        <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={visibleStudents} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
+                        <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={openImportModal} user={user!} teacherAssignedGrade={teacherAssignedGrade} />} />
+                        <Route path="/classes/:grade" element={<ClassStudentsPage students={visibleStudents} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={openImportModal} onOpenTransferModal={openTransferModal} onDelete={openDeleteConfirm} />} />
                         <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={openAddStaffModal} onEdit={openEditStaffModal} onDelete={openDeleteStaffConfirm} />} />
                         <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={openEditStaffModal} gradeDefinitions={gradeDefinitions} />} />
                         <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} />} />
                         <Route path="/staff/certificates/generate" element={<GenerateServiceCertificatePage staff={staff} onSave={handleSaveServiceCertificate} />} />
                         <Route path="/staff/certificates/print/:certId" element={<PrintServiceCertificatePage serviceCertificateRecords={serviceCertificateRecords} />} />
-                        <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
-                        <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear!} />} />
+                        <Route path="/transfers" element={<TransferManagementPage students={visibleStudents} tcRecords={tcRecords} />} />
+                        <Route path="/transfers/register" element={<TcRegistrationPage students={visibleStudents} onSave={handleSaveTc} academicYear={academicYear!} />} />
                         <Route path="/transfers/records" element={<AllTcRecordsPage tcRecords={tcRecords} />} />
                         <Route path="/transfers/print/:tcId" element={<PrintTcPage tcRecords={tcRecords} />} />
                         <Route path="/transfers/update" element={<UpdateTcPage tcRecords={tcRecords} onUpdate={handleUpdateTc} />} />
                         <Route path="/subjects" element={<ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} />} />
-                        <Route path="/fees" element={<FeeManagementPage students={students} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} />} />
-                        <Route path="/promotion" element={<PromotionPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onPromoteStudents={handlePromoteStudents} />} />
+                        <Route path="/fees" element={<FeeManagementPage students={visibleStudents} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} />} />
                         <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={openAddInventoryModal} onEdit={openEditInventoryModal} onDelete={openDeleteInventoryConfirm} />} />
                         <Route path="/change-password" element={<ChangePasswordPage user={user!} onChangePassword={handleChangePassword} />} />
                         
                         {/* Admin Routes */}
                         {user!.role === Role.ADMIN && (
+                          <>
                             <Route path="/users" element={<ManageUsersPage users={users} onAdd={openAddUserModal} onEdit={openEditUserModal} onDelete={openDeleteUserConfirm} />} />
+                            <Route path="/promotion" element={<PromotionPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onPromoteStudents={handlePromoteStudents} />} />
+                          </>
                         )}
 
                         {/* Hostel Routes */}
@@ -785,6 +823,8 @@ const App: React.FC = () => {
                     onClose={closeModal}
                     onSubmit={handleFormSubmit}
                     student={editingStudent}
+                    user={user}
+                    teacherAssignedGrade={teacherAssignedGrade}
                 />
             )}
              {deletingStudent && (

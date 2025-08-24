@@ -1,8 +1,8 @@
 
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Student } from '../types';
+import { Student, User, Role, Grade } from '../types';
 import { formatStudentId } from '../utils';
 import { BackIcon, HomeIcon, SearchIcon } from '../components/Icons';
 import { GRADES_LIST, TERMINAL_EXAMS } from '../constants';
@@ -10,15 +10,23 @@ import { GRADES_LIST, TERMINAL_EXAMS } from '../constants';
 interface ReportSearchPageProps {
   students: Student[];
   academicYear: string;
+  user: User;
+  teacherAssignedGrade: Grade | null;
 }
 
-const ReportSearchPage: React.FC<ReportSearchPageProps> = ({ students, academicYear }) => {
+const ReportSearchPage: React.FC<ReportSearchPageProps> = ({ students, academicYear, user, teacherAssignedGrade }) => {
   const [studentIdInput, setStudentIdInput] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedExam, setSelectedExam] = useState('');
+
+  useEffect(() => {
+    if (user.role === Role.TEACHER && teacherAssignedGrade) {
+        setSelectedClass(teacherAssignedGrade);
+    }
+  }, [user, teacherAssignedGrade]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +42,7 @@ const ReportSearchPage: React.FC<ReportSearchPageProps> = ({ students, academicY
     if (foundStudent) {
       navigate(`/report-card/${foundStudent.id}`);
     } else {
-      setError('No active student found with this ID. Please check and try again.');
+      setError('No active student found with this ID in your assigned class. Please check and try again.');
     }
   };
 
@@ -109,10 +117,17 @@ const ReportSearchPage: React.FC<ReportSearchPageProps> = ({ students, academicY
                   value={selectedClass} 
                   onChange={e => setSelectedClass(e.target.value)} 
                   required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                  disabled={user.role === Role.TEACHER}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition disabled:bg-slate-100"
               >
-                  <option value="">Select Class</option>
-                  {GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                  {user.role === Role.TEACHER && teacherAssignedGrade ? (
+                    <option value={teacherAssignedGrade}>{teacherAssignedGrade}</option>
+                  ) : (
+                    <>
+                      <option value="">Select Class</option>
+                      {GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                    </>
+                  )}
               </select>
               <select 
                   value={selectedExam} 
