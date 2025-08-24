@@ -1,5 +1,6 @@
 
-import { Grade, Student, Gender, Exam, Role, User, StudentStatus, Category, GradeDefinition, Staff, MaritalStatus, Department, Designation, EmployeeType, BloodGroup, EmploymentStatus, StaffType, InventoryItem, InventoryCategory, InventoryStatus, HostelBlock, HostelRoom, RoomType, HostelResident, HostelStaff, HostelStaffRole, PaymentStatus, HostelInventoryItem, HostelInventoryCategory, StockLog, StockLogType, Qualification } from './types';
+
+import { Grade, Student, Gender, Exam, Role, User, StudentStatus, Category, GradeDefinition, Staff, MaritalStatus, Department, Designation, EmployeeType, BloodGroup, EmploymentStatus, StaffType, InventoryItem, InventoryCategory, InventoryStatus, HostelBlock, HostelRoom, RoomType, HostelResident, HostelStaff, HostelStaffRole, PaymentStatus, HostelInventoryItem, HostelInventoryCategory, StockLog, StockLogType, Qualification, AttendanceStatus } from './types';
 
 export const QUALIFICATION_LIST: Qualification[] = Object.values(Qualification);
 export const MARITAL_STATUS_LIST: MaritalStatus[] = Object.values(MaritalStatus);
@@ -227,3 +228,5 @@ export const INITIAL_STOCK_LOGS: StockLog[] = [
     { id: String(Date.now() - 10000), itemId: '3', itemName: 'Rice (kg)', type: StockLogType.IN, quantity: 50, date: new Date(Date.now() - 10000).toISOString(), notes: 'Weekly purchase' },
     { id: String(Date.now() - 5000), itemId: '4', itemName: 'Lentils (kg)', type: StockLogType.OUT, quantity: 5, date: new Date(Date.now() - 5000).toISOString(), notes: 'Issued for dinner' },
 ];
+
+export const ATTENDANCE_STATUS_LIST: AttendanceStatus[] = Object.values(AttendanceStatus);

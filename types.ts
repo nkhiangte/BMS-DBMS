@@ -437,3 +437,20 @@ export interface StockLog {
     date: string; // ISO string
     notes?: string;
 }
+
+// --- NEW: Attendance Management ---
+export enum AttendanceStatus {
+    PRESENT = "Present",
+    ABSENT = "Absent",
+    LATE = "Late",
+    EXCUSED = "Excused",
+}
+
+export interface AttendanceRecord {
+    id: string; // Firestore doc ID
+    studentId: string;
+    grade: Grade;
+    date: string; // YYYY-MM-DD
+    status: AttendanceStatus;
+    notes?: string;
+}

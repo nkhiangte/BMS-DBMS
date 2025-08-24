@@ -1,7 +1,8 @@
 
+
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { UsersIcon, PlusIcon, DocumentReportIcon, BookOpenIcon, TransferIcon, BriefcaseIcon, CurrencyDollarIcon, AcademicCapIcon, ArchiveBoxIcon, BuildingOfficeIcon, UserGroupIcon } from '../components/Icons';
+import { UsersIcon, PlusIcon, DocumentReportIcon, BookOpenIcon, TransferIcon, BriefcaseIcon, CurrencyDollarIcon, AcademicCapIcon, ArchiveBoxIcon, BuildingOfficeIcon, UserGroupIcon, ClipboardDocumentCheckIcon } from '../components/Icons';
 import AcademicYearForm from '../components/AcademicYearForm';
 import { User, Role } from '../types';
 
@@ -19,7 +20,7 @@ const DashboardCard: React.FC<{
   icon: React.ReactNode;
   action: React.ReactElement;
   count?: number;
-  color?: 'sky' | 'emerald' | 'indigo' | 'amber' | 'rose' | 'violet';
+  color?: 'sky' | 'emerald' | 'indigo' | 'amber' | 'rose' | 'violet' | 'teal';
 }> = ({ title, description, icon, action, count, color = 'sky' }) => {
     const colors = {
         sky: { gradient: 'from-sky-400 to-sky-600', button: 'bg-sky-600 hover:bg-sky-700 focus:ring-sky-500', count: 'text-sky-600' },
@@ -28,6 +29,7 @@ const DashboardCard: React.FC<{
         amber: { gradient: 'from-amber-400 to-amber-600', button: 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500', count: 'text-amber-600' },
         rose: { gradient: 'from-rose-400 to-rose-600', button: 'bg-rose-600 hover:bg-rose-700 focus:ring-rose-500', count: 'text-rose-600' },
         violet: { gradient: 'from-violet-400 to-violet-600', button: 'bg-violet-600 hover:bg-violet-700 focus:ring-violet-500', count: 'text-violet-600' },
+        teal: { gradient: 'from-teal-400 to-teal-600', button: 'bg-teal-600 hover:bg-teal-700 focus:ring-teal-500', count: 'text-teal-600' },
     };
     const selectedColor = colors[color] || colors.sky;
 
@@ -101,6 +103,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
                 icon={<DocumentReportIcon className="w-7 h-7" />}
                 color="amber"
                 action={<Link to="/reports/search">Generate Report</Link>}
+            />
+
+            <DashboardCard
+                title="Attendance"
+                description="Take daily attendance for classes."
+                icon={<ClipboardDocumentCheckIcon className="w-7 h-7" />}
+                color="teal"
+                action={<Link to="/attendance">Manage Attendance</Link>}
             />
 
             <DashboardCard
