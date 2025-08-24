@@ -1,7 +1,6 @@
 
-
 import React, { useState, FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { User } from '../types';
 import { BackIcon, HomeIcon, KeyIcon } from '../components/Icons';
 

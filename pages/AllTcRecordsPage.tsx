@@ -1,7 +1,6 @@
 
-
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { TcRecord } from '../types';
 import { BackIcon, HomeIcon, PrinterIcon } from '../components/Icons';
 

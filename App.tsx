@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, User, Role, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, AttendanceRecord, AttendanceStatus } from './types';
 import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST, INITIAL_STUDENTS, INITIAL_STAFF, INITIAL_INVENTORY, INITIAL_HOSTEL_ROOMS, INITIAL_HOSTEL_RESIDENTS, INITIAL_HOSTEL_STAFF, INITIAL_HOSTEL_INVENTORY, INITIAL_STOCK_LOGS } from './constants';
 import Header from './components/Header';
@@ -34,6 +34,7 @@ import InventoryFormModal from './components/InventoryFormModal';
 import ImportStudentsModal from './components/ImportStudentsModal';
 import TransferStudentModal from './components/TransferStudentModal';
 import { calculateStudentResult, getNextGrade, createDefaultFeePayments, sanitizeForJson, withFirestoreErrorHandling } from './utils';
+import FirestoreErrorModal from './components/FirestoreErrorModal';
 
 // Staff Certificate Pages
 import StaffDocumentsPage from './pages/StaffDocumentsPage';
@@ -115,6 +116,7 @@ const App: React.FC = () => {
     const [error, setError] = useState('');
     const [isFirstUserCheck, setIsFirstUserCheck] = useState(true);
     const [isFirstUser, setIsFirstUser] = useState(false);
+    const [firestoreError, setFirestoreError] = useState<string | null>(null);
 
     // --- APPLICATION STATE & LOGIC ---
     const [academicYear, setAcademicYear] = useState<string | null>(localStorage.getItem('academicYear'));
@@ -170,27 +172,44 @@ const App: React.FC = () => {
     const [teacherAssignedGrade, setTeacherAssignedGrade] = useState<Grade | null>(null);
     const [visibleStudents, setVisibleStudents] = useState<Student[]>([]);
 
-    const handleSnapshotError = (error: firebase.firestore.FirestoreError, collectionName: string) => {
-        let userMessage = `An unexpected error occurred while fetching real-time data from ${collectionName}: ${error.message}\n\nCheck the developer console for more details.`;
-    
+    const handlePermissionError = (operationDescription: string) => {
+        console.error(`Firestore permission denied during: ${operationDescription}`);
+        // The modal is specific about security rules, so we can provide a slightly more contextual message.
+        setFirestoreError(`Operation failed: ${operationDescription}. This is likely due to Firestore Security Rules needing configuration.`);
+    };
+
+    const handleFirestoreWriteError = (error: { code: string; message: string } | undefined, operationName: string) => {
+        if (!error) return;
+
         if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
-          userMessage = `Error: Failed to fetch data from "${collectionName}" due to missing permissions.\n\n` +
-            "This is usually caused by Firestore Security Rules.\n\n" +
-            "Please go to your Firebase project console:\n" +
-            "1. Navigate to Firestore Database > Rules tab.\n" +
-            "2. Replace the existing rules with the following to allow read access for any signed-in user:\n\n" +
-            "rules_version = '2';\n" +
-            "service cloud.firestore {\n" +
-            "  match /databases/{database}/documents {\n" +
-            "    match /{document=**} {\n" +
-            "      allow read, write: if request.auth != null;\n" +
-            "    }\n" +
-            "  }\n" +
-            "}\n\n" +
-            "3. Click 'Publish'.";
+            handlePermissionError(operationName);
+        } else {
+            const userMessage = `An unexpected error occurred during ${operationName}: ${error.message}\n\nCheck the developer console for more details. Code: ${error.code}`;
+            alert(userMessage);
         }
+    };
+    
+    const withErrorHandlingAndUI = async <T,>(operation: () => Promise<T>, operationName: string, onSuccess?: (data: T) => void) => {
+        const { success, data, error } = await withFirestoreErrorHandling(operation);
+        if (success && data !== undefined) {
+            onSuccess?.(data);
+        } else {
+            handleFirestoreWriteError(error, operationName);
+        }
+    };
+
+    const handleSnapshotError = (error: firebase.firestore.FirestoreError, collectionName: string) => {
+        console.error(`Snapshot listener for "${collectionName}" failed. Full error:`, error);
         
-        alert(userMessage);
+        const errorCode = error?.code || 'unknown';
+
+        if (errorCode === 'permission-denied' || errorCode === 'unauthenticated') {
+            handlePermissionError(`fetching real-time data from "${collectionName}"`);
+        } else {
+            const errorMessage = error?.message || 'An unknown error occurred.';
+            const userMessage = `An unexpected error occurred while fetching real-time data from ${collectionName}: ${errorMessage}\n\nCheck the developer console for more details. Code: ${errorCode}`;
+            alert(userMessage);
+        }
     };
 
     // --- FIREBASE DATA LISTENERS & SEEDING ---
@@ -205,7 +224,10 @@ const App: React.FC = () => {
                     const docRef = ref.doc();
                     batch.set(docRef, data);
                 });
-                await withFirestoreErrorHandling(() => batch.commit());
+                await withErrorHandlingAndUI(
+                    () => batch.commit(),
+                    `seeding ${ref.path}`
+                );
             }
         };
 
@@ -245,7 +267,10 @@ const App: React.FC = () => {
                         setGradeDefinitions(doc.data() as Record<Grade, GradeDefinition>);
                     } else {
                         console.log('Seeding gradeDefinitions...');
-                        withFirestoreErrorHandling(() => settingsDoc.set(GRADE_DEFINITIONS));
+                        withErrorHandlingAndUI(
+                            () => settingsDoc.set(GRADE_DEFINITIONS),
+                            'seeding grade definitions'
+                        );
                     }
                 },
                 (error) => handleSnapshotError(error, 'settings')
@@ -275,9 +300,11 @@ const App: React.FC = () => {
     // --- AUTHENTICATION LOGIC ---
     useEffect(() => {
         const checkFirstUser = async () => {
-            const { success, data: snapshot } = await withFirestoreErrorHandling(() => collections.users.limit(1).get());
-            if (success && snapshot) {
+            const { success, data: snapshot, error: checkError } = await withFirestoreErrorHandling(() => collections.users.limit(1).get());
+            if(success && snapshot) {
                 setIsFirstUser(snapshot.empty);
+            } else if (error) {
+                handleFirestoreWriteError(checkError, 'checking for first user');
             }
             setIsFirstUserCheck(false);
         };
@@ -286,10 +313,11 @@ const App: React.FC = () => {
         const unsubscribe = auth.onAuthStateChanged(async (firebaseUser: firebase.User | null) => {
             if (firebaseUser) {
                 const userDocRef = collections.users.doc(firebaseUser.uid);
-                const { success, data: userDoc } = await withFirestoreErrorHandling(() => userDocRef.get());
+                const { success, data: userDoc, error } = await withFirestoreErrorHandling(() => userDocRef.get());
                 if (success && userDoc?.exists) {
                     setUser({ id: userDoc.id, ...userDoc.data() } as User);
                 } else {
+                    if(error) handleFirestoreWriteError(error, 'fetching user data');
                     await auth.signOut();
                     setUser(null);
                 }
@@ -322,12 +350,13 @@ const App: React.FC = () => {
 
 
     const handleRegister = useCallback(async (name: string, username: string, password: string): Promise<{ success: boolean; message?: string }> => {
-        const { success: checkSuccess, data: snapshot } = await withFirestoreErrorHandling(() =>
+        const { success: checkSuccess, data: snapshot, error: checkError } = await withFirestoreErrorHandling(() =>
             collections.users.where('username', '==', username).get()
         );
 
         if (!checkSuccess) {
-            return { success: false, message: "Database error checking username. See alert for details." };
+            handleFirestoreWriteError(checkError, 'checking username existence');
+            return { success: false, message: "Database error. Could not check username." };
         }
         
         if (snapshot && !snapshot.empty) {
@@ -341,7 +370,7 @@ const App: React.FC = () => {
 
             if (firebaseUser) {
                 const newUser: Omit<User, 'id'> = { name, username, role };
-                const { success: createSuccess } = await withFirestoreErrorHandling(() =>
+                const { success: createSuccess, error: createError } = await withFirestoreErrorHandling(() =>
                     collections.users.doc(firebaseUser.uid).set(newUser)
                 );
 
@@ -349,6 +378,7 @@ const App: React.FC = () => {
                     setIsFirstUser(false);
                     return { success: true, message: 'Admin account created successfully! Please log in.' };
                 } else {
+                    handleFirestoreWriteError(createError, 'saving user details');
                     return { success: false, message: "User account created, but saving details failed. Contact admin." };
                 }
             }
@@ -413,8 +443,9 @@ const App: React.FC = () => {
 
     const handleUpdateGradeDefinition = useCallback(async (grade: Grade, newDefinition: GradeDefinition) => {
         const newDefs = { ...gradeDefinitions, [grade]: newDefinition };
-        await withFirestoreErrorHandling(() => 
-            collections.settings.doc('gradeDefinitions').set(newDefs)
+        await withErrorHandlingAndUI(
+            () => collections.settings.doc('gradeDefinitions').set(newDefs),
+            'updating grade definitions'
         );
     }, [gradeDefinitions]);
 
@@ -428,7 +459,10 @@ const App: React.FC = () => {
             if(otherStaffAssigned) delete newDefs[otherStaffAssigned as Grade].classTeacherId;
             newDefs[newGradeKey].classTeacherId = staffId;
         }
-        await withFirestoreErrorHandling(() => collections.settings.doc('gradeDefinitions').set(newDefs));
+        await withErrorHandlingAndUI(
+            () => collections.settings.doc('gradeDefinitions').set(newDefs),
+            'assigning class teacher'
+        );
     }, [gradeDefinitions]);
 
     const openAddModal = useCallback(() => { setEditingStudent(null); setIsFormModalOpen(true); }, []);
@@ -450,38 +484,48 @@ const App: React.FC = () => {
             setIsFormModalOpen(false);
             setEditingStudent(null);
         } else {
-            await withFirestoreErrorHandling(() => 
-                collections.students.add(studentData)
-            ).then(({ success }) => { if (success) closeModal() });
+            await withErrorHandlingAndUI(
+                () => collections.students.add(studentData),
+                'creating a new student',
+                () => closeModal()
+            );
         }
     }, [editingStudent, closeModal]);
 
     const handleConfirmEdit = useCallback(async () => {
         if (studentToConfirmEdit) {
             const { id, ...data } = studentToConfirmEdit;
-            await withFirestoreErrorHandling(() => 
-                collections.students.doc(id).update(data)
-            ).then(({ success }) => { if (success) setStudentToConfirmEdit(null) });
+            await withErrorHandlingAndUI(
+                () => collections.students.doc(id).update(data),
+                'updating student details',
+                () => setStudentToConfirmEdit(null)
+            );
         }
     }, [studentToConfirmEdit]);
 
     const handleDeleteConfirm = useCallback(async () => {
         if (deletingStudent) {
-            await withFirestoreErrorHandling(() => 
-                collections.students.doc(deletingStudent.id).delete()
-            ).then(({ success }) => { if (success) closeModal() });
+            await withErrorHandlingAndUI(
+                () => collections.students.doc(deletingStudent.id).delete(),
+                'deleting a student',
+                () => closeModal()
+            );
         }
     }, [deletingStudent, closeModal]);
 
     const handleBulkAddStudents = useCallback(async (studentsData: Omit<Student, 'id'>[]) => {
-        await withFirestoreErrorHandling(() => {
-            const batch = db.batch();
-            studentsData.forEach(student => {
-                const docRef = collections.students.doc();
-                batch.set(docRef, student);
-            });
-            return batch.commit();
-        }).then(({ success }) => { if (success) closeModal() });
+        await withErrorHandlingAndUI(
+            () => {
+                const batch = db.batch();
+                studentsData.forEach(student => {
+                    const docRef = collections.students.doc();
+                    batch.set(docRef, student);
+                });
+                return batch.commit();
+            },
+            'bulk adding students',
+            () => closeModal()
+        );
     }, [closeModal]);
 
     const handleConfirmImport = useCallback(async () => {
@@ -493,8 +537,9 @@ const App: React.FC = () => {
 
 
     const handleAcademicUpdate = useCallback(async (studentId: string, academicPerformance: Exam[]) => {
-        await withFirestoreErrorHandling(() => 
-            collections.students.doc(studentId).update({ academicPerformance })
+        await withErrorHandlingAndUI(
+            () => collections.students.doc(studentId).update({ academicPerformance }),
+            'updating academic records'
         );
     }, []);
 
@@ -505,9 +550,11 @@ const App: React.FC = () => {
 
     const handleUserFormSubmit = useCallback(async (userData: Omit<User, 'id' | 'role' | 'password_plaintext'> & { password?: string }, role: Role) => {
         if (editingUser) {
-            await withFirestoreErrorHandling(() => 
-                collections.users.doc(editingUser.id).update({ name: userData.name, username: userData.username, role })
-            ).then(({ success }) => { if (success) closeModal() });
+            await withErrorHandlingAndUI(
+                () => collections.users.doc(editingUser.id).update({ name: userData.name, username: userData.username, role }),
+                'updating a user',
+                () => closeModal()
+            );
         } else {
             alert("User creation through this form is not implemented for Firebase. Please use the registration page for the first user.");
             closeModal();
@@ -520,14 +567,14 @@ const App: React.FC = () => {
                 alert("You cannot delete your own account.");
                 closeModal(); return;
             }
-            await withFirestoreErrorHandling(() => 
-                collections.users.doc(deletingUser.id).delete()
-            ).then(({ success }) => {
-                if (success) {
+            await withErrorHandlingAndUI(
+                () => collections.users.doc(deletingUser.id).delete(),
+                'deleting a user',
+                () => {
                     alert("User deleted from database. Auth user may still exist.");
                     closeModal();
                 }
-            });
+            );
         }
     }, [deletingUser, user, closeModal]);
 
@@ -538,20 +585,20 @@ const App: React.FC = () => {
 
     const handleDeleteStaffConfirm = useCallback(async () => {
         if (deletingStaff) {
-            await withFirestoreErrorHandling(async () => {
+            await withErrorHandlingAndUI(async () => {
                 await collections.staff.doc(deletingStaff.id).delete();
                 const assignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === deletingStaff.id) as Grade | undefined;
                 if (assignedGradeKey) {
                     await handleAssignClassToStaff(deletingStaff.id, null);
                 }
-            }).then(({ success }) => { if (success) closeModal() });
+            }, 'deleting staff record', () => closeModal());
         }
     }, [deletingStaff, closeModal, gradeDefinitions, handleAssignClassToStaff]);
 
     const handleStaffFormSubmit = useCallback(async (staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => {
         const finalAssignedGradeKey = staffData.status === EmploymentStatus.ACTIVE ? assignedGradeKey : null;
         
-        const operation = async () => {
+        const operation = async (): Promise<void> => {
             let staffId: string;
             if (editingStaff) {
                 staffId = editingStaff.id;
@@ -562,14 +609,14 @@ const App: React.FC = () => {
             }
             await handleAssignClassToStaff(staffId, finalAssignedGradeKey);
         };
-        await withFirestoreErrorHandling(operation).then(({ success }) => { if (success) closeModal() });
+        await withErrorHandlingAndUI(operation, 'saving staff data', () => closeModal());
     }, [editingStaff, closeModal, handleAssignClassToStaff]);
 
     const handleSaveServiceCertificate = useCallback(async (certData: Omit<ServiceCertificateRecord, 'id'>) => {
-        await withFirestoreErrorHandling(async () => {
+        await withErrorHandlingAndUI(async () => {
             await collections.serviceCertificateRecords.add(certData);
             await collections.staff.doc(certData.staffDetails.staffId).update({ status: EmploymentStatus.RESIGNED });
-        });
+        }, 'saving service certificate');
     }, []);
     
     // --- Inventory Handlers ---
@@ -578,27 +625,29 @@ const App: React.FC = () => {
     const openDeleteInventoryConfirm = useCallback((item: InventoryItem) => { setDeletingInventoryItem(item); }, []);
 
     const handleInventoryFormSubmit = useCallback(async (itemData: Omit<InventoryItem, 'id'>) => {
-        const operation = async () => {
+        const operation = async (): Promise<void> => {
             if (editingInventoryItem) {
-                return collections.inventory.doc(editingInventoryItem.id).update(itemData);
+                await collections.inventory.doc(editingInventoryItem.id).update(itemData);
             } else {
-                return collections.inventory.add(itemData);
+                await collections.inventory.add(itemData);
             }
         };
-        await withFirestoreErrorHandling(operation).then(({ success }) => { if (success) closeModal() });
+        await withErrorHandlingAndUI(operation, 'saving inventory item', () => closeModal());
     }, [editingInventoryItem, closeModal]);
 
     const handleDeleteInventoryConfirm = useCallback(async () => {
         if (deletingInventoryItem) {
-            await withFirestoreErrorHandling(() => 
-                collections.inventory.doc(deletingInventoryItem.id).delete()
-            ).then(({ success }) => { if (success) closeModal() });
+            await withErrorHandlingAndUI(
+                () => collections.inventory.doc(deletingInventoryItem.id).delete(),
+                'deleting inventory item',
+                () => closeModal()
+            );
         }
     }, [deletingInventoryItem, closeModal]);
 
     // --- Hostel Handlers ---
     const handleUpdateHostelStock = useCallback(async (itemId: string, change: number, notes: string) => {
-        await withFirestoreErrorHandling(async () => {
+        await withErrorHandlingAndUI(async () => {
             const itemRef = collections.hostelInventory.doc(itemId);
             await db.runTransaction(async (transaction: firebase.firestore.Transaction) => {
                 const itemDoc = await transaction.get(itemRef);
@@ -618,7 +667,7 @@ const App: React.FC = () => {
                 const logRef = collections.hostelStockLogs.doc();
                 transaction.set(logRef, newLog);
             });
-        });
+        }, 'updating hostel stock');
     }, []);
     
     const openAddHostelStaffModal = useCallback(() => { setEditingHostelStaff(null); setIsHostelStaffFormModalOpen(true); }, []);
@@ -626,52 +675,56 @@ const App: React.FC = () => {
     const openDeleteHostelStaffConfirm = useCallback((staffMember: HostelStaff) => { setDeletingHostelStaff(staffMember); }, []);
 
     const handleHostelStaffFormSubmit = useCallback(async (staffData: Omit<HostelStaff, 'id' | 'paymentStatus' | 'attendancePercent'>) => {
-        const operation = async () => {
+        const operation = async (): Promise<void> => {
             if (editingHostelStaff) {
-                return collections.hostelStaff.doc(editingHostelStaff.id).update(staffData);
+                await collections.hostelStaff.doc(editingHostelStaff.id).update(staffData);
             } else {
                 const newStaff = { ...staffData, paymentStatus: PaymentStatus.PENDING, attendancePercent: 100 };
-                return collections.hostelStaff.add(newStaff);
+                await collections.hostelStaff.add(newStaff);
             }
         };
 
-        await withFirestoreErrorHandling(operation).then(({ success }) => { if (success) closeModal() });
+        await withErrorHandlingAndUI(operation, 'saving hostel staff', () => closeModal());
     }, [editingHostelStaff, closeModal]);
 
     const handleDeleteHostelStaffConfirm = useCallback(async () => {
         if (deletingHostelStaff) {
-            await withFirestoreErrorHandling(() => 
-                collections.hostelStaff.doc(deletingHostelStaff.id).delete()
-            ).then(({ success }) => { if (success) closeModal() });
+            await withErrorHandlingAndUI(
+                () => collections.hostelStaff.doc(deletingHostelStaff.id).delete(),
+                'deleting hostel staff',
+                () => closeModal()
+            );
         }
     }, [deletingHostelStaff, closeModal]);
 
 
     const handleSaveTc = useCallback(async (tcData: Omit<TcRecord, 'id'>) => {
-        await withFirestoreErrorHandling(async () => {
+        await withErrorHandlingAndUI(async () => {
             await collections.tcRecords.add(tcData);
             await collections.students.doc(tcData.studentDetails.studentId).update({ 
                 status: StudentStatus.TRANSFERRED, 
                 transferDate: tcData.tcData.issueDate 
             });
-        });
+        }, 'saving a transfer certificate');
     }, []);
 
     const handleUpdateTc = useCallback(async (updatedTc: TcRecord) => {
         const { id, ...data } = updatedTc;
-        await withFirestoreErrorHandling(() => 
-            collections.tcRecords.doc(id).update(data)
+        await withErrorHandlingAndUI(
+            () => collections.tcRecords.doc(id).update(data),
+            'updating a transfer certificate'
         );
     }, []);
 
     const handleUpdateFeePayments = useCallback(async (studentId: string, feePayments: FeePayments) => {
-        await withFirestoreErrorHandling(() => 
-            collections.students.doc(studentId).update({ feePayments })
+        await withErrorHandlingAndUI(
+            () => collections.students.doc(studentId).update({ feePayments }),
+            'updating fee payments'
         );
     }, []);
 
     const handleUpdateClassMarks = useCallback(async (marksByStudentId: Map<string, SubjectMark[]>, examId: string) => {
-        await withFirestoreErrorHandling(() => {
+        await withErrorHandlingAndUI(() => {
             const batch = db.batch();
             marksByStudentId.forEach((newMarks, studentId) => {
                 const student = students.find(s => s.id === studentId);
@@ -691,11 +744,11 @@ const App: React.FC = () => {
                 batch.update(collections.students.doc(studentId), { academicPerformance: performance });
             });
             return batch.commit();
-        });
+        }, 'updating class marks');
     }, [students]);
 
     const handlePromoteStudents = useCallback(async () => {
-        await withFirestoreErrorHandling(async () => {
+        await withErrorHandlingAndUI(async () => {
             const finalExamId = 'terminal3';
             const batch = db.batch();
 
@@ -727,17 +780,18 @@ const App: React.FC = () => {
             });
 
             await batch.commit();
-        });
-        handleLogout();
+        }, 'promoting students', () => handleLogout());
     }, [students, gradeDefinitions, academicYear, handleLogout]);
 
     const openImportModal = useCallback((grade: Grade | null) => { setImportTargetGrade(grade); setIsImportModalOpen(true); }, []);
     const openTransferModal = useCallback((student: Student) => { setTransferringStudent(student); }, []);
 
     const handleTransferStudent = useCallback(async (studentId: string, newGrade: Grade, newRollNo: number) => {
-        await withFirestoreErrorHandling(() => 
-            collections.students.doc(studentId).update({ grade: newGrade, rollNo: newRollNo })
-        ).then(({ success }) => { if (success) closeModal() });
+        await withErrorHandlingAndUI(
+            () => collections.students.doc(studentId).update({ grade: newGrade, rollNo: newRollNo }),
+            'transferring a student',
+            () => closeModal()
+        );
     }, [closeModal]);
     
     const handleSaveAttendance = useCallback(async (recordsToSave: Map<string, { studentId: string; grade: Grade; status: AttendanceStatus; notes?: string }>, date: string, grade: Grade): Promise<{ success: boolean; message?: string }> => {
@@ -764,7 +818,10 @@ const App: React.FC = () => {
         };
 
         const { success, error } = await withFirestoreErrorHandling(operation);
-        return { success, message: error };
+        if (error) {
+            handleFirestoreWriteError(error, 'saving attendance');
+        }
+        return { success, message: error?.message };
     }, []);
 
     const MainAppContent = () => {
@@ -861,7 +918,8 @@ const App: React.FC = () => {
     }
 
     return (
-        <Router>
+        <HashRouter>
+            {firestoreError && <FirestoreErrorModal errorMessage={firestoreError} />}
             <Routes>
                 <Route path="/register" element={!user ? (isFirstUser ? <RegisterPage onRegister={handleRegister} /> : <Navigate to="/login" />) : <Navigate to="/" />} />
                 <Route path="/forgot-password" element={!user ? <ForgotPasswordPage onResetPassword={handleForgotPassword} /> : <Navigate to="/" />} />
@@ -931,7 +989,7 @@ const App: React.FC = () => {
                     <p>Are you sure you want to delete the user <strong>{deletingUser.name}</strong>? This action cannot be undone.</p>
                 </ConfirmationModal>
             )}
-        </Router>
+        </HashRouter>
     );
 };
 

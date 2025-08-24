@@ -1,7 +1,6 @@
 
-
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 
 interface LoginPageProps {
   onLogin: (username: string, password: string) => void;

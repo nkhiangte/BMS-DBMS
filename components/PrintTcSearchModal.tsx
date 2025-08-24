@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TcRecord } from '../types';
@@ -23,7 +24,7 @@ const PrintTcSearchModal: React.FC<PrintTcSearchModalProps> = ({ isOpen, onClose
       return;
     }
 
-    const record = tcRecords.find(r => r.studentDetails.studentId.toLowerCase() === studentIdInput.toLowerCase());
+    const record = tcRecords.find(r => r.studentDetails.studentIdFormatted.toLowerCase() === studentIdInput.toLowerCase());
 
     if (record) {
       navigate(`/transfers/print/${record.id}`);

@@ -177,43 +177,16 @@ export const sanitizeForJson = (data: any): any => {
 
 export const withFirestoreErrorHandling = async <T>(
   firestoreOperation: () => Promise<T>
-): Promise<{ success: boolean; data?: T; error?: string }> => {
+): Promise<{ success: boolean; data?: T; error?: { code: string; message: string } }> => {
   try {
     const data = await firestoreOperation();
     return { success: true, data };
   } catch (error: any) {
-    console.error("Firestore operation failed:", {
-      code: error.code,
-      message: error.message,
-      stack: error.stack,
-    });
+    console.error("Firestore operation failed:", error);
     
-    let userMessage = `An unexpected error occurred: ${error.message}\n\nCheck the developer console for more details.`;
-
-    if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
-      userMessage = "Error: Missing or insufficient permissions.\n\n" +
-        "This error means your app is not authorized to perform this action. " +
-        "This is usually caused by Firestore Security Rules.\n\n" +
-        "To fix this, please go to your Firebase project console:\n" +
-        "1. Navigate to Firestore Database > Rules tab.\n" +
-        "2. Replace the existing rules with the following to allow access for any signed-in user:\n\n" +
-        "rules_version = '2';\n" +
-        "service cloud.firestore {\n" +
-        "  match /databases/{database}/documents {\n" +
-        "    match /{document=**} {\n" +
-        "      allow read, write: if request.auth != null;\n" +
-        "    }\n" +
-        "  }\n" +
-        "}\n\n" +
-        "3. Click 'Publish'.";
-    } else if (error.code === 'failed-precondition') {
-      userMessage = "Error: A database index is required for this query.\n\n" +
-        "Firestore needs a special index to perform this query efficiently, which has not been created yet. " +
-        "Please check the browser's developer console (F12 or Ctrl+Shift+I). " +
-        "Firebase usually provides a direct link in the error message to create the required index. Click that link and follow the instructions.";
-    }
+    const code = error?.code || 'unknown';
+    const message = error?.message || 'An unknown error occurred.';
     
-    alert(userMessage);
-    return { success: false, error: userMessage };
+    return { success: false, error: { code, message } };
   }
 };
