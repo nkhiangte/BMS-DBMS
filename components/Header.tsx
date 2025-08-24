@@ -42,15 +42,6 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, className }) => {
                     onMouseLeave={() => setIsMenuOpen(false)}
                 >
                     <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
-                        <Link
-                            to="/change-password"
-                            className="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-sky-50 hover:text-sky-600 transition-colors"
-                            role="menuitem"
-                            onClick={() => setIsMenuOpen(false)}
-                        >
-                            <KeyIcon className="w-5 h-5"/>
-                            Change Password
-                        </Link>
                         <button
                             onClick={() => { onLogout(); setIsMenuOpen(false); }}
                             className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"

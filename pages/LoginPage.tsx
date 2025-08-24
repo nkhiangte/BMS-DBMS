@@ -1,39 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 interface LoginPageProps {
-  onLogin: (username: string, password: string, rememberMe: boolean) => void;
+  onLogin: (username: string, password: string) => void;
   error: string;
-  notification?: string;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error, notification }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [localNotification, setLocalNotification] = useState('');
+  const [notification, setNotification] = useState('');
+  const location = useLocation();
 
   useEffect(() => {
-    const rememberedUser = localStorage.getItem('rememberedUser');
-    if (rememberedUser) {
-        const { username: savedUsername, password: savedPassword } = JSON.parse(rememberedUser);
-        setUsername(savedUsername);
-        setPassword(savedPassword);
-        setRememberMe(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (notification) {
-        setLocalNotification(notification);
-        const timer = setTimeout(() => setLocalNotification(''), 5000);
+    const locationState = location.state as { message?: string };
+    if (locationState?.message) {
+        setNotification(locationState.message);
+        const timer = setTimeout(() => setNotification(''), 5000);
+        // Clear location state to prevent message from re-appearing on refresh
+        window.history.replaceState({}, document.title)
         return () => clearTimeout(timer);
     }
-  }, [notification]);
+  }, [location.state]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin(username, password, rememberMe);
+    onLogin(username, password);
   };
 
   return (
@@ -45,9 +37,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error, notification }) =
                 <h1 className="text-3xl font-bold text-slate-800">Bethel Mission School</h1>
                 <p className="text-slate-600">Admin Login</p>
             </div>
-            {localNotification && (
+            {notification && (
               <p className="bg-emerald-50 border-l-4 border-emerald-400 text-emerald-800 px-4 py-3 rounded-r-lg relative mb-4 shadow-sm" role="alert">
-                {localNotification}
+                {notification}
               </p>
             )}
              {error && (
@@ -71,7 +63,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error, notification }) =
                 required
               />
             </div>
-            <div className="mb-4">
+            <div className="mb-6">
                 <label className="block text-slate-700 text-sm font-bold mb-2" htmlFor="password">
                     Password
                 </label>
@@ -86,29 +78,19 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error, notification }) =
                 required
               />
             </div>
-
-            <div className="mb-6 flex items-center justify-between">
-                <label className="flex items-center text-sm cursor-pointer group">
-                    <input
-                        type="checkbox"
-                        className="h-4 w-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500"
-                        checked={rememberMe}
-                        onChange={e => setRememberMe(e.target.checked)}
-                    />
-                    <span className="ml-2 text-slate-700 group-hover:text-slate-900 font-semibold">Remember Me</span>
-                </label>
-                <Link to="/forgot-password" className="inline-block align-baseline font-bold text-sm text-sky-600 hover:text-sky-800 transition-colors">
-                    Forgot Password?
-                </Link>
-            </div>
            
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-center">
               <button
                 className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-all duration-300 transform hover:scale-105 shadow-md"
                 type="submit"
               >
                 Sign In
               </button>
+            </div>
+             <div className="text-center mt-6">
+                <Link to="/register" className="font-bold text-sm text-sky-600 hover:text-sky-800 transition-colors">
+                    Don't have an account? Register
+                </Link>
             </div>
           </form>
         </div>

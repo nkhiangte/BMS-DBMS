@@ -1,9 +1,8 @@
 
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, User, Role, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
-import { INITIAL_STUDENTS, GRADE_DEFINITIONS, INITIAL_STAFF, TERMINAL_EXAMS, GRADES_LIST, USERS, INITIAL_INVENTORY, INITIAL_HOSTEL_RESIDENTS, INITIAL_HOSTEL_ROOMS, INITIAL_HOSTEL_STAFF, INITIAL_HOSTEL_INVENTORY, INITIAL_STOCK_LOGS } from './constants';
+import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST } from './constants';
 import Header from './components/Header';
 import StudentFormModal from './components/StudentFormModal';
 import ConfirmationModal from './components/ConfirmationModal';
@@ -29,14 +28,12 @@ import FeeManagementPage from './pages/FeeManagementPage';
 import ClassMarkStatementPage from './pages/ClassMarkStatementPage';
 import PromotionPage from './pages/PromotionPage';
 import LoginPage from './pages/LoginPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-import ChangePasswordPage from './pages/ChangePasswordPage';
+import RegisterPage from './pages/RegisterPage';
 import InventoryPage from './pages/InventoryPage';
 import InventoryFormModal from './components/InventoryFormModal';
 import ImportStudentsModal from './components/ImportStudentsModal';
 import TransferStudentModal from './components/TransferStudentModal';
-import { calculateStudentResult, getNextGrade, createDefaultFeePayments } from './utils';
+import { calculateStudentResult, getNextGrade, createDefaultFeePayments, sanitizeForJson } from './utils';
 
 // Staff Certificate Pages
 import StaffDocumentsPage from './pages/StaffDocumentsPage';
@@ -57,54 +54,45 @@ import HostelHealthPage from './pages/HostelHealthPage';
 import HostelCommunicationPage from './pages/HostelCommunicationPage';
 import HostelSettingsPage from './pages/HostelSettingsPage';
 import HostelStaffFormModal from './components/HostelStaffFormModal';
+import { db } from './firebase';
+import { collection, onSnapshot, doc, addDoc } from 'firebase/firestore';
 
-// Helper for localStorage persistence
-const getInitialState = <T,>(key: string, initialValue: T): T => {
-    try {
-        const item = window.localStorage.getItem(key);
-        return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-        console.warn(`Error reading localStorage key “${key}”:`, error);
-        return initialValue;
-    }
-};
 
 const App: React.FC = () => {
     // --- AUTHENTICATION STATE ---
     const [user, setUser] = useState<User | null>(null);
+    const [users, setUsers] = useState<User[]>([]);
     const [error, setError] = useState('');
-    const [passwordResetUser, setPasswordResetUser] = useState<User | null>(null);
-    const [notification, setNotification] = useState('');
 
 
     // --- APPLICATION STATE & LOGIC ---
     const [academicYear, setAcademicYear] = useState<string | null>(null);
-    const [students, setStudents] = useState<Student[]>(() => getInitialState('students', INITIAL_STUDENTS));
+    const [students, setStudents] = useState<Student[]>([]);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
     const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
-    const [tcRecords, setTcRecords] = useState<TcRecord[]>(() => getInitialState('tcRecords', []));
-    const [gradeDefinitions, setGradeDefinitions] = useState<Record<Grade, GradeDefinition>>(() => getInitialState('gradeDefinitions', GRADE_DEFINITIONS));
+    const [tcRecords, setTcRecords] = useState<TcRecord[]>([]);
+    const [gradeDefinitions, setGradeDefinitions] = useState<Record<Grade, GradeDefinition>>(GRADE_DEFINITIONS);
 
     // --- Staff Management State ---
-    const [staff, setStaff] = useState<Staff[]>(() => getInitialState('staff', INITIAL_STAFF));
+    const [staff, setStaff] = useState<Staff[]>([]);
     const [isStaffFormModalOpen, setIsStaffFormModalOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
     const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
-    const [serviceCertificateRecords, setServiceCertificateRecords] = useState<ServiceCertificateRecord[]>(() => getInitialState('serviceCertificateRecords', []));
+    const [serviceCertificateRecords, setServiceCertificateRecords] = useState<ServiceCertificateRecord[]>([]);
     
     // --- Inventory Management State ---
-    const [inventory, setInventory] = useState<InventoryItem[]>(() => getInitialState('inventory', INITIAL_INVENTORY));
+    const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [isInventoryFormModalOpen, setIsInventoryFormModalOpen] = useState(false);
     const [editingInventoryItem, setEditingInventoryItem] = useState<InventoryItem | null>(null);
     const [deletingInventoryItem, setDeletingInventoryItem] = useState<InventoryItem | null>(null);
 
     // --- Hostel Management State ---
-    const [hostelResidents, setHostelResidents] = useState<HostelResident[]>(() => getInitialState('hostelResidents', INITIAL_HOSTEL_RESIDENTS));
-    const [hostelRooms, setHostelRooms] = useState<HostelRoom[]>(() => getInitialState('hostelRooms', INITIAL_HOSTEL_ROOMS));
-    const [hostelStaff, setHostelStaff] = useState<HostelStaff[]>(() => getInitialState('hostelStaff', INITIAL_HOSTEL_STAFF));
-    const [hostelInventory, setHostelInventory] = useState<HostelInventoryItem[]>(() => getInitialState('hostelInventory', INITIAL_HOSTEL_INVENTORY));
-    const [hostelStockLogs, setHostelStockLogs] = useState<StockLog[]>(() => getInitialState('hostelStockLogs', INITIAL_STOCK_LOGS));
+    const [hostelResidents, setHostelResidents] = useState<HostelResident[]>([]);
+    const [hostelRooms, setHostelRooms] = useState<HostelRoom[]>([]);
+    const [hostelStaff, setHostelStaff] = useState<HostelStaff[]>([]);
+    const [hostelInventory, setHostelInventory] = useState<HostelInventoryItem[]>([]);
+    const [hostelStockLogs, setHostelStockLogs] = useState<StockLog[]>([]);
     const [isHostelStaffFormModalOpen, setIsHostelStaffFormModalOpen] = useState(false);
     const [editingHostelStaff, setEditingHostelStaff] = useState<HostelStaff | null>(null);
     const [deletingHostelStaff, setDeletingHostelStaff] = useState<HostelStaff | null>(null);
@@ -120,18 +108,59 @@ const App: React.FC = () => {
     const [studentToConfirmEdit, setStudentToConfirmEdit] = useState<Student | null>(null);
     const [pendingImportData, setPendingImportData] = useState<{ students: Omit<Student, 'id'>[], grade: Grade } | null>(null);
 
-    // --- Data Persistence Effects ---
-    useEffect(() => { localStorage.setItem('students', JSON.stringify(students)); }, [students]);
-    useEffect(() => { localStorage.setItem('tcRecords', JSON.stringify(tcRecords)); }, [tcRecords]);
-    useEffect(() => { localStorage.setItem('gradeDefinitions', JSON.stringify(gradeDefinitions)); }, [gradeDefinitions]);
-    useEffect(() => { localStorage.setItem('staff', JSON.stringify(staff)); }, [staff]);
-    useEffect(() => { localStorage.setItem('serviceCertificateRecords', JSON.stringify(serviceCertificateRecords)); }, [serviceCertificateRecords]);
-    useEffect(() => { localStorage.setItem('inventory', JSON.stringify(inventory)); }, [inventory]);
-    useEffect(() => { localStorage.setItem('hostelResidents', JSON.stringify(hostelResidents)); }, [hostelResidents]);
-    useEffect(() => { localStorage.setItem('hostelRooms', JSON.stringify(hostelRooms)); }, [hostelRooms]);
-    useEffect(() => { localStorage.setItem('hostelStaff', JSON.stringify(hostelStaff)); }, [hostelStaff]);
-    useEffect(() => { localStorage.setItem('hostelInventory', JSON.stringify(hostelInventory)); }, [hostelInventory]);
-    useEffect(() => { localStorage.setItem('hostelStockLogs', JSON.stringify(hostelStockLogs)); }, [hostelStockLogs]);
+    
+    // --- DATA FETCHING FROM FIRESTORE ---
+    useEffect(() => {
+        // Set up listener for users regardless of login state to allow registration
+        const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
+            const fetchedUsers = snapshot.docs.map(d => ({ ...sanitizeForJson(d.data()), id: d.id }) as User);
+            setUsers(fetchedUsers);
+        });
+
+        if (!user) {
+            // Clear data on logout to prevent showing old data on next login
+            setStudents([]);
+            setStaff([]);
+            setTcRecords([]);
+            setGradeDefinitions(GRADE_DEFINITIONS); // Reset to default constants
+            setServiceCertificateRecords([]);
+            setInventory([]);
+            setHostelResidents([]);
+            setHostelRooms([]);
+            setHostelStaff([]);
+            setHostelInventory([]);
+            setHostelStockLogs([]);
+            return () => { usersUnsubscribe() };
+        }
+
+        // Set up real-time listeners for all our data collections
+        const unsubscribes: (() => void)[] = [usersUnsubscribe];
+
+        unsubscribes.push(onSnapshot(collection(db, "students"), (snapshot) => setStudents(snapshot.docs.map(d => sanitizeForJson(d.data()) as Student))));
+        unsubscribes.push(onSnapshot(collection(db, "staff"), (snapshot) => setStaff(snapshot.docs.map(d => sanitizeForJson(d.data()) as Staff))));
+        unsubscribes.push(onSnapshot(collection(db, "tcRecords"), (snapshot) => setTcRecords(snapshot.docs.map(d => sanitizeForJson(d.data()) as TcRecord))));
+        unsubscribes.push(onSnapshot(collection(db, "serviceCertificateRecords"), (snapshot) => setServiceCertificateRecords(snapshot.docs.map(d => sanitizeForJson(d.data()) as ServiceCertificateRecord))));
+        unsubscribes.push(onSnapshot(collection(db, "inventory"), (snapshot) => setInventory(snapshot.docs.map(d => sanitizeForJson(d.data()) as InventoryItem))));
+        unsubscribes.push(onSnapshot(collection(db, "hostelResidents"), (snapshot) => setHostelResidents(snapshot.docs.map(d => sanitizeForJson(d.data()) as HostelResident))));
+        unsubscribes.push(onSnapshot(collection(db, "hostelRooms"), (snapshot) => setHostelRooms(snapshot.docs.map(d => sanitizeForJson(d.data()) as HostelRoom))));
+        unsubscribes.push(onSnapshot(collection(db, "hostelStaff"), (snapshot) => setHostelStaff(snapshot.docs.map(d => sanitizeForJson(d.data()) as HostelStaff))));
+        unsubscribes.push(onSnapshot(collection(db, "hostelInventory"), (snapshot) => setHostelInventory(snapshot.docs.map(d => sanitizeForJson(d.data()) as HostelInventoryItem))));
+        unsubscribes.push(onSnapshot(collection(db, "hostelStockLogs"), (snapshot) => setHostelStockLogs(snapshot.docs.map(d => sanitizeForJson(d.data()) as StockLog))));
+        
+        // Configuration is stored in a single document
+        unsubscribes.push(onSnapshot(doc(db, "configuration", "gradeDefinitions"), (doc) => {
+            if (doc.exists()) {
+                setGradeDefinitions(sanitizeForJson(doc.data()) as Record<Grade, GradeDefinition>);
+            } else {
+                 console.log("NOTE: 'gradeDefinitions' document not found in Firestore. Using local defaults. You may want to seed this in your database.");
+            }
+        }));
+
+        // Cleanup function to detach listeners on logout or component unmount
+        return () => {
+            unsubscribes.forEach(unsub => unsub());
+        };
+    }, [user]); // This effect runs whenever the user logs in or out
 
 
     // --- AUTHENTICATION LOGIC ---
@@ -147,22 +176,40 @@ const App: React.FC = () => {
         }
     }, []);
 
-    const handleLogin = useCallback((username: string, password: string, rememberMe: boolean) => {
-        const foundUser = USERS.find(u => u.username === username && u.password_plaintext === password);
+    const handleRegister = useCallback(async (name: string, username: string, password: string) => {
+        if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+            return { success: false, message: 'Username already exists.' };
+        }
+
+        const role = users.length === 0 ? Role.ADMIN : Role.TEACHER;
+
+        const newUser: Omit<User, 'id'> = {
+            name,
+            username,
+            password_plaintext: password,
+            role
+        };
+
+        try {
+            await addDoc(collection(db, 'users'), newUser);
+            return { success: true, message: 'Registration successful! Please log in.' };
+        } catch (e) {
+            console.error("Error adding document: ", e);
+            return { success: false, message: 'Registration failed. Please try again.' };
+        }
+    }, [users]);
+
+    const handleLogin = useCallback((username: string, password: string) => {
+        const foundUser = users.find(u => u.username === username && u.password_plaintext === password);
         if (foundUser) {
             setUser(foundUser);
             sessionStorage.setItem('user', JSON.stringify(foundUser));
-            if (rememberMe) {
-                localStorage.setItem('rememberedUser', JSON.stringify({ username, password }));
-            } else {
-                localStorage.removeItem('rememberedUser');
-            }
             setError('');
         } else {
             setError('Invalid username or password');
             setTimeout(() => setError(''), 3000);
         }
-    }, []);
+    }, [users]);
 
     const handleLogout = useCallback(() => {
         setUser(null);
@@ -170,45 +217,6 @@ const App: React.FC = () => {
         sessionStorage.removeItem('user');
         localStorage.removeItem('academicYear');
     }, []);
-
-    const handleForgotPassword = useCallback((username: string) => {
-        const foundUser = USERS.find(u => u.username === username);
-        if (foundUser) {
-            setPasswordResetUser(foundUser);
-            return { success: true };
-        }
-        return { success: false, message: 'User not found.' };
-    }, []);
-    
-    const handleResetPassword = useCallback((newPassword: string) => {
-        if (!passwordResetUser) {
-            return { success: false, message: 'No user selected for password reset.' };
-        }
-        // In a real app, this would update the backend. Here we just simulate it.
-        const userIndex = USERS.findIndex(u => u.id === passwordResetUser.id);
-        if (userIndex > -1) {
-            USERS[userIndex].password_plaintext = newPassword;
-            setPasswordResetUser(null);
-            return { success: true, message: 'Password has been reset successfully. Please log in.' };
-        }
-        return { success: false, message: 'Could not update password.' };
-    }, [passwordResetUser]);
-
-     const handleChangePassword = useCallback((currentPassword: string, newPassword: string) => {
-        if (!user) {
-            return { success: false, message: 'You must be logged in to change your password.' };
-        }
-        if (user.password_plaintext !== currentPassword) {
-            return { success: false, message: 'Incorrect current password.' };
-        }
-        const userIndex = USERS.findIndex(u => u.id === user.id);
-        if (userIndex > -1) {
-            USERS[userIndex].password_plaintext = newPassword;
-            handleLogout(); // Force logout after password change
-            return { success: true, message: 'Password changed successfully. Please log in again.' };
-        }
-        return { success: false, message: 'An unexpected error occurred.' };
-    }, [user, handleLogout]);
 
     const handleSetAcademicYear = useCallback((year: string) => {
         setAcademicYear(year);
@@ -224,7 +232,7 @@ const App: React.FC = () => {
 
     const handleAssignClassToStaff = useCallback((staffId: number, newGradeKey: Grade | null) => {
         setGradeDefinitions(prevDefs => {
-            const newDefs = JSON.parse(JSON.stringify(prevDefs));
+            const newDefs = sanitizeForJson(prevDefs);
             
             const oldGradeKey = Object.keys(newDefs).find(g => newDefs[g as Grade]?.classTeacherId === staffId) as Grade | undefined;
             if (oldGradeKey) {
@@ -250,7 +258,7 @@ const App: React.FC = () => {
     }, []);
 
     const openEditModal = useCallback((student: Student) => {
-        setEditingStudent(student);
+        setEditingStudent(sanitizeForJson(student));
         setIsFormModalOpen(true);
     }, []);
 
@@ -329,7 +337,7 @@ const App: React.FC = () => {
         setStudents(prev =>
             prev.map(s =>
                 s.id === studentId
-                    ? { ...s, academicPerformance }
+                    ? { ...sanitizeForJson(s), academicPerformance }
                     : s
             )
         );
@@ -342,7 +350,7 @@ const App: React.FC = () => {
     }, []);
 
     const openEditStaffModal = useCallback((staffMember: Staff) => {
-        setEditingStaff(staffMember);
+        setEditingStaff(sanitizeForJson(staffMember));
         setIsStaffFormModalOpen(true);
     }, []);
 
@@ -393,7 +401,7 @@ const App: React.FC = () => {
         setStaff(prevStaff =>
             prevStaff.map(s => 
                 s.id === certData.staffDetails.staffNumericId
-                ? { ...s, status: EmploymentStatus.RESIGNED }
+                ? { ...sanitizeForJson(s), status: EmploymentStatus.RESIGNED }
                 : s
             )
         );
@@ -406,7 +414,7 @@ const App: React.FC = () => {
     }, []);
 
     const openEditInventoryModal = useCallback((item: InventoryItem) => {
-        setEditingInventoryItem(item);
+        setEditingInventoryItem(sanitizeForJson(item));
         setIsInventoryFormModalOpen(true);
     }, []);
 
@@ -444,7 +452,7 @@ const App: React.FC = () => {
             prev.map(item => {
                 if (item.id === itemId) {
                     updatedItemName = item.name;
-                    return { ...item, currentStock: item.currentStock + change };
+                    return { ...sanitizeForJson(item), currentStock: item.currentStock + change };
                 }
                 return item;
             })
@@ -468,7 +476,7 @@ const App: React.FC = () => {
     }, []);
 
     const openEditHostelStaffModal = useCallback((staffMember: HostelStaff) => {
-        setEditingHostelStaff(staffMember);
+        setEditingHostelStaff(sanitizeForJson(staffMember));
         setIsHostelStaffFormModalOpen(true);
     }, []);
 
@@ -506,7 +514,7 @@ const App: React.FC = () => {
         setStudents(prevStudents =>
             prevStudents.map(s => 
                 s.id === tcData.studentDetails.studentNumericId
-                ? { ...s, status: StudentStatus.TRANSFERRED, transferDate: tcData.tcData.issueDate }
+                ? { ...sanitizeForJson(s), status: StudentStatus.TRANSFERRED, transferDate: tcData.tcData.issueDate }
                 : s
             )
         );
@@ -521,7 +529,7 @@ const App: React.FC = () => {
     const handleUpdateFeePayments = useCallback((studentId: number, feePayments: FeePayments) => {
         setStudents(prev =>
             prev.map(s =>
-                s.id === studentId ? { ...s, feePayments } : s
+                s.id === studentId ? { ...sanitizeForJson(s), feePayments } : s
             )
         );
     }, []);
@@ -531,8 +539,8 @@ const App: React.FC = () => {
             return prevStudents.map(student => {
                 if (marksByStudentId.has(student.id)) {
                     const newMarks = marksByStudentId.get(student.id)!;
-                    const updatedStudent = { ...student };
-                    const performance = updatedStudent.academicPerformance ? JSON.parse(JSON.stringify(updatedStudent.academicPerformance)) : [];
+                    const updatedStudent = sanitizeForJson(student);
+                    const performance = updatedStudent.academicPerformance || [];
                     const examIndex = performance.findIndex((e: Exam) => e.id === examId);
                     const examName = TERMINAL_EXAMS.find(e => e.id === examId)?.name || 'Unknown Exam';
                     const cleanedNewMarks = newMarks.filter(m => m.marks != null || m.examMarks != null || m.activityMarks != null);
@@ -554,23 +562,25 @@ const App: React.FC = () => {
         const finalExamId = 'terminal3';
         const updatedStudents = students.map(student => {
             if (student.status !== StudentStatus.ACTIVE) return student;
+
+            const sanitizedStudent = sanitizeForJson(student);
             const gradeDef = gradeDefinitions[student.grade];
             const finalExam = student.academicPerformance?.find(e => e.id === finalExamId);
             
             if (!finalExam || !gradeDef) {
-                return { ...student, academicPerformance: [], feePayments: createDefaultFeePayments() };
+                return { ...sanitizedStudent, academicPerformance: [], feePayments: createDefaultFeePayments() };
             }
     
             const { finalResult } = calculateStudentResult(finalExam.results, gradeDef, student.grade);
     
             if (finalResult === 'FAIL') {
-                return { ...student, academicPerformance: [], feePayments: createDefaultFeePayments() };
+                return { ...sanitizedStudent, academicPerformance: [], feePayments: createDefaultFeePayments() };
             } else {
                 if (student.grade === Grade.X) {
-                    return { ...student, status: StudentStatus.TRANSFERRED, transferDate: `Graduated in ${academicYear}`, academicPerformance: [], feePayments: createDefaultFeePayments() };
+                    return { ...sanitizedStudent, status: StudentStatus.TRANSFERRED, transferDate: `Graduated in ${academicYear}`, academicPerformance: [], feePayments: createDefaultFeePayments() };
                 } else {
                     const nextGrade = getNextGrade(student.grade);
-                    return nextGrade ? { ...student, grade: nextGrade, rollNo: student.rollNo, academicPerformance: [], feePayments: createDefaultFeePayments() } : student;
+                    return nextGrade ? { ...sanitizedStudent, grade: nextGrade, rollNo: student.rollNo, academicPerformance: [], feePayments: createDefaultFeePayments() } : student;
                 }
             }
         });
@@ -591,7 +601,7 @@ const App: React.FC = () => {
         setStudents(prev =>
             prev.map(s =>
                 s.id === studentId
-                    ? { ...s, grade: newGrade, rollNo: newRollNo }
+                    ? { ...sanitizeForJson(s), grade: newGrade, rollNo: newRollNo }
                     : s
             )
         );
@@ -643,7 +653,6 @@ const App: React.FC = () => {
                         <Route path="/subjects" element={<ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} />} />
                         <Route path="/fees" element={<FeeManagementPage students={students} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} />} />
                         <Route path="/promotion" element={<PromotionPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onPromoteStudents={handlePromoteStudents} />} />
-                        <Route path="/change-password" element={<ChangePasswordPage onChangePassword={handleChangePassword} />} />
                         <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={openAddInventoryModal} onEdit={openEditInventoryModal} onDelete={openDeleteInventoryConfirm} />} />
                         
                         {/* Hostel Routes */}
@@ -674,14 +683,13 @@ const App: React.FC = () => {
     return (
         <Router>
             <Routes>
+                <Route path="/register" element={!user ? <RegisterPage onRegister={handleRegister} /> : <Navigate to="/" />} />
                 <Route path="/*" element={
                     user ? <MainAppContent /> : <Navigate to="/login" state={{ from: window.location.hash.substring(1) || '/' }} />
                 }/>
                 <Route path="/login" element={
-                    !user ? <LoginPage onLogin={handleLogin} error={error} notification={notification} /> : <LoginRedirect />
+                    !user ? <LoginPage onLogin={handleLogin} error={error} /> : <LoginRedirect />
                 }/>
-                <Route path="/forgot-password" element={<ForgotPasswordPage onForgotPassword={handleForgotPassword} />} />
-                <Route path="/reset-password" element={passwordResetUser ? <ResetPasswordPage onResetPassword={handleResetPassword} /> : <Navigate to="/login" />} />
             </Routes>
             {isFormModalOpen && (
                 <StudentFormModal

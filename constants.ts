@@ -1,12 +1,6 @@
 
 import { Grade, Student, Gender, Exam, Role, User, StudentStatus, Category, GradeDefinition, Staff, MaritalStatus, Department, Designation, EmployeeType, BloodGroup, EmploymentStatus, StaffType, InventoryItem, InventoryCategory, InventoryStatus, HostelBlock, HostelRoom, RoomType, HostelResident, HostelStaff, HostelStaffRole, PaymentStatus, HostelInventoryItem, HostelInventoryCategory, StockLog, StockLogType, Qualification } from './types';
 
-export const USERS: User[] = [
-    { id: 1, username: 'admin', password_plaintext: 'password', name: 'Principal', role: Role.ADMIN },
-    { id: 2, username: 'teacher1', password_plaintext: 'teacher1', name: 'Mrs. Davis', role: Role.TEACHER },
-    { id: 3, username: 'teacher2', password_plaintext: 'teacher2', name: 'Mr. Smith', role: Role.TEACHER },
-];
-
 export const QUALIFICATION_LIST: Qualification[] = Object.values(Qualification);
 export const MARITAL_STATUS_LIST: MaritalStatus[] = Object.values(MaritalStatus);
 export const DEPARTMENT_LIST: Department[] = Object.values(Department);

@@ -138,3 +138,40 @@ export const getNextGrade = (currentGrade: Grade): Grade | null => {
     }
     return GRADES_LIST[currentIndex + 1];
 };
+
+export const sanitizeForJson = (data: any): any => {
+    if (data === null || data === undefined) {
+        return data;
+    }
+
+    // Using JSON.stringify with a replacer and then JSON.parse is a robust way
+    // to deep-clone an object and convert non-serializable types like Firestore Timestamps.
+    // This effectively strips any methods or prototype chain complexities from Firestore objects,
+    // leaving a pure data object and preventing circular reference errors.
+    const replacer = (key: string, value: any) => {
+        // Firestore Timestamps have a toDate method. Convert them to ISO strings.
+        if (value && typeof value.toDate === 'function') {
+            return value.toDate().toISOString();
+        }
+        // Let other values pass through. JSON.stringify will handle the rest
+        // (e.g., omitting functions, handling circular refs by throwing).
+        return value;
+    };
+
+    try {
+        // This is a common pattern for "cleaning" data from sources like Firebase
+        // before putting it into state management stores like Redux or React state.
+        return JSON.parse(JSON.stringify(data, replacer));
+    } catch (error) {
+        // The error reported by the user suggests a circular structure. 
+        // This catch block will handle it if it occurs during our explicit sanitization.
+        if (error instanceof TypeError && error.message.includes('circular structure')) {
+             console.error("Data with a circular reference was passed to sanitizeForJson. This may indicate an issue with the data model in Firestore.", { data, error });
+            // Return a placeholder to prevent the app from crashing, though the specific data will be lost.
+            return { error: "Circular reference detected in source data" };
+        }
+        // Re-throw other unexpected errors
+        console.error("An unexpected error occurred during data sanitization:", error);
+        throw error;
+    }
+};

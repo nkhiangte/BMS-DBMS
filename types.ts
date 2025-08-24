@@ -46,7 +46,7 @@ export enum Category {
 }
 
 export interface User {
-  id: number;
+  id: string;
   username: string;
   password_plaintext: string;
   name: string;
