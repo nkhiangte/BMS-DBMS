@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { UsersIcon, PlusIcon, DocumentReportIcon, BookOpenIcon, TransferIcon, BriefcaseIcon, CurrencyDollarIcon, AcademicCapIcon, ArchiveBoxIcon, BuildingOfficeIcon } from '../components/Icons';
+import { UsersIcon, PlusIcon, DocumentReportIcon, BookOpenIcon, TransferIcon, BriefcaseIcon, CurrencyDollarIcon, AcademicCapIcon, ArchiveBoxIcon, BuildingOfficeIcon, UserGroupIcon } from '../components/Icons';
 import AcademicYearForm from '../components/AcademicYearForm';
 import { User, Role } from '../types';
 
@@ -128,6 +129,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
             
             {user.role === Role.ADMIN && (
                 <>
+                    <DashboardCard
+                        title="Manage Users"
+                        description="Add, view, and manage user accounts."
+                        icon={<UserGroupIcon className="w-7 h-7" />}
+                        color="indigo"
+                        action={<Link to="/users">Manage Users</Link>}
+                    />
                     <DashboardCard
                         title="Manage Staff"
                         description="Add, view, and manage staff profiles."

@@ -57,6 +57,10 @@ import HostelStaffFormModal from './components/HostelStaffFormModal';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 
+// Admin Pages
+import ManageUsersPage from './pages/ManageUsersPage';
+import UserFormModal from './components/UserFormModal';
+
 // Local Storage Helper Functions
 const getFromLocalStorage = (key: string, initialValue: any) => {
     try {
@@ -115,6 +119,11 @@ const App: React.FC = () => {
     const [editingHostelStaff, setEditingHostelStaff] = useState<HostelStaff | null>(null);
     const [deletingHostelStaff, setDeletingHostelStaff] = useState<HostelStaff | null>(null);
 
+    // --- User Management State (Admin) ---
+    const [isUserFormModalOpen, setIsUserFormModalOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [deletingUser, setDeletingUser] = useState<User | null>(null);
+
     // --- Import Modal State ---
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importTargetGrade, setImportTargetGrade] = useState<Grade | null>(null);
@@ -159,6 +168,7 @@ const App: React.FC = () => {
             return Promise.resolve({ success: false, message: 'Username already exists.' });
         }
 
+        // This function is now only for the first user, who becomes admin.
         const role = users.length === 0 ? Role.ADMIN : Role.TEACHER;
 
         const newUser: User = {
@@ -171,7 +181,7 @@ const App: React.FC = () => {
         
         setUsers(prevUsers => [...prevUsers, newUser]);
 
-        return Promise.resolve({ success: true, message: 'Registration successful! Please log in.' });
+        return Promise.resolve({ success: true, message: 'Admin account created successfully! Please log in.' });
     }, [users]);
 
     const handleLogin = useCallback((username: string, password: string) => {
@@ -298,6 +308,9 @@ const App: React.FC = () => {
         setIsHostelStaffFormModalOpen(false);
         setEditingHostelStaff(null);
         setDeletingHostelStaff(null);
+        setIsUserFormModalOpen(false);
+        setEditingUser(null);
+        setDeletingUser(null);
     }, []);
 
     const handleFormSubmit = useCallback((studentData: Omit<Student, 'id'>) => {
@@ -358,6 +371,58 @@ const App: React.FC = () => {
             )
         );
     }, []);
+
+    // --- User Management Handlers (Admin) ---
+    const openAddUserModal = useCallback(() => {
+        setEditingUser(null);
+        setIsUserFormModalOpen(true);
+    }, []);
+
+    const openEditUserModal = useCallback((userToEdit: User) => {
+        setEditingUser(userToEdit);
+        setIsUserFormModalOpen(true);
+    }, []);
+
+    const openDeleteUserConfirm = useCallback((userToDelete: User) => {
+        setDeletingUser(userToDelete);
+    }, []);
+
+    const handleUserFormSubmit = useCallback((
+        userData: Omit<User, 'id' | 'role' | 'password_plaintext'> & { password_plaintext?: string },
+        role: Role
+    ) => {
+        if (editingUser) {
+            setUsers(prev => prev.map(u => u.id === editingUser.id ? {
+                ...editingUser,
+                name: userData.name,
+                username: userData.username,
+                role: role,
+                password_plaintext: userData.password_plaintext || editingUser.password_plaintext
+            } : u));
+        } else {
+            const newUser: User = {
+                id: String(Date.now()),
+                name: userData.name,
+                username: userData.username,
+                password_plaintext: userData.password_plaintext!,
+                role: role,
+            };
+            setUsers(prev => [...prev, newUser]);
+        }
+        closeModal();
+    }, [editingUser, closeModal]);
+    
+    const handleDeleteUserConfirm = useCallback(() => {
+        if (deletingUser) {
+            if (user?.id === deletingUser.id) {
+                alert("You cannot delete your own account.");
+                closeModal();
+                return;
+            }
+            setUsers(prev => prev.filter(u => u.id !== deletingUser.id));
+            closeModal();
+        }
+    }, [deletingUser, user, closeModal]);
 
     // --- Staff Handlers ---
     const openAddStaffModal = useCallback(() => {
@@ -672,6 +737,11 @@ const App: React.FC = () => {
                         <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={openAddInventoryModal} onEdit={openEditInventoryModal} onDelete={openDeleteInventoryConfirm} />} />
                         <Route path="/change-password" element={<ChangePasswordPage user={user!} onChangePassword={handleChangePassword} />} />
                         
+                        {/* Admin Routes */}
+                        {user!.role === Role.ADMIN && (
+                            <Route path="/users" element={<ManageUsersPage users={users} onAdd={openAddUserModal} onEdit={openEditUserModal} onDelete={openDeleteUserConfirm} />} />
+                        )}
+
                         {/* Hostel Routes */}
                         <Route path="/hostel" element={<HostelDashboardPage />} />
                         <Route path="/hostel/students" element={<HostelStudentListPage residents={hostelResidents} rooms={hostelRooms} students={students} />} />
@@ -700,7 +770,7 @@ const App: React.FC = () => {
     return (
         <Router>
             <Routes>
-                <Route path="/register" element={!user ? <RegisterPage onRegister={handleRegister} /> : <Navigate to="/" />} />
+                <Route path="/register" element={!user ? (users.length > 0 ? <Navigate to="/login" /> : <RegisterPage onRegister={handleRegister} />) : <Navigate to="/" />} />
                 <Route path="/forgot-password" element={!user ? <ForgotPasswordPage users={users} onResetPassword={handleForgotPassword} /> : <Navigate to="/" />} />
                 <Route path="/*" element={
                     user ? <MainAppContent /> : <Navigate to="/login" state={{ from: window.location.hash.substring(1) || '/' }} />
@@ -821,6 +891,24 @@ const App: React.FC = () => {
                     title="Remove Hostel Staff"
                 >
                     <p>Are you sure you want to remove <strong>{deletingHostelStaff.name}</strong>? This action cannot be undone.</p>
+                </ConfirmationModal>
+            )}
+            {isUserFormModalOpen && (
+                <UserFormModal
+                    isOpen={isUserFormModalOpen}
+                    onClose={closeModal}
+                    onSubmit={handleUserFormSubmit}
+                    user={editingUser}
+                />
+            )}
+            {deletingUser && (
+                <ConfirmationModal
+                    isOpen={!!deletingUser}
+                    onClose={closeModal}
+                    onConfirm={handleDeleteUserConfirm}
+                    title="Delete User"
+                >
+                    <p>Are you sure you want to delete the user <strong>{deletingUser.name}</strong>? This action cannot be undone.</p>
                 </ConfirmationModal>
             )}
         </Router>

@@ -88,13 +88,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
                 Sign In
               </button>
             </div>
-             <div className="text-sm mt-6 flex justify-between">
+             <div className="text-sm mt-6 flex justify-between items-center">
                 <Link to="/forgot-password" className="font-bold text-slate-600 hover:text-sky-800 transition-colors">
                     Forgot Password?
                 </Link>
-                <Link to="/register" className="font-bold text-sky-600 hover:text-sky-800 transition-colors">
-                    Don't have an account? Register
-                </Link>
+                <span className="text-slate-600 text-right">
+                    Contact an admin to create an account.
+                </span>
             </div>
           </form>
         </div>

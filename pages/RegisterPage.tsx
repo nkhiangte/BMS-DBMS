@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -37,8 +38,8 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
         <div className="bg-white shadow-xl rounded-2xl px-8 pt-8 pb-8">
             <div className="mb-8 text-center">
                 <img src="https://i.postimg.cc/qt00dty5/logo.png" alt="Bethel Mission School Logo" className="mx-auto h-24 w-24 mb-4" />
-                <h1 className="text-3xl font-bold text-slate-800">Register Account</h1>
-                <p className="text-slate-600">The first registered account will be an Admin.</p>
+                <h1 className="text-3xl font-bold text-slate-800">Admin Account Setup</h1>
+                <p className="text-slate-600">Create the primary administrator account. Additional users can be added later from the admin dashboard.</p>
             </div>
             {error && (
               <p className="bg-red-100 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded-r-lg relative mb-4 shadow-sm" role="alert">
@@ -111,7 +112,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
                 type="submit"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Registering...' : 'Register'}
+                {isSubmitting ? 'Creating Account...' : 'Create Admin Account'}
               </button>
             </div>
           </form>
