@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, User, Role, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
-import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST } from './constants';
+import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST, INITIAL_STUDENTS, INITIAL_STAFF, INITIAL_INVENTORY, INITIAL_HOSTEL_ROOMS, INITIAL_HOSTEL_RESIDENTS, INITIAL_HOSTEL_STAFF, INITIAL_HOSTEL_INVENTORY, INITIAL_STOCK_LOGS } from './constants';
 import Header from './components/Header';
 import StudentFormModal from './components/StudentFormModal';
 import ConfirmationModal from './components/ConfirmationModal';
@@ -54,45 +54,61 @@ import HostelHealthPage from './pages/HostelHealthPage';
 import HostelCommunicationPage from './pages/HostelCommunicationPage';
 import HostelSettingsPage from './pages/HostelSettingsPage';
 import HostelStaffFormModal from './components/HostelStaffFormModal';
-import { db } from './firebase';
-import { collection, onSnapshot, doc, addDoc } from 'firebase/firestore';
+
+// Local Storage Helper Functions
+const getFromLocalStorage = (key: string, initialValue: any) => {
+    try {
+        const item = window.localStorage.getItem(key);
+        return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+        console.error(`Error reading from localStorage key “${key}”:`, error);
+        return initialValue;
+    }
+};
+
+const saveToLocalStorage = (key: string, value: any) => {
+    try {
+        window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+        console.error(`Error writing to localStorage key “${key}”:`, error);
+    }
+};
 
 
 const App: React.FC = () => {
     // --- AUTHENTICATION STATE ---
     const [user, setUser] = useState<User | null>(null);
-    const [users, setUsers] = useState<User[]>([]);
+    const [users, setUsers] = useState<User[]>(() => getFromLocalStorage('users', []));
     const [error, setError] = useState('');
-
 
     // --- APPLICATION STATE & LOGIC ---
     const [academicYear, setAcademicYear] = useState<string | null>(null);
-    const [students, setStudents] = useState<Student[]>([]);
+    const [students, setStudents] = useState<Student[]>(() => getFromLocalStorage('students', INITIAL_STUDENTS));
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
     const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
-    const [tcRecords, setTcRecords] = useState<TcRecord[]>([]);
-    const [gradeDefinitions, setGradeDefinitions] = useState<Record<Grade, GradeDefinition>>(GRADE_DEFINITIONS);
+    const [tcRecords, setTcRecords] = useState<TcRecord[]>(() => getFromLocalStorage('tcRecords', []));
+    const [gradeDefinitions, setGradeDefinitions] = useState<Record<Grade, GradeDefinition>>(() => getFromLocalStorage('gradeDefinitions', GRADE_DEFINITIONS));
 
     // --- Staff Management State ---
-    const [staff, setStaff] = useState<Staff[]>([]);
+    const [staff, setStaff] = useState<Staff[]>(() => getFromLocalStorage('staff', INITIAL_STAFF));
     const [isStaffFormModalOpen, setIsStaffFormModalOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
     const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
-    const [serviceCertificateRecords, setServiceCertificateRecords] = useState<ServiceCertificateRecord[]>([]);
+    const [serviceCertificateRecords, setServiceCertificateRecords] = useState<ServiceCertificateRecord[]>(() => getFromLocalStorage('serviceCertificateRecords', []));
     
     // --- Inventory Management State ---
-    const [inventory, setInventory] = useState<InventoryItem[]>([]);
+    const [inventory, setInventory] = useState<InventoryItem[]>(() => getFromLocalStorage('inventory', INITIAL_INVENTORY));
     const [isInventoryFormModalOpen, setIsInventoryFormModalOpen] = useState(false);
     const [editingInventoryItem, setEditingInventoryItem] = useState<InventoryItem | null>(null);
     const [deletingInventoryItem, setDeletingInventoryItem] = useState<InventoryItem | null>(null);
 
     // --- Hostel Management State ---
-    const [hostelResidents, setHostelResidents] = useState<HostelResident[]>([]);
-    const [hostelRooms, setHostelRooms] = useState<HostelRoom[]>([]);
-    const [hostelStaff, setHostelStaff] = useState<HostelStaff[]>([]);
-    const [hostelInventory, setHostelInventory] = useState<HostelInventoryItem[]>([]);
-    const [hostelStockLogs, setHostelStockLogs] = useState<StockLog[]>([]);
+    const [hostelResidents, setHostelResidents] = useState<HostelResident[]>(() => getFromLocalStorage('hostelResidents', INITIAL_HOSTEL_RESIDENTS));
+    const [hostelRooms, setHostelRooms] = useState<HostelRoom[]>(() => getFromLocalStorage('hostelRooms', INITIAL_HOSTEL_ROOMS));
+    const [hostelStaff, setHostelStaff] = useState<HostelStaff[]>(() => getFromLocalStorage('hostelStaff', INITIAL_HOSTEL_STAFF));
+    const [hostelInventory, setHostelInventory] = useState<HostelInventoryItem[]>(() => getFromLocalStorage('hostelInventory', INITIAL_HOSTEL_INVENTORY));
+    const [hostelStockLogs, setHostelStockLogs] = useState<StockLog[]>(() => getFromLocalStorage('hostelStockLogs', INITIAL_STOCK_LOGS));
     const [isHostelStaffFormModalOpen, setIsHostelStaffFormModalOpen] = useState(false);
     const [editingHostelStaff, setEditingHostelStaff] = useState<HostelStaff | null>(null);
     const [deletingHostelStaff, setDeletingHostelStaff] = useState<HostelStaff | null>(null);
@@ -109,59 +125,19 @@ const App: React.FC = () => {
     const [pendingImportData, setPendingImportData] = useState<{ students: Omit<Student, 'id'>[], grade: Grade } | null>(null);
 
     
-    // --- DATA FETCHING FROM FIRESTORE ---
-    useEffect(() => {
-        // Set up listener for users regardless of login state to allow registration
-        const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
-            const fetchedUsers = snapshot.docs.map(d => ({ ...sanitizeForJson(d.data()), id: d.id }) as User);
-            setUsers(fetchedUsers);
-        });
-
-        if (!user) {
-            // Clear data on logout to prevent showing old data on next login
-            setStudents([]);
-            setStaff([]);
-            setTcRecords([]);
-            setGradeDefinitions(GRADE_DEFINITIONS); // Reset to default constants
-            setServiceCertificateRecords([]);
-            setInventory([]);
-            setHostelResidents([]);
-            setHostelRooms([]);
-            setHostelStaff([]);
-            setHostelInventory([]);
-            setHostelStockLogs([]);
-            return () => { usersUnsubscribe() };
-        }
-
-        // Set up real-time listeners for all our data collections
-        const unsubscribes: (() => void)[] = [usersUnsubscribe];
-
-        unsubscribes.push(onSnapshot(collection(db, "students"), (snapshot) => setStudents(snapshot.docs.map(d => sanitizeForJson(d.data()) as Student))));
-        unsubscribes.push(onSnapshot(collection(db, "staff"), (snapshot) => setStaff(snapshot.docs.map(d => sanitizeForJson(d.data()) as Staff))));
-        unsubscribes.push(onSnapshot(collection(db, "tcRecords"), (snapshot) => setTcRecords(snapshot.docs.map(d => sanitizeForJson(d.data()) as TcRecord))));
-        unsubscribes.push(onSnapshot(collection(db, "serviceCertificateRecords"), (snapshot) => setServiceCertificateRecords(snapshot.docs.map(d => sanitizeForJson(d.data()) as ServiceCertificateRecord))));
-        unsubscribes.push(onSnapshot(collection(db, "inventory"), (snapshot) => setInventory(snapshot.docs.map(d => sanitizeForJson(d.data()) as InventoryItem))));
-        unsubscribes.push(onSnapshot(collection(db, "hostelResidents"), (snapshot) => setHostelResidents(snapshot.docs.map(d => sanitizeForJson(d.data()) as HostelResident))));
-        unsubscribes.push(onSnapshot(collection(db, "hostelRooms"), (snapshot) => setHostelRooms(snapshot.docs.map(d => sanitizeForJson(d.data()) as HostelRoom))));
-        unsubscribes.push(onSnapshot(collection(db, "hostelStaff"), (snapshot) => setHostelStaff(snapshot.docs.map(d => sanitizeForJson(d.data()) as HostelStaff))));
-        unsubscribes.push(onSnapshot(collection(db, "hostelInventory"), (snapshot) => setHostelInventory(snapshot.docs.map(d => sanitizeForJson(d.data()) as HostelInventoryItem))));
-        unsubscribes.push(onSnapshot(collection(db, "hostelStockLogs"), (snapshot) => setHostelStockLogs(snapshot.docs.map(d => sanitizeForJson(d.data()) as StockLog))));
-        
-        // Configuration is stored in a single document
-        unsubscribes.push(onSnapshot(doc(db, "configuration", "gradeDefinitions"), (doc) => {
-            if (doc.exists()) {
-                setGradeDefinitions(sanitizeForJson(doc.data()) as Record<Grade, GradeDefinition>);
-            } else {
-                 console.log("NOTE: 'gradeDefinitions' document not found in Firestore. Using local defaults. You may want to seed this in your database.");
-            }
-        }));
-
-        // Cleanup function to detach listeners on logout or component unmount
-        return () => {
-            unsubscribes.forEach(unsub => unsub());
-        };
-    }, [user]); // This effect runs whenever the user logs in or out
-
+    // --- DATA PERSISTENCE TO LOCALSTORAGE ---
+    useEffect(() => { saveToLocalStorage('users', users); }, [users]);
+    useEffect(() => { saveToLocalStorage('students', students); }, [students]);
+    useEffect(() => { saveToLocalStorage('staff', staff); }, [staff]);
+    useEffect(() => { saveToLocalStorage('tcRecords', tcRecords); }, [tcRecords]);
+    useEffect(() => { saveToLocalStorage('gradeDefinitions', gradeDefinitions); }, [gradeDefinitions]);
+    useEffect(() => { saveToLocalStorage('serviceCertificateRecords', serviceCertificateRecords); }, [serviceCertificateRecords]);
+    useEffect(() => { saveToLocalStorage('inventory', inventory); }, [inventory]);
+    useEffect(() => { saveToLocalStorage('hostelResidents', hostelResidents); }, [hostelResidents]);
+    useEffect(() => { saveToLocalStorage('hostelRooms', hostelRooms); }, [hostelRooms]);
+    useEffect(() => { saveToLocalStorage('hostelStaff', hostelStaff); }, [hostelStaff]);
+    useEffect(() => { saveToLocalStorage('hostelInventory', hostelInventory); }, [hostelInventory]);
+    useEffect(() => { saveToLocalStorage('hostelStockLogs', hostelStockLogs); }, [hostelStockLogs]);
 
     // --- AUTHENTICATION LOGIC ---
      useEffect(() => {
@@ -176,27 +152,24 @@ const App: React.FC = () => {
         }
     }, []);
 
-    const handleRegister = useCallback(async (name: string, username: string, password: string) => {
+    const handleRegister = useCallback((name: string, username: string, password: string): Promise<{ success: boolean; message?: string }> => {
         if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
-            return { success: false, message: 'Username already exists.' };
+            return Promise.resolve({ success: false, message: 'Username already exists.' });
         }
 
         const role = users.length === 0 ? Role.ADMIN : Role.TEACHER;
 
-        const newUser: Omit<User, 'id'> = {
+        const newUser: User = {
+            id: String(Date.now()),
             name,
             username,
             password_plaintext: password,
             role
         };
+        
+        setUsers(prevUsers => [...prevUsers, newUser]);
 
-        try {
-            await addDoc(collection(db, 'users'), newUser);
-            return { success: true, message: 'Registration successful! Please log in.' };
-        } catch (e) {
-            console.error("Error adding document: ", e);
-            return { success: false, message: 'Registration failed. Please try again.' };
-        }
+        return Promise.resolve({ success: true, message: 'Registration successful! Please log in.' });
     }, [users]);
 
     const handleLogin = useCallback((username: string, password: string) => {
