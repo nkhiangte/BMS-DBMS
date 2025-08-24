@@ -54,6 +54,8 @@ import HostelHealthPage from './pages/HostelHealthPage';
 import HostelCommunicationPage from './pages/HostelCommunicationPage';
 import HostelSettingsPage from './pages/HostelSettingsPage';
 import HostelStaffFormModal from './components/HostelStaffFormModal';
+import ChangePasswordPage from './pages/ChangePasswordPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 
 // Local Storage Helper Functions
 const getFromLocalStorage = (key: string, initialValue: any) => {
@@ -195,6 +197,47 @@ const App: React.FC = () => {
         setAcademicYear(year);
         localStorage.setItem('academicYear', year);
     }, []);
+    
+    const handleForgotPassword = useCallback(async (username: string, newPassword: string): Promise<{ success: boolean; message?: string }> => {
+        const userExists = users.some(u => u.username.toLowerCase() === username.toLowerCase());
+        if (!userExists) {
+            return { success: false, message: "Username not found." };
+        }
+
+        setUsers(prevUsers =>
+            prevUsers.map(u =>
+                u.username.toLowerCase() === username.toLowerCase()
+                    ? { ...u, password_plaintext: newPassword }
+                    : u
+            )
+        );
+        return { success: true };
+    }, [users]);
+
+    const handleChangePassword = useCallback(async (userId: string, oldPassword: string, newPassword: string): Promise<{ success: boolean; message?: string }> => {
+        const userToUpdate = users.find(u => u.id === userId);
+        if (!userToUpdate) {
+            return { success: false, message: "User not found. Please log in again." };
+        }
+        if (userToUpdate.password_plaintext !== oldPassword) {
+            return { success: false, message: "Incorrect current password." };
+        }
+
+        setUsers(prevUsers =>
+            prevUsers.map(u =>
+                u.id === userId
+                    ? { ...u, password_plaintext: newPassword }
+                    : u
+            )
+        );
+
+        setTimeout(() => {
+            handleLogout();
+        }, 1800);
+
+        return { success: true };
+    }, [users, handleLogout]);
+
 
     const handleUpdateGradeDefinition = useCallback((grade: Grade, newDefinition: GradeDefinition) => {
         setGradeDefinitions(prev => ({
@@ -627,6 +670,7 @@ const App: React.FC = () => {
                         <Route path="/fees" element={<FeeManagementPage students={students} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} />} />
                         <Route path="/promotion" element={<PromotionPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onPromoteStudents={handlePromoteStudents} />} />
                         <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={openAddInventoryModal} onEdit={openEditInventoryModal} onDelete={openDeleteInventoryConfirm} />} />
+                        <Route path="/change-password" element={<ChangePasswordPage user={user!} onChangePassword={handleChangePassword} />} />
                         
                         {/* Hostel Routes */}
                         <Route path="/hostel" element={<HostelDashboardPage />} />
@@ -657,6 +701,7 @@ const App: React.FC = () => {
         <Router>
             <Routes>
                 <Route path="/register" element={!user ? <RegisterPage onRegister={handleRegister} /> : <Navigate to="/" />} />
+                <Route path="/forgot-password" element={!user ? <ForgotPasswordPage users={users} onResetPassword={handleForgotPassword} /> : <Navigate to="/" />} />
                 <Route path="/*" element={
                     user ? <MainAppContent /> : <Navigate to="/login" state={{ from: window.location.hash.substring(1) || '/' }} />
                 }/>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -87,8 +88,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
                 Sign In
               </button>
             </div>
-             <div className="text-center mt-6">
-                <Link to="/register" className="font-bold text-sm text-sky-600 hover:text-sky-800 transition-colors">
+             <div className="text-sm mt-6 flex justify-between">
+                <Link to="/forgot-password" className="font-bold text-slate-600 hover:text-sky-800 transition-colors">
+                    Forgot Password?
+                </Link>
+                <Link to="/register" className="font-bold text-sky-600 hover:text-sky-800 transition-colors">
                     Don't have an account? Register
                 </Link>
             </div>
