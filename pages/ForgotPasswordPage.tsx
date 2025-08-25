@@ -1,7 +1,5 @@
-
-
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 interface ForgotPasswordPageProps {
   onForgotPassword: (email: string) => Promise<{ success: boolean; message?: string }>;
@@ -11,12 +9,13 @@ const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onForgotPasswor
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setLoading(true);
     const result = await onForgotPassword(email);
     if (result.success) {
       setSuccess(result.message || 'Password reset email sent! Please check your inbox.');
@@ -24,6 +23,7 @@ const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onForgotPasswor
       setError(result.message || 'An unknown error occurred.');
       setTimeout(() => setError(''), 4000);
     }
+    setLoading(false);
   };
 
   return (
@@ -46,28 +46,31 @@ const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onForgotPasswor
             </p>
           )}
           <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label className="block text-slate-700 text-sm font-bold mb-2" htmlFor="email">
-                Email Address
-              </label>
-              <input
-                className="shadow-sm appearance-none border border-slate-300 rounded-lg w-full py-3 px-4 text-slate-700 leading-tight focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-                id="email"
-                type="email"
-                placeholder="admin@bms.edu"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="flex items-center justify-between mt-6">
-              <button
-                className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-all duration-300 transform hover:scale-105 shadow-md"
-                type="submit"
-              >
-                Send Reset Link
-              </button>
-            </div>
+            <fieldset disabled={loading}>
+              <div className="mb-4">
+                <label className="block text-slate-700 text-sm font-bold mb-2" htmlFor="email">
+                  Email Address
+                </label>
+                <input
+                  className="shadow-sm appearance-none border border-slate-300 rounded-lg w-full py-3 px-4 text-slate-700 leading-tight focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                  id="email"
+                  type="email"
+                  placeholder="admin@bms.edu"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="flex items-center justify-between mt-6">
+                <button
+                  className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-all duration-300 transform hover:scale-105 shadow-md disabled:bg-slate-400"
+                  type="submit"
+                  disabled={loading}
+                >
+                  {loading ? 'Sending...' : 'Send Reset Link'}
+                </button>
+              </div>
+            </fieldset>
           </form>
            <div className="text-center mt-6">
                 <Link to="/login" className="font-bold text-sm text-sky-600 hover:text-sky-800 transition-colors">
