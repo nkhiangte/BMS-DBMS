@@ -1,26 +1,41 @@
 // Import only what you need
-import { initializeApp } from "@firebase/app";
-import { getAuth } from "@firebase/auth";
-import { getFirestore } from "@firebase/firestore";
+import { initializeApp, FirebaseApp } from "@firebase/app";
+import { getAuth, Auth } from "@firebase/auth";
+import { getFirestore, Firestore } from "@firebase/firestore";
 
-// Your Firebase configuration
-// IMPORTANT: Replace these placeholder values with your project's actual Firebase configuration.
-// You can find this in the Firebase Console under Project Settings > General > Your apps > Web app.
+// =================================================================================
+// IMPORTANT - Firebase Configuration
+// =================================================================================
+// This is a placeholder configuration. You MUST replace the values below with
+// the actual configuration from YOUR Firebase project. An invalid configuration
+// here will cause the application to freeze or fail on login.
+//
+// To get your Firebase config:
+// 1. Go to the Firebase Console (https://console.firebase.google.com/).
+// 2. Select your project (or create a new one).
+// 3. Go to Project Settings (click the gear icon).
+// 4. In the "General" tab, scroll down to "Your apps".
+// 5. If you haven't created a web app, create one.
+// 6. Find your web app and click the "SDK setup and configuration" option.
+// 7. Select "Config" and copy the `firebaseConfig` object.
+// 8. Paste the copied object here, replacing these placeholder values.
+// =================================================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCxE7ucaUEcvdDfeOO7CWX-lAgdecWZNLE",
-  authDomain: "bmsdb-4918a.firebaseapp.com",
-  projectId: "bmsdb-4918a",
-  storageBucket: "bmsdb-4918a.firebasestorage.app",
-  messagingSenderId: "351220627913",
-  appId: "1:351220627913:web:1ec56c71506df6cc995018"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const app: FirebaseApp = initializeApp(firebaseConfig);
 
-// Initialize services
-const db = getFirestore(app);
-const auth = getAuth(app);
+// Get instances of Firebase services.
+// It's a good practice to get them once and export them for use throughout the app.
+const auth: Auth = getAuth(app);
+const db: Firestore = getFirestore(app);
 
 export { db, auth };
