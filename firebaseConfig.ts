@@ -24,5 +24,26 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 const storage = firebase.storage();
 
+// --- Enable Offline Persistence ---
+// This allows the app to work offline by caching data.
+// It should be enabled before any other Firestore operations.
+db.enablePersistence()
+  .then(() => {
+    console.log("Firestore persistence enabled successfully. The app can now work offline.");
+  })
+  .catch((err) => {
+    if (err.code === 'failed-precondition') {
+        // This can happen if you have multiple tabs open, as persistence can only be
+        // enabled in one tab at a time.
+        console.warn('Firestore persistence failed: multiple tabs open.');
+    } else if (err.code === 'unimplemented') {
+        // The current browser does not support all of the features required to enable persistence.
+        console.warn('Firestore persistence is not available in this browser.');
+    } else {
+        console.error("Firestore persistence failed with an unexpected error: ", err);
+    }
+});
+
+
 // Export for use in your app
 export { auth, db, storage, firebaseConfig };

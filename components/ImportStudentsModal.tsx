@@ -1,9 +1,8 @@
 
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Student, Grade, StudentStatus, Gender, Category, BloodGroup } from '../types';
 import { createDefaultFeePayments } from '../utils';
-import { ArrowUpOnSquareIcon, XIcon, CheckCircleIcon, XCircleIcon } from './Icons';
+import { ArrowUpOnSquareIcon, XIcon, CheckCircleIcon, XCircleIcon, SpinnerIcon } from './Icons';
 import { GENDER_LIST, CATEGORY_LIST, BLOOD_GROUP_LIST } from '../constants';
 
 interface ImportStudentsModalProps {
@@ -13,6 +12,7 @@ interface ImportStudentsModalProps {
     grade: Grade | null;
     allStudents: Student[];
     allGrades: Grade[];
+    isImporting: boolean;
 }
 
 type ParsedStudent = Omit<Student, 'id'> & { errors: string[] };
@@ -24,7 +24,7 @@ const CSV_HEADERS = [
     'CWSN (Yes/No)', 'Blood Group', 'Last School Attended', 'Health Issues', 'Achievements'
 ];
 
-const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClose, onImport, grade, allStudents, allGrades }) => {
+const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClose, onImport, grade, allStudents, allGrades, isImporting }) => {
     const [file, setFile] = useState<File | null>(null);
     const [parsedStudents, setParsedStudents] = useState<ParsedStudent[]>([]);
     const [parseError, setParseError] = useState<string>('');
@@ -361,12 +361,26 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
 
                 </div>
                 <div className="bg-slate-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl border-t">
-                    <button type="button" onClick={handleClose} className="btn btn-secondary">
+                    <button type="button" onClick={handleClose} className="btn btn-secondary" disabled={isImporting}>
                         Cancel
                     </button>
-                    <button type="button" onClick={handleImportClick} className="btn btn-primary" disabled={validStudentCount === 0 || isProcessing}>
-                        <ArrowUpOnSquareIcon className="w-5 h-5"/>
-                        Import {validStudentCount > 0 ? `${validStudentCount}` : ''} Students
+                    <button
+                        type="button"
+                        onClick={handleImportClick}
+                        className="btn btn-primary"
+                        disabled={validStudentCount === 0 || isProcessing || isImporting}
+                    >
+                        {isImporting ? (
+                            <>
+                                <SpinnerIcon className="w-5 h-5" />
+                                Importing...
+                            </>
+                        ) : (
+                            <>
+                                <ArrowUpOnSquareIcon className="w-5 h-5"/>
+                                Import {validStudentCount > 0 ? `${validStudentCount}` : ''} Students
+                            </>
+                        )}
                     </button>
                 </div>
             </div>

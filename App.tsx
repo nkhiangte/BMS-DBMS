@@ -1,8 +1,4 @@
 
-
-
-
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
@@ -121,6 +117,7 @@ const App: React.FC = () => {
     const [editingHostelStaff, setEditingHostelStaff] = useState<HostelStaff | null>(null);
     const [deletingHostelStaff, setDeletingHostelStaff] = useState<HostelStaff | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
     const [importTargetGrade, setImportTargetGrade] = useState<Grade | null>(null);
     const [transferringStudent, setTransferringStudent] = useState<Student | null>(null);
     const [studentToConfirmEdit, setStudentToConfirmEdit] = useState<Student | null>(null);
@@ -297,14 +294,22 @@ const App: React.FC = () => {
     }, [deletingStaff, closeModal, gradeDefinitions]);
 
     const handleImportStudents = useCallback(async (newStudents: Omit<Student, 'id'>[], grade: Grade) => {
+        setIsImporting(true);
         const batch = db.batch();
         newStudents.forEach(studentData => {
             const studentDocRef = db.collection('students').doc();
             const finalStudentData = { ...studentData, grade };
             batch.set(studentDocRef, finalStudentData);
         });
-        await batch.commit();
-        closeModal();
+        try {
+            await batch.commit();
+            closeModal();
+        } catch (error) {
+            console.error("Error importing students:", error);
+            alert(`Failed to import students. Please check the console for details. Error: ${error}`);
+        } finally {
+            setIsImporting(false);
+        }
     }, [closeModal]);
 
     // Other Handlers
@@ -448,71 +453,86 @@ const App: React.FC = () => {
 
         return (
             <div className="flex flex-col min-h-screen">
-                <Header user={user!} onLogout={handleLogout} className="print-hidden" />
+                <Header user={user} onLogout={handleLogout} />
                 <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
-                     <Routes>
-                        <Route path="/" element={<DashboardPage user={user!} onAddStudent={() => setIsFormModalOpen(true)} studentCount={students.filter(s => s.status === StudentStatus.ACTIVE).length} academicYear={academicYear!} onSetAcademicYear={handleSetAcademicYear} allUsers={allUsers} />} />
-                        <Route path="/students" element={<StudentListPage students={students.filter(s => s.status === StudentStatus.ACTIVE)} onAdd={() => setIsFormModalOpen(true)} onEdit={(s) => { setEditingStudent(s); setIsFormModalOpen(true); }} academicYear={academicYear!} user={user!} />} />
-                        <Route path="/student/:studentId" element={<StudentDetailPage students={students} onEdit={(s) => { setEditingStudent(s); setIsFormModalOpen(true); }} academicYear={academicYear!} user={user!}/>} />
+                    <Routes>
+                        <Route path="/" element={<DashboardPage user={user} onAddStudent={() => { setEditingStudent(null); setIsFormModalOpen(true); }} studentCount={students.filter(s => s.status === 'Active').length} academicYear={academicYear} onSetAcademicYear={handleSetAcademicYear} allUsers={allUsers} />} />
+                        <Route path="/students" element={<StudentListPage students={students.filter(s => s.status === StudentStatus.ACTIVE)} onAdd={() => { setEditingStudent(null); setIsFormModalOpen(true); }} onEdit={(s) => { setEditingStudent(s); setIsFormModalOpen(true); }} academicYear={academicYear!} user={user} />} />
+                        <Route path="/student/:studentId" element={<StudentDetailPage students={students} onEdit={(s) => { setEditingStudent(s); setIsFormModalOpen(true); }} academicYear={academicYear!} user={user} />} />
                         <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={students} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
-                        <Route path="/reports/search" element={<ReportSearchPage students={students} academicYear={academicYear!} />} />
-                        <Route path="/report-card/:studentId" element={<ProgressReportPage students={students} academicYear={academicYear!} />} />
-                        <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} user={user!} />} />
-                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} onOpenTransferModal={setTransferringStudent} onDelete={setDeletingStudent} user={user!} />} />
-                        <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
-                        <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear!} />} />
-                        <Route path="/transfers/records" element={<AllTcRecordsPage tcRecords={tcRecords} />} />
-                        <Route path="/transfers/update" element={<UpdateTcPage tcRecords={tcRecords} onUpdate={handleUpdateTc} />} />
-                        <Route path="/subjects" element={<ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} />} />
-                        <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={() => setIsStaffFormModalOpen(true)} onEdit={(s) => { setEditingStaff(s); setIsStaffFormModalOpen(true); }} onDelete={setDeletingStaff} />} />
-                        <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={(s) => { setEditingStaff(s); setIsStaffFormModalOpen(true); }} gradeDefinitions={gradeDefinitions} />} />
+                        <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} user={user} />} />
+                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} onOpenTransferModal={(s) => setTransferringStudent(s)} onDelete={(s) => setDeletingStudent(s)} user={user} />} />
                         <Route path="/fees" element={<FeeManagementPage students={students} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} />} />
+                        <Route path="/reports/search" element={<ReportSearchPage students={students} academicYear={academicYear!} />} />
                         <Route path="/reports/class-statement/:grade/:examId" element={<ClassMarkStatementPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onUpdateClassMarks={() => {}} />} />
                         <Route path="/promotion" element={<PromotionPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onPromoteStudents={handlePromoteStudents} />} />
-                        <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={() => setIsInventoryFormModalOpen(true)} onEdit={item => { setEditingInventoryItem(item); setIsInventoryFormModalOpen(true); }} onDelete={setDeletingInventoryItem} />} />
+                        <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
+                        <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear!} />} />
+                        <Route path="/transfers/update" element={<UpdateTcPage tcRecords={tcRecords} onUpdate={handleUpdateTc} />} />
+                        <Route path="/transfers/records" element={<AllTcRecordsPage tcRecords={tcRecords} />} />
+                        <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={() => { setEditingStaff(null); setIsStaffFormModalOpen(true); }} onEdit={(s) => { setEditingStaff(s); setIsStaffFormModalOpen(true); }} onDelete={(s) => setDeletingStaff(s)} />} />
+                        <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={(s) => { setEditingStaff(s); setIsStaffFormModalOpen(true); }} gradeDefinitions={gradeDefinitions} />} />
                         <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} />} />
                         <Route path="/staff/certificates/generate" element={<GenerateServiceCertificatePage staff={staff} onSave={handleSaveServiceCertificate} />} />
+                        <Route path="/subjects" element={<ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} />} />
+                        <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={() => { setEditingInventoryItem(null); setIsInventoryFormModalOpen(true); }} onEdit={(i) => { setEditingInventoryItem(i); setIsInventoryFormModalOpen(true); }} onDelete={(i) => setDeletingInventoryItem(i)} />} />
                         <Route path="/hostel" element={<HostelDashboardPage />} />
                         <Route path="/hostel/students" element={<HostelStudentListPage residents={hostelResidents} rooms={hostelRooms} students={students} />} />
                         <Route path="/hostel/rooms" element={<HostelRoomListPage rooms={hostelRooms} residents={hostelResidents} students={students} />} />
                         <Route path="/hostel/fees" element={<HostelFeePage />} />
                         <Route path="/hostel/attendance" element={<HostelAttendancePage />} />
                         <Route path="/hostel/mess" element={<HostelMessPage />} />
-                        <Route path="/hostel/staff" element={<HostelStaffPage staff={hostelStaff} onAdd={() => setIsHostelStaffFormModalOpen(true)} onEdit={s => { setEditingHostelStaff(s); setIsHostelStaffFormModalOpen(true); }} onDelete={setDeletingHostelStaff} />} />
+                        <Route path="/hostel/staff" element={<HostelStaffPage staff={hostelStaff} onAdd={() => { setEditingHostelStaff(null); setIsHostelStaffFormModalOpen(true); }} onEdit={(s) => { setEditingHostelStaff(s); setIsHostelStaffFormModalOpen(true); }} onDelete={(s) => setDeletingHostelStaff(s)} />} />
                         <Route path="/hostel/inventory" element={<HostelInventoryPage inventory={hostelInventory} stockLogs={hostelStockLogs} onUpdateStock={() => {}} />} />
                         <Route path="/hostel/discipline" element={<HostelDisciplinePage />} />
                         <Route path="/hostel/health" element={<HostelHealthPage />} />
                         <Route path="/hostel/communication" element={<HostelCommunicationPage />} />
                         <Route path="/hostel/settings" element={<HostelSettingsPage />} />
-                        <Route path="/users" element={<UserManagementPage allUsers={allUsers} onUpdateUserRole={handleUpdateUserRole} currentUser={user!} />} />
                         <Route path="/change-password" element={<ChangePasswordPage onChangePassword={handleChangePassword} />} />
-                        <Route path="*" element={<Navigate to="/" replace />} />
+                        {user.role === 'admin' && <Route path="/users" element={<UserManagementPage allUsers={allUsers} currentUser={user} onUpdateUserRole={handleUpdateUserRole} />} />}
+                        <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
                 </main>
+
+                {isFormModalOpen && ( <StudentFormModal isOpen={isFormModalOpen} onClose={closeModal} onSubmit={handleFormSubmit} student={editingStudent} /> )}
+                {deletingStudent && ( <ConfirmationModal isOpen={!!deletingStudent} onClose={closeModal} onConfirm={handleDeleteConfirm} title="Delete Student"> Are you sure you want to delete {deletingStudent.name}? This action cannot be undone. </ConfirmationModal> )}
+                {isStaffFormModalOpen && ( <StaffFormModal isOpen={isStaffFormModalOpen} onClose={closeModal} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions}/> )}
+                {deletingStaff && ( <ConfirmationModal isOpen={!!deletingStaff} onClose={closeModal} onConfirm={handleDeleteStaffConfirm} title="Delete Staff Member"> Are you sure you want to delete {deletingStaff.firstName} {deletingStaff.lastName}? This action cannot be undone. </ConfirmationModal> )}
+                {isInventoryFormModalOpen && ( <InventoryFormModal isOpen={isInventoryFormModalOpen} onClose={closeModal} onSubmit={() => {}} item={editingInventoryItem} /> )}
+                {deletingInventoryItem && ( <ConfirmationModal isOpen={!!deletingInventoryItem} onClose={closeModal} onConfirm={() => {}} title="Delete Inventory Item"> Are you sure you want to delete {deletingInventoryItem.name}? </ConfirmationModal> )}
+                {isHostelStaffFormModalOpen && ( <HostelStaffFormModal isOpen={isHostelStaffFormModalOpen} onClose={closeModal} onSubmit={() => {}} staffMember={editingHostelStaff} /> )}
+                {deletingHostelStaff && ( <ConfirmationModal isOpen={!!deletingHostelStaff} onClose={closeModal} onConfirm={() => {}} title="Delete Hostel Staff"> Are you sure you want to delete {deletingHostelStaff.name}? </ConfirmationModal> )}
+                {isImportModalOpen && ( <ImportStudentsModal isOpen={isImportModalOpen} onClose={closeModal} onImport={handleImportStudents} grade={importTargetGrade} allStudents={students} allGrades={GRADES_LIST} isImporting={isImporting} /> )}
+                {transferringStudent && ( <TransferStudentModal isOpen={!!transferringStudent} onClose={closeModal} onConfirm={() => {}} student={transferringStudent} allStudents={students} allGrades={GRADES_LIST} /> )}
             </div>
         );
     };
 
-    const AuthRoutes = () => (
-        <Routes>
-            <Route path="/login" element={<LoginPage onLogin={handleLogin} error={authError} notification={notification} />} />
-            <Route path="/signup" element={<SignUpPage onSignUp={handleSignUp} />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage onForgotPassword={handleForgotPassword} />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-    );
+    if (!isFirebaseConfigured) {
+        return (
+            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 m-4" role="alert">
+                <p className="font-bold">Firebase Configuration Error</p>
+                <p>{authError}</p>
+            </div>
+        );
+    }
+    
+    if (!user) {
+        return (
+            <HashRouter>
+                <Routes>
+                    <Route path="/login" element={<LoginPage onLogin={handleLogin} error={authError} notification={notification} />} />
+                    <Route path="/signup" element={<SignUpPage onSignUp={handleSignUp} />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage onForgotPassword={handleForgotPassword} />} />
+                    <Route path="*" element={<Navigate to="/login" />} />
+                </Routes>
+            </HashRouter>
+        );
+    }
 
     return (
         <HashRouter>
-            {user ? <AppRoutes /> : <AuthRoutes />}
-            {isFormModalOpen && <StudentFormModal isOpen={isFormModalOpen} onClose={closeModal} onSubmit={handleFormSubmit} student={editingStudent} />}
-            {isStaffFormModalOpen && <StaffFormModal isOpen={isStaffFormModalOpen} onClose={closeModal} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions} />}
-            {isInventoryFormModalOpen && <InventoryFormModal isOpen={isInventoryFormModalOpen} onClose={closeModal} onSubmit={() => {}} item={editingInventoryItem} />}
-            {isHostelStaffFormModalOpen && <HostelStaffFormModal isOpen={isHostelStaffFormModalOpen} onClose={closeModal} onSubmit={() => {}} staffMember={editingHostelStaff} />}
-            {isImportModalOpen && <ImportStudentsModal isOpen={isImportModalOpen} onClose={closeModal} onImport={handleImportStudents} grade={importTargetGrade} allStudents={students} allGrades={GRADES_LIST} />}
-            {transferringStudent && <TransferStudentModal isOpen={!!transferringStudent} onClose={closeModal} student={transferringStudent} allStudents={students} allGrades={GRADES_LIST} onConfirm={() => {}} />}
-            <ConfirmationModal isOpen={!!deletingStudent} onClose={closeModal} onConfirm={handleDeleteConfirm} title="Confirm Deletion"><p>Are you sure you want to delete <span className="font-bold">{deletingStudent?.name}</span>?</p></ConfirmationModal>
-            <ConfirmationModal isOpen={!!deletingStaff} onClose={closeModal} onConfirm={handleDeleteStaffConfirm} title="Confirm Staff Deletion"><p>Are you sure you want to delete <span className="font-bold">{deletingStaff?.firstName} {deletingStaff?.lastName}</span>?</p></ConfirmationModal>
+            <AppRoutes />
         </HashRouter>
     );
 };
