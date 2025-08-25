@@ -48,6 +48,7 @@ import InventoryFormModal from './components/InventoryFormModal';
 import ImportStudentsModal from './components/ImportStudentsModal';
 import TransferStudentModal from './components/TransferStudentModal';
 import { calculateStudentResult, getNextGrade, createDefaultFeePayments } from './utils';
+import UserManagementPage from './pages/UserManagementPage';
 
 // Staff Certificate Pages
 import StaffDocumentsPage from './pages/StaffDocumentsPage';
@@ -84,6 +85,7 @@ const App: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState('');
+    const [allUsers, setAllUsers] = useState<User[]>([]);
 
     // --- APPLICATION STATE & LOGIC ---
     const [academicYear, setAcademicYear] = useState<string | null>(null);
@@ -127,6 +129,8 @@ const App: React.FC = () => {
     // --- Confirmation Modal States ---
     const [studentToConfirmEdit, setStudentToConfirmEdit] = useState<Student | null>(null);
     const [pendingImportData, setPendingImportData] = useState<{ students: Omit<Student, 'id'>[], grade: Grade } | null>(null);
+    const [userToApprove, setUserToApprove] = useState<User | null>(null);
+    const [userToDeny, setUserToDeny] = useState<User | null>(null);
 
     // --- Data Fetching from Firestore ---
     const fetchData = async () => {
@@ -163,6 +167,12 @@ const App: React.FC = () => {
                 setGradeDefinitions(GRADE_DEFINITIONS);
             }
 
+            const usersQuery = query(collection(db, "users"));
+            const usersSnapshot = await getDocs(usersQuery);
+            const usersData = usersSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
+            setAllUsers(usersData);
+
+
             const results = await Promise.all(promises);
             results.forEach(result => {
                 const setState = collectionsToFetch[result.name as keyof typeof collectionsToFetch];
@@ -180,39 +190,55 @@ const App: React.FC = () => {
      useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
             if (firebaseUser) {
-                 // Fetch user role from Firestore
                 const userDocRef = doc(db, 'users', firebaseUser.uid);
                 const userDoc = await getDoc(userDocRef);
-                let userRole: 'admin' | 'user' = 'user'; // Default to 'user'
-
+                
                 if (userDoc.exists()) {
-                    userRole = userDoc.data()?.role || 'user';
-                } else if (firebaseUser.email === 'admin@bms.edu') {
-                    // This is a fallback to auto-create the first admin user document
-                    userRole = 'admin';
+                    const userRole = userDoc.data()?.role || 'pending';
+
+                    if (userRole === 'pending') {
+                        await signOut(auth);
+                        setUser(null);
+                        setError("Your account is pending admin approval. Please contact the administrator.");
+                        setLoading(false);
+                        return;
+                    }
+                    
+                    const appUser: User = {
+                        uid: firebaseUser.uid,
+                        displayName: firebaseUser.displayName,
+                        email: firebaseUser.email,
+                        photoURL: firebaseUser.photoURL,
+                        role: userRole
+                    };
+                    setUser(appUser);
+                    await fetchData();
+
+                } else if (firebaseUser.email === 'admin@bms.edu' && !userDoc.exists()) {
                     await setDoc(userDocRef, {
                         email: firebaseUser.email,
                         displayName: firebaseUser.displayName || 'Admin',
                         role: 'admin'
                     });
+                     const appUser: User = {
+                        uid: firebaseUser.uid,
+                        displayName: firebaseUser.displayName,
+                        email: firebaseUser.email,
+                        photoURL: firebaseUser.photoURL,
+                        role: 'admin'
+                    };
+                    setUser(appUser);
+                    await fetchData();
+                } else {
+                    await signOut(auth);
+                    setUser(null);
                 }
-                
-                const appUser: User = {
-                    uid: firebaseUser.uid,
-                    displayName: firebaseUser.displayName,
-                    email: firebaseUser.email,
-                    photoURL: firebaseUser.photoURL,
-                    role: userRole
-                };
-                setUser(appUser);
-                await fetchData();
             } else {
                 setUser(null);
-                // Clear all data on logout
                 setStudents([]);
                 setStaff([]);
                 setTcRecords([]);
-                // ... reset all other states
+                setAllUsers([]);
             }
             setLoading(false);
         });
@@ -227,16 +253,15 @@ const App: React.FC = () => {
 
     const handleLogin = useCallback(async (email: string, password: string, rememberMe: boolean) => {
         try {
+            setError('');
             await signInWithEmailAndPassword(auth, email, password);
             if (rememberMe) {
                 localStorage.setItem('rememberedUser', JSON.stringify({ email, password }));
             } else {
                 localStorage.removeItem('rememberedUser');
             }
-            setError('');
         } catch (err: any) {
             setError(err.message);
-            setTimeout(() => setError(''), 3000);
         }
     }, []);
 
@@ -245,18 +270,44 @@ const App: React.FC = () => {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             if (userCredential.user) {
                 await updateProfile(userCredential.user, { displayName: name });
-                // Create user document in Firestore with default 'user' role
                 await setDoc(doc(db, 'users', userCredential.user.uid), {
                     displayName: name,
                     email: email,
-                    role: 'user'
+                    role: 'pending'
                 });
             }
-            return { success: true };
+            return { success: true, message: "Registration successful! Your account is now pending admin approval." };
         } catch (err: any) {
             return { success: false, message: err.message };
         }
     }, []);
+
+    const handleApproveUser = useCallback(async (userToApprove: User) => {
+        await updateDoc(doc(db, 'users', userToApprove.uid), { role: 'user' });
+        setAllUsers(prev => prev.map(u => u.uid === userToApprove.uid ? { ...u, role: 'user' } : u));
+    }, []);
+
+    const handleDenyUser = useCallback(async (userToDeny: User) => {
+        await deleteDoc(doc(db, 'users', userToDeny.uid));
+        setAllUsers(prev => prev.filter(u => u.uid !== userToDeny.uid));
+    }, []);
+
+    const handleConfirmApprove = useCallback(() => {
+        if(userToApprove) {
+            handleApproveUser(userToApprove);
+            setUserToApprove(null);
+        }
+    }, [userToApprove, handleApproveUser]);
+
+     const handleConfirmDeny = useCallback(() => {
+        if(userToDeny) {
+            handleDenyUser(userToDeny);
+            setUserToDeny(null);
+        }
+    }, [userToDeny, handleDenyUser]);
+
+    const openApproveConfirm = useCallback((user: User) => setUserToApprove(user), []);
+    const openDenyConfirm = useCallback((user: User) => setUserToDeny(user), []);
 
 
     const handleLogout = useCallback(async () => {
@@ -352,6 +403,8 @@ const App: React.FC = () => {
         setIsHostelStaffFormModalOpen(false);
         setEditingHostelStaff(null);
         setDeletingHostelStaff(null);
+        setUserToApprove(null);
+        setUserToDeny(null);
     }, []);
 
     const handleFormSubmit = useCallback(async (studentData: Omit<Student, 'id'>) => {
@@ -770,7 +823,7 @@ const App: React.FC = () => {
                     )}
                     <Routes>
                         {/* Routes for all logged-in users */}
-                        <Route path="/" element={<DashboardPage user={user!} onAddStudent={openAddModal} studentCount={students.filter(s => s.status === StudentStatus.ACTIVE).length} academicYear={academicYear!} onSetAcademicYear={handleSetAcademicYear} />} />
+                        <Route path="/" element={<DashboardPage user={user!} onAddStudent={openAddModal} studentCount={students.filter(s => s.status === StudentStatus.ACTIVE).length} academicYear={academicYear!} onSetAcademicYear={handleSetAcademicYear} allUsers={allUsers} />} />
                         <Route path="/students" element={<StudentListPage students={students.filter(s => s.status === StudentStatus.ACTIVE)} onAdd={openAddModal} onEdit={openEditModal} academicYear={academicYear!} user={user!} />} />
                         <Route path="/student/:studentId" element={<StudentDetailPage students={students} onEdit={openEditModal} academicYear={academicYear!} user={user!} />} />
                         <Route path="/reports/search" element={<ReportSearchPage students={students} academicYear={academicYear!} />} />
@@ -783,6 +836,7 @@ const App: React.FC = () => {
                         
                         {/* Admin Only Routes */}
                         <Route element={<AdminRoute user={user} />}>
+                            <Route path="/users" element={<UserManagementPage allUsers={allUsers} onApprove={openApproveConfirm} onDeny={openDenyConfirm} />} />
                             <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={openAddStaffModal} onEdit={openEditStaffModal} onDelete={openDeleteStaffConfirm} />} />
                             <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={openEditStaffModal} gradeDefinitions={gradeDefinitions} />} />
                             <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} />} />
@@ -949,6 +1003,26 @@ const App: React.FC = () => {
                     title="Remove Hostel Staff"
                 >
                     <p>Are you sure you want to remove <strong>{deletingHostelStaff.name}</strong>? This action cannot be undone.</p>
+                </ConfirmationModal>
+            )}
+            {userToApprove && (
+                <ConfirmationModal
+                    isOpen={!!userToApprove}
+                    onClose={closeModal}
+                    onConfirm={handleConfirmApprove}
+                    title="Approve User Registration"
+                >
+                    <p>Are you sure you want to approve the user <strong>{userToApprove.displayName}</strong> ({userToApprove.email})? They will gain access to the application.</p>
+                </ConfirmationModal>
+            )}
+            {userToDeny && (
+                <ConfirmationModal
+                    isOpen={!!userToDeny}
+                    onClose={closeModal}
+                    onConfirm={handleConfirmDeny}
+                    title="Deny User Registration"
+                >
+                    <p>Are you sure you want to deny the user <strong>{userToDeny.displayName}</strong> ({userToDeny.email})? Their registration record will be deleted.</p>
                 </ConfirmationModal>
             )}
         </Router>

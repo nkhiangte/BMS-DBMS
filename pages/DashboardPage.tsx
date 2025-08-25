@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { UsersIcon, PlusIcon, DocumentReportIcon, BookOpenIcon, TransferIcon, BriefcaseIcon, CurrencyDollarIcon, AcademicCapIcon, ArchiveBoxIcon, BuildingOfficeIcon } from '../components/Icons';
+import { UsersIcon, PlusIcon, DocumentReportIcon, BookOpenIcon, TransferIcon, BriefcaseIcon, CurrencyDollarIcon, AcademicCapIcon, ArchiveBoxIcon, BuildingOfficeIcon, UserGroupIcon } from '../components/Icons';
 import AcademicYearForm from '../components/AcademicYearForm';
 import { User } from '../types';
 
@@ -10,6 +10,7 @@ interface DashboardPageProps {
   studentCount: number;
   academicYear: string | null;
   onSetAcademicYear: (year: string) => void;
+  allUsers: User[];
 }
 
 const DashboardCard: React.FC<{
@@ -18,7 +19,7 @@ const DashboardCard: React.FC<{
   icon: React.ReactNode;
   action: React.ReactElement;
   count?: number;
-  color?: 'sky' | 'emerald' | 'indigo' | 'amber' | 'rose' | 'violet';
+  color?: 'sky' | 'emerald' | 'indigo' | 'amber' | 'rose' | 'violet' | 'teal';
 }> = ({ title, description, icon, action, count, color = 'sky' }) => {
     const colors = {
         sky: { gradient: 'from-sky-400 to-sky-600', button: 'bg-sky-600 hover:bg-sky-700 focus:ring-sky-500', count: 'text-sky-600' },
@@ -27,6 +28,7 @@ const DashboardCard: React.FC<{
         amber: { gradient: 'from-amber-400 to-amber-600', button: 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500', count: 'text-amber-600' },
         rose: { gradient: 'from-rose-400 to-rose-600', button: 'bg-rose-600 hover:bg-rose-700 focus:ring-rose-500', count: 'text-rose-600' },
         violet: { gradient: 'from-violet-400 to-violet-600', button: 'bg-violet-600 hover:bg-violet-700 focus:ring-violet-500', count: 'text-violet-600' },
+        teal: { gradient: 'from-teal-400 to-teal-600', button: 'bg-teal-600 hover:bg-teal-700 focus:ring-teal-500', count: 'text-teal-600' },
     };
     const selectedColor = colors[color] || colors.sky;
 
@@ -54,12 +56,13 @@ const DashboardCard: React.FC<{
 };
 
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, studentCount, academicYear, onSetAcademicYear }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, studentCount, academicYear, onSetAcademicYear, allUsers }) => {
   if (!academicYear) {
     return <AcademicYearForm onSetAcademicYear={onSetAcademicYear} />;
   }
 
   const isAdmin = user.role === 'admin';
+  const pendingUserCount = allUsers.filter(u => u.role === 'pending').length;
   
   return (
     <div>
@@ -108,6 +111,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
             
             {isAdmin && (
                 <>
+                    <DashboardCard
+                        title="User Management"
+                        description="Approve new user registrations."
+                        icon={<UserGroupIcon className="w-7 h-7" />}
+                        count={pendingUserCount}
+                        color="teal"
+                        action={<Link to="/users">Manage Users</Link>}
+                    />
                     <DashboardCard
                         title="Fee Management"
                         description="Track payments and manage student fees."
