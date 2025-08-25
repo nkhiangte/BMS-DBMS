@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Role } from '../types';
-import { ChevronDownIcon, LogoutIcon, KeyIcon, UserGroupIcon } from './Icons';
+import { User } from '../types';
+import { ChevronDownIcon, LogoutIcon, KeyIcon } from './Icons';
 
 interface HeaderProps {
     user: User;
@@ -33,8 +32,8 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, className }) => {
                 aria-haspopup="true"
                 aria-expanded={isMenuOpen}
             >
-                <img className="w-8 h-8 rounded-full" src={`https://i.pravatar.cc/150?u=${user.id}`} alt="User avatar" />
-                <span className="font-semibold text-slate-800 hidden sm:inline">Welcome, {user.name}</span>
+                <img className="w-8 h-8 rounded-full" src={user.photoURL || `https://i.pravatar.cc/150?u=${user.uid}`} alt="User avatar" />
+                <span className="font-semibold text-slate-800 hidden sm:inline">Welcome, {user.displayName || user.email}</span>
                 <ChevronDownIcon className={`w-5 h-5 text-slate-600 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
             </button>
             {isMenuOpen && (
@@ -43,27 +42,15 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, className }) => {
                     onMouseLeave={() => setIsMenuOpen(false)}
                 >
                     <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
-                        {user.role === Role.ADMIN && (
-                            <Link
-                                to="/users"
-                                onClick={() => setIsMenuOpen(false)}
-                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-                                role="menuitem"
-                            >
-                                <UserGroupIcon className="w-5 h-5"/>
-                                Manage Users
-                            </Link>
-                        )}
                         <Link
                             to="/change-password"
-                            onClick={() => setIsMenuOpen(false)}
-                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                            className="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-sky-50 hover:text-sky-600 transition-colors"
                             role="menuitem"
+                            onClick={() => setIsMenuOpen(false)}
                         >
                             <KeyIcon className="w-5 h-5"/>
                             Change Password
                         </Link>
-                        <div className="border-t border-slate-100 my-1"></div>
                         <button
                             onClick={() => { onLogout(); setIsMenuOpen(false); }}
                             className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"

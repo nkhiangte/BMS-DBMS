@@ -1,5 +1,5 @@
 import React, { useState, useEffect, FormEvent, useRef } from 'react';
-import { Grade, Student, Gender, StudentStatus, Category, BloodGroup, User, Role } from '../types';
+import { Grade, Student, Gender, StudentStatus, Category, BloodGroup } from '../types';
 import { GRADES_LIST, GENDER_LIST, CATEGORY_LIST, BLOOD_GROUP_LIST } from '../constants';
 import { ChevronDownIcon, ChevronUpIcon, UserIcon } from './Icons';
 
@@ -8,8 +8,6 @@ interface StudentFormModalProps {
   onClose: () => void;
   onSubmit: (student: Omit<Student, 'id'>) => void;
   student: Student | null;
-  user: User | null;
-  teacherAssignedGrade: Grade | null;
 }
 
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
@@ -75,7 +73,7 @@ const AccordionSection: React.FC<{ title: string; children: React.ReactNode; def
 };
 
 
-const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, onSubmit, student, user, teacherAssignedGrade }) => {
+const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, onSubmit, student }) => {
   const getInitialFormData = (): Omit<Student, 'id'> => ({
     rollNo: 0,
     name: '',
@@ -117,14 +115,10 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
             rollNo: student.rollNo || 0,
         });
       } else {
-        const initialData = getInitialFormData();
-        if (user?.role === Role.TEACHER && teacherAssignedGrade) {
-            initialData.grade = teacherAssignedGrade;
-        }
-        setFormData(initialData);
+        setFormData(getInitialFormData());
       }
     }
-  }, [student, isOpen, user, teacherAssignedGrade]);
+  }, [student, isOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -172,7 +166,6 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
   };
 
   if (!isOpen) return null;
-  const isTeacherAdding = !student && user?.role === Role.TEACHER;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4" onClick={onClose}>
@@ -193,7 +186,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
               </div>
                <div>
                 <label htmlFor="grade" className="block text-sm font-bold text-slate-800">Grade</label>
-                <select name="grade" id="grade" value={formData.grade} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm disabled:bg-slate-100" required disabled={isTeacherAdding}>
+                <select name="grade" id="grade" value={formData.grade} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm" required>
                   {GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
                 </select>
               </div>

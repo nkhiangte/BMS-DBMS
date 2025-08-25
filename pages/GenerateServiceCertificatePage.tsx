@@ -1,5 +1,4 @@
 
-
 import React, { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Staff, ServiceCertificateRecord, EmploymentStatus } from '../types';
@@ -111,8 +110,8 @@ const GenerateServiceCertificatePage: React.FC<GenerateServiceCertificatePagePro
     const certRecord: Omit<ServiceCertificateRecord, 'id'> = {
         certData: formData,
         staffDetails: {
-            staffIdFormatted: foundStaff.employeeId,
-            staffId: foundStaff.id,
+            staffId: foundStaff.employeeId,
+            staffNumericId: foundStaff.id,
             name: `${foundStaff.firstName} ${foundStaff.lastName}`,
             gender: foundStaff.gender,
             designation: foundStaff.designation,

@@ -1,6 +1,5 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, Staff, EmploymentStatus } from '../types';
 import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon } from '../components/Icons';
 import { formatStudentId, calculateDues } from '../utils';
@@ -44,7 +43,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
 
   useEffect(() => {
       if (gradeDef) {
-          setSelectedTeacherId(String(gradeDef.classTeacherId || ''));
+          setSelectedTeacherId(gradeDef.classTeacherId || '');
       }
   }, [gradeDef]);
 
@@ -58,7 +57,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
   };
   
   const handleTeacherSave = () => {
-    const newTeacherId = selectedTeacherId || undefined;
+    const newTeacherId = selectedTeacherId ? selectedTeacherId : undefined;
     const oldTeacherId = gradeDef.classTeacherId;
 
     if (newTeacherId === oldTeacherId) {
@@ -132,7 +131,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                             ))}
                         </select>
                         <button onClick={handleTeacherSave} title="Save" className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-full transition-colors"><CheckIcon className="w-5 h-5" /></button>
-                        <button onClick={() => { setIsEditingTeacher(false); setSelectedTeacherId(String(gradeDef.classTeacherId || '')); }} title="Cancel" className="p-1.5 text-red-600 hover:bg-red-100 rounded-full transition-colors"><XIcon className="w-5 h-5" /></button>
+                        <button onClick={() => { setIsEditingTeacher(false); setSelectedTeacherId(gradeDef.classTeacherId || ''); }} title="Cancel" className="p-1.5 text-red-600 hover:bg-red-100 rounded-full transition-colors"><XIcon className="w-5 h-5" /></button>
                     </div>
                 ) : (
                     <div className="flex items-center gap-2 group">

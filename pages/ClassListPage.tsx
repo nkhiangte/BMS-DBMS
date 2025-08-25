@@ -1,24 +1,17 @@
-
 import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { GRADES_LIST } from '../constants';
 import { BookOpenIcon, HomeIcon, BackIcon, CogIcon, ArrowUpOnSquareIcon } from '../components/Icons';
-import { Grade, GradeDefinition, Staff, User, Role } from '../types';
+import { Grade, GradeDefinition, Staff } from '../types';
 
 interface ClassListPageProps {
     gradeDefinitions: Record<Grade, GradeDefinition>;
     staff: Staff[];
     onOpenImportModal: (grade: Grade | null) => void;
-    user: User;
-    teacherAssignedGrade: Grade | null;
 }
 
-const ClassListPage: React.FC<ClassListPageProps> = ({ gradeDefinitions, staff, onOpenImportModal, user, teacherAssignedGrade }) => {
+const ClassListPage: React.FC<ClassListPageProps> = ({ gradeDefinitions, staff, onOpenImportModal }) => {
     const navigate = useNavigate();
-
-    const gradesToDisplay = user.role === Role.TEACHER && teacherAssignedGrade
-        ? [teacherAssignedGrade]
-        : GRADES_LIST;
 
     return (
         <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
@@ -63,7 +56,7 @@ const ClassListPage: React.FC<ClassListPageProps> = ({ gradeDefinitions, staff, 
             </div>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {gradesToDisplay.map(grade => {
+                {GRADES_LIST.map(grade => {
                     const gradeDef = gradeDefinitions[grade];
                     const teacher = staff.find(t => t.id === gradeDef?.classTeacherId);
                     const teacherName = teacher ? `${teacher.firstName} ${teacher.lastName}` : 'N/A';

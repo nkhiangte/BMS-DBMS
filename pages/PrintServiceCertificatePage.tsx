@@ -100,7 +100,7 @@ const PrintServiceCertificatePage: React.FC<PrintServiceCertificatePageProps> = 
 
             <div className="flex justify-between text-sm mb-8">
                 <p><strong>Ref. No:</strong> {certData.refNo}</p>
-                <p><strong>Employee ID:</strong> {staffDetails.staffIdFormatted}</p>
+                <p><strong>Employee ID:</strong> {staffDetails.staffId}</p>
             </div>
 
             <main className="space-y-3 text-md leading-relaxed">

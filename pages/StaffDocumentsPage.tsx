@@ -68,9 +68,9 @@ const StaffDocumentsPage: React.FC<StaffDocumentsPageProps> = ({ serviceCertific
               {records.map(record => (
                 <tr key={record.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-700">{record.certData.refNo}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-800">{record.staffDetails.staffIdFormatted}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-800">{record.staffDetails.staffId}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <Link to={`/staff/${record.staffDetails.staffId}`} className="hover:underline text-sky-700 font-semibold">
+                    <Link to={`/staff/${record.staffDetails.staffNumericId}`} className="hover:underline text-sky-700 font-semibold">
                         {record.staffDetails.name}
                     </Link>
                   </td>

@@ -143,8 +143,8 @@ const TcRegistrationPage: React.FC<TcRegistrationPageProps> = ({ students, onSav
     const tcRecord: Omit<TcRecord, 'id'> = {
         tcData: formData,
         studentDetails: {
-            studentIdFormatted: formatStudentId(student, academicYear),
-            studentId: student.id,
+            studentId: formatStudentId(student, academicYear),
+            studentNumericId: student.id,
             rollNo: student.rollNo,
             name: student.name,
             gender: student.gender,

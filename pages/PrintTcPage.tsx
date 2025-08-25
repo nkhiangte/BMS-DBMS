@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { TcRecord } from '../types';
@@ -99,7 +98,7 @@ const PrintTcPage: React.FC<PrintTcPageProps> = ({ tcRecords }) => {
 
             <div className="flex justify-between text-sm mb-8">
                 <p><strong>Ref. No:</strong> {tcData.refNo}</p>
-                <p><strong>Student ID:</strong> {studentDetails.studentIdFormatted}</p>
+                <p><strong>Student ID:</strong> {studentDetails.studentId}</p>
             </div>
 
             <main className="space-y-3 text-md leading-relaxed">

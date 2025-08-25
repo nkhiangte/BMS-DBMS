@@ -1,5 +1,12 @@
 
 
+export interface User {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+}
+
 export enum Grade {
   NURSERY = "Nursery",
   KINDERGARTEN = "Kindergarten",
@@ -21,11 +28,6 @@ export enum Gender {
     OTHER = "Other",
 }
 
-export enum Role {
-    ADMIN = "Admin",
-    TEACHER = "Teacher",
-}
-
 export enum StudentStatus {
     ACTIVE = "Active",
     TRANSFERRED = "Transferred",
@@ -43,14 +45,6 @@ export enum Category {
     SC = "SC",
     ST = "ST",
     OBC = "OBC",
-}
-
-export interface User {
-  id: string;
-  username: string; // This will be used as the email for Firebase Auth
-  name: string;
-  role: Role;
-  // password_plaintext is no longer stored
 }
 
 // --- NEW Enums for Teacher ---
@@ -269,8 +263,8 @@ export interface TcData {
 }
 
 export interface TcStudentDetails {
-  studentIdFormatted: string; // Formatted ID: BMS...
-  studentId: string; // Original student ID from Firestore
+  studentId: string; // Formatted ID: BMS...
+  studentNumericId: string; // Original student numeric ID
   rollNo: number;
   name: string;
   gender: Gender;
@@ -299,8 +293,8 @@ export interface ServiceCertificateData {
 }
 
 export interface ServiceCertificateStaffDetails {
-  staffIdFormatted: string; // Formatted Employee ID: BMS-T-001
-  staffId: string; // Original staff ID from Firestore
+  staffId: string; // Formatted Employee ID: BMS-T-001
+  staffNumericId: string; // Original staff numeric ID
   name: string;
   gender: Gender;
   designation: Designation;
@@ -309,7 +303,7 @@ export interface ServiceCertificateStaffDetails {
 }
 
 export interface ServiceCertificateRecord {
-  id: string; 
+  id: string;
   certData: ServiceCertificateData;
   staffDetails: ServiceCertificateStaffDetails;
 }
@@ -429,28 +423,11 @@ export interface HostelInventoryItem {
 }
 
 export interface StockLog {
-    id: string;
+    id: string; 
     itemId: string;
     itemName: string;
     type: StockLogType;
     quantity: number;
     date: string; // ISO string
-    notes?: string;
-}
-
-// --- NEW: Attendance Management ---
-export enum AttendanceStatus {
-    PRESENT = "Present",
-    ABSENT = "Absent",
-    LATE = "Late",
-    EXCUSED = "Excused",
-}
-
-export interface AttendanceRecord {
-    id: string; // Firestore doc ID
-    studentId: string;
-    grade: Grade;
-    date: string; // YYYY-MM-DD
-    status: AttendanceStatus;
     notes?: string;
 }

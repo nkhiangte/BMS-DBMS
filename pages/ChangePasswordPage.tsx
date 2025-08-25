@@ -1,46 +1,33 @@
-
-import React, { useState, FormEvent } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User } from '../types';
-import { BackIcon, HomeIcon, KeyIcon } from '../components/Icons';
+import { BackIcon, CheckIcon, HomeIcon } from '../components/Icons';
 
 interface ChangePasswordPageProps {
-  user: User;
-  onChangePassword: (userId: string, oldPassword: string, newPassword: string) => Promise<{ success: boolean; message?: string }>;
+  onChangePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; message?: string }>;
 }
 
-const ChangePasswordPage: React.FC<ChangePasswordPageProps> = ({ user, onChangePassword }) => {
+const ChangePasswordPage: React.FC<ChangePasswordPageProps> = ({ onChangePassword }) => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
-    
+
     if (newPassword !== confirmPassword) {
       setError('New passwords do not match.');
       return;
     }
-    if (!newPassword || newPassword.length < 6) {
-      setError('Password must be at least 6 characters long.');
-      return;
-    }
 
-    setIsSubmitting(true);
-    const result = await onChangePassword(user.id, currentPassword, newPassword);
-    setIsSubmitting(false);
+    const result = await onChangePassword(currentPassword, newPassword);
 
     if (result.success) {
-      setSuccess('Password changed successfully! You will be logged out shortly.');
-      // The logout and redirect is handled in the App component's callback
+      navigate('/login', { state: { message: result.message } });
     } else {
-      setError(result.message || 'Failed to change password.');
+      setError(result.message || 'An unknown error occurred.');
     }
   };
 
@@ -55,76 +42,85 @@ const ChangePasswordPage: React.FC<ChangePasswordPageProps> = ({ user, onChangeP
           Back
         </button>
         <Link
-          to="/"
-          className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition-colors"
-          title="Go to Home/Dashboard"
+            to="/"
+            className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition-colors"
+            title="Go to Home/Dashboard"
         >
-          <HomeIcon className="w-5 h-5" />
-          <span>Home</span>
+            <HomeIcon className="w-5 h-5" />
+            <span>Home</span>
         </Link>
       </div>
-      
-      <div className="flex items-center gap-4 mb-6">
-        <KeyIcon className="w-10 h-10 text-sky-600" />
-        <div>
-            <h1 className="text-3xl font-bold text-slate-800">Change Password</h1>
-            <p className="text-slate-600 mt-1">Update your password for your account: <span className="font-semibold">{user.username}</span></p>
-        </div>
-      </div>
+      <h1 className="text-3xl font-bold text-slate-800 mb-2">Change Password</h1>
+      <p className="text-slate-700 mb-8">
+        For your security, you will be logged out after successfully changing your password.
+      </p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {error && <p className="bg-red-100 text-red-700 p-3 rounded-lg">{error}</p>}
-        {success && <p className="bg-emerald-100 text-emerald-700 p-3 rounded-lg">{success}</p>}
-        
+      {error && (
+        <p className="bg-red-100 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded-r-lg relative mb-6 shadow-sm" role="alert">
+          {error}
+        </p>
+      )}
+      
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-sm font-bold text-slate-800" htmlFor="current-password">
+          <label className="block text-slate-700 text-sm font-bold mb-2" htmlFor="current-password">
             Current Password
           </label>
           <input
-            className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500"
+            className="shadow-sm appearance-none border border-slate-300 rounded-lg w-full py-3 px-4 text-slate-700 leading-tight focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
             id="current-password"
             type="password"
+            placeholder="Enter your current password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             required
-            autoComplete="current-password"
           />
         </div>
+
         <div>
-          <label className="block text-sm font-bold text-slate-800" htmlFor="new-password">
+          <label className="block text-slate-700 text-sm font-bold mb-2" htmlFor="new-password">
             New Password
           </label>
           <input
-            className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500"
+            className="shadow-sm appearance-none border border-slate-300 rounded-lg w-full py-3 px-4 text-slate-700 leading-tight focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
             id="new-password"
             type="password"
+            placeholder="Enter your new password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             required
-            autoComplete="new-password"
           />
         </div>
+
         <div>
-          <label className="block text-sm font-bold text-slate-800" htmlFor="confirm-password">
+          <label className="block text-slate-700 text-sm font-bold mb-2" htmlFor="confirm-password">
             Confirm New Password
           </label>
           <input
-            className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500"
+            className="shadow-sm appearance-none border border-slate-300 rounded-lg w-full py-3 px-4 text-slate-700 leading-tight focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
             id="confirm-password"
             type="password"
+            placeholder="Confirm your new password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
-            autoComplete="new-password"
           />
         </div>
-        <div className="pt-2 flex justify-end">
+
+        <div className="flex justify-end gap-3 pt-4">
           <button
-            className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-6 rounded-lg focus:outline-none focus:shadow-outline transition-transform hover:scale-105 disabled:bg-slate-400"
-            type="submit"
-            disabled={isSubmitting}
+            type="button"
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition"
           >
-            {isSubmitting ? 'Changing...' : 'Change Password'}
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition flex items-center gap-2 hover:-translate-y-0.5"
+          >
+            <CheckIcon className="w-5 h-5" />
+            Update Password
           </button>
         </div>
       </form>

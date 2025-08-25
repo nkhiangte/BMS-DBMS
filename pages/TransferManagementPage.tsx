@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Student, StudentStatus, TcRecord } from '../types';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { HomeIcon, BackIcon, DocumentPlusIcon, SearchIcon, PrinterIcon, DocumentReportIcon } from '../components/Icons';
 import PrintTcSearchModal from '../components/PrintTcSearchModal';
 

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Grade, GradeDefinition } from '../types';
 import { GRADES_LIST } from '../constants';
 import { BackIcon, HomeIcon, EditIcon, BookOpenIcon } from '../components/Icons';
