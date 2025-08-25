@@ -36,6 +36,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error, notification }) =
     onLogin(email, password, rememberMe);
   };
 
+  const isConfigError = error.includes('auth/invalid-api-key') || error.includes('auth/api-key-not-valid');
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-sky-100 to-indigo-200 p-4">
       <div className="w-full max-w-md">
@@ -51,9 +53,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error, notification }) =
               </p>
             )}
              {error && (
-              <p className="bg-red-100 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded-r-lg relative mb-4 shadow-sm" role="alert">
-                {error}
-              </p>
+               <div className="bg-red-100 border-l-4 border-red-500 text-red-800 p-4 rounded-r-lg mb-4 shadow-sm" role="alert">
+                <p className="font-bold">Authentication Error</p>
+                <p className="text-sm">{error}</p>
+                {isConfigError && (
+                    <div className="mt-3 pt-3 border-t border-red-200 text-sm">
+                        <p className="font-bold">Action Required: Firebase Configuration</p>
+                        <p>This error indicates that the Firebase credentials are not set up correctly. Please open the <code className="bg-red-200 px-1 rounded font-mono">firebaseConfig.ts</code> file and replace the placeholder values with the actual configuration from your Firebase project.</p>
+                    </div>
+                )}
+              </div>
             )}
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
