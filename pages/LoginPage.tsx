@@ -36,7 +36,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error, notification }) =
     onLogin(email, password, rememberMe);
   };
 
-  const isConfigError = error.includes('auth/invalid-api-key') || error.includes('auth/api-key-not-valid');
+  const isConfigError = error.includes('Firebase is not configured');
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-sky-100 to-indigo-200 p-4">
@@ -54,67 +54,69 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error, notification }) =
             )}
              {error && (
                <div className="bg-red-100 border-l-4 border-red-500 text-red-800 p-4 rounded-r-lg mb-4 shadow-sm" role="alert">
-                <p className="font-bold">Authentication Error</p>
+                <p className="font-bold">{isConfigError ? 'Action Required: Configuration Needed' : 'Authentication Error'}</p>
                 <p className="text-sm">{error}</p>
                 {isConfigError && (
                     <div className="mt-3 pt-3 border-t border-red-200 text-sm">
-                        <p className="font-bold">Action Required: Firebase Configuration</p>
-                        <p>This error indicates that the Firebase credentials are not set up correctly. Please open the <code className="bg-red-200 px-1 rounded font-mono">firebaseConfig.ts</code> file and replace the placeholder values with the actual configuration from your Firebase project.</p>
+                        <p>Please open the <code className="bg-red-200 px-1 rounded font-mono">firebaseConfig.ts</code> file and replace the placeholder values with your project's configuration from the Firebase Console.</p>
                     </div>
                 )}
               </div>
             )}
           <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label className="block text-slate-700 text-sm font-bold mb-2" htmlFor="email">
-                Email
-              </label>
-              <input
-                className="shadow-sm appearance-none border border-slate-300 rounded-lg w-full py-3 px-4 text-slate-800 leading-tight focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-                id="email"
-                type="email"
-                placeholder="admin@bms.edu"
-                value={email}
-                autoComplete="email"
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mb-4">
-                <label className="block text-slate-700 text-sm font-bold mb-2" htmlFor="password">
-                    Password
+            <fieldset disabled={isConfigError} className="space-y-4">
+              <div>
+                <label className="block text-slate-700 text-sm font-bold mb-2" htmlFor="email">
+                  Email
                 </label>
-              <input
-                className="shadow-sm appearance-none border border-slate-300 rounded-lg w-full py-3 px-4 text-slate-800 leading-tight focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-                id="password"
-                type="password"
-                placeholder="Password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+                <input
+                  className="shadow-sm appearance-none border border-slate-300 rounded-lg w-full py-3 px-4 text-slate-800 leading-tight focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  id="email"
+                  type="email"
+                  placeholder="admin@bms.edu"
+                  value={email}
+                  autoComplete="email"
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                  <label className="block text-slate-700 text-sm font-bold mb-2" htmlFor="password">
+                      Password
+                  </label>
+                <input
+                  className="shadow-sm appearance-none border border-slate-300 rounded-lg w-full py-3 px-4 text-slate-800 leading-tight focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  id="password"
+                  type="password"
+                  placeholder="Password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
 
-            <div className="mb-6 flex items-center justify-between">
-                <label className="flex items-center text-sm cursor-pointer group">
-                    <input
-                        type="checkbox"
-                        className="h-4 w-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500"
-                        checked={rememberMe}
-                        onChange={e => setRememberMe(e.target.checked)}
-                    />
-                    <span className="ml-2 text-slate-700 group-hover:text-slate-900 font-semibold">Remember Me</span>
-                </label>
-                <Link to="/forgot-password" className="inline-block align-baseline font-bold text-sm text-sky-600 hover:text-sky-800 transition-colors">
-                    Forgot Password?
-                </Link>
-            </div>
+              <div className="flex items-center justify-between">
+                  <label className="flex items-center text-sm cursor-pointer group">
+                      <input
+                          type="checkbox"
+                          className="h-4 w-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500 disabled:cursor-not-allowed"
+                          checked={rememberMe}
+                          onChange={e => setRememberMe(e.target.checked)}
+                      />
+                      <span className="ml-2 text-slate-700 group-hover:text-slate-900 font-semibold">Remember Me</span>
+                  </label>
+                  <Link to="/forgot-password" className="inline-block align-baseline font-bold text-sm text-sky-600 hover:text-sky-800 transition-colors">
+                      Forgot Password?
+                  </Link>
+              </div>
+            </fieldset>
            
-            <div className="flex items-center justify-between">
+            <div className="mt-6 flex items-center justify-between">
               <button
-                className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-all duration-300 transform hover:scale-105 shadow-md"
+                className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-all duration-300 transform hover:scale-105 shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed disabled:transform-none"
                 type="submit"
+                disabled={isConfigError}
               >
                 Sign In
               </button>
