@@ -2,15 +2,16 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GRADES_LIST } from '../constants';
 import { BookOpenIcon, HomeIcon, BackIcon, CogIcon, ArrowUpOnSquareIcon } from '../components/Icons';
-import { Grade, GradeDefinition, Staff } from '../types';
+import { Grade, GradeDefinition, Staff, User } from '../types';
 
 interface ClassListPageProps {
     gradeDefinitions: Record<Grade, GradeDefinition>;
     staff: Staff[];
     onOpenImportModal: (grade: Grade | null) => void;
+    user: User;
 }
 
-const ClassListPage: React.FC<ClassListPageProps> = ({ gradeDefinitions, staff, onOpenImportModal }) => {
+const ClassListPage: React.FC<ClassListPageProps> = ({ gradeDefinitions, staff, onOpenImportModal, user }) => {
     const navigate = useNavigate();
 
     return (
@@ -38,20 +39,24 @@ const ClassListPage: React.FC<ClassListPageProps> = ({ gradeDefinitions, staff, 
                     <p className="text-slate-600 mt-1">Select a class to view all students enrolled in it.</p>
                 </div>
                  <div className="flex items-center gap-3">
-                     <button
-                        onClick={() => onOpenImportModal(null)}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition hover:-translate-y-0.5"
-                    >
-                        <ArrowUpOnSquareIcon className="w-5 h-5" />
-                        Import Students
-                    </button>
-                    <Link
-                        to="/subjects"
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition hover:-translate-y-0.5"
-                    >
-                        <CogIcon className="w-5 h-5" />
-                        Manage Subjects
-                    </Link>
+                     {user.role === 'admin' && (
+                        <>
+                            <button
+                                onClick={() => onOpenImportModal(null)}
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition hover:-translate-y-0.5"
+                            >
+                                <ArrowUpOnSquareIcon className="w-5 h-5" />
+                                Import Students
+                            </button>
+                            <Link
+                                to="/subjects"
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition hover:-translate-y-0.5"
+                            >
+                                <CogIcon className="w-5 h-5" />
+                                Manage Subjects
+                            </Link>
+                        </>
+                     )}
                 </div>
             </div>
             

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Student } from '../types';
+import { Student, User } from '../types';
 import { EditIcon } from './Icons';
 import { formatStudentId } from '../utils';
 
@@ -8,9 +8,10 @@ interface StudentTableProps {
   students: Student[];
   onEdit: (student: Student) => void;
   academicYear: string;
+  user: User;
 }
 
-const StudentTable: React.FC<StudentTableProps> = ({ students, onEdit, academicYear }) => {
+const StudentTable: React.FC<StudentTableProps> = ({ students, onEdit, academicYear, user }) => {
   if (students.length === 0) {
     return (
       <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-lg">
@@ -34,9 +35,11 @@ const StudentTable: React.FC<StudentTableProps> = ({ students, onEdit, academicY
                 <p className="text-sm text-slate-600">{student.grade}</p>
                 <p className="text-sm font-mono text-slate-800">{formatStudentId(student, academicYear)}</p>
               </div>
-              <button onClick={() => onEdit(student)} className="p-2 text-sky-600 hover:bg-sky-100 rounded-full flex-shrink-0" title="Edit">
-                <EditIcon className="w-5 h-5" />
-              </button>
+              {user.role === 'admin' && (
+                <button onClick={() => onEdit(student)} className="p-2 text-sky-600 hover:bg-sky-100 rounded-full flex-shrink-0" title="Edit">
+                  <EditIcon className="w-5 h-5" />
+                </button>
+              )}
             </div>
             <div className="mt-3 pt-3 border-t border-slate-200 space-y-1 text-sm">
               <p><span className="font-semibold text-slate-700">Parent:</span> {student.fatherName}</p>
@@ -56,9 +59,11 @@ const StudentTable: React.FC<StudentTableProps> = ({ students, onEdit, academicY
               <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Grade</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Parent's Name</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Contact</th>
-              <th scope="col" className="relative px-6 py-3">
-                <span className="sr-only">Actions</span>
-              </th>
+              {user.role === 'admin' && (
+                <th scope="col" className="relative px-6 py-3">
+                  <span className="sr-only">Actions</span>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
@@ -73,13 +78,15 @@ const StudentTable: React.FC<StudentTableProps> = ({ students, onEdit, academicY
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.grade}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.fatherName}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.contact}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex items-center justify-end gap-4">
-                    <button onClick={() => onEdit(student)} className="text-sky-600 hover:text-sky-800 transition-colors" title="Edit">
-                      <EditIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                </td>
+                {user.role === 'admin' && (
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex items-center justify-end gap-4">
+                      <button onClick={() => onEdit(student)} className="text-sky-600 hover:text-sky-800 transition-colors" title="Edit">
+                        <EditIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

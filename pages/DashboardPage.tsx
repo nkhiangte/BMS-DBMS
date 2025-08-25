@@ -59,8 +59,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
     return <AcademicYearForm onSetAcademicYear={onSetAcademicYear} />;
   }
 
-  // Simplified role check. For a production app, use Firebase Custom Claims.
-  const isAdmin = user.email === 'admin@bms.edu';
+  const isAdmin = user.role === 'admin';
   
   return (
     <div>
@@ -81,13 +80,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
                 action={<Link to="/students">View Active Students</Link>}
             />
 
-             <DashboardCard
-                title="Register New Student"
-                description="Add a new student to the database."
-                icon={<PlusIcon className="w-7 h-7" />}
-                color="emerald"
-                action={<button onClick={onAddStudent}>Add New Student</button>}
-            />
+            {isAdmin && (
+                <DashboardCard
+                    title="Register New Student"
+                    description="Add a new student to the database."
+                    icon={<PlusIcon className="w-7 h-7" />}
+                    color="emerald"
+                    action={<button onClick={onAddStudent}>Add New Student</button>}
+                />
+            )}
             
             <DashboardCard
                 title="Manage Classes"
@@ -104,33 +105,33 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
                 color="amber"
                 action={<Link to="/reports/search">Generate Report</Link>}
             />
-
-            <DashboardCard
-                title="Fee Management"
-                description="Track payments and manage student fees."
-                icon={<CurrencyDollarIcon className="w-7 h-7" />}
-                color="violet"
-                action={<Link to="/fees">Manage Fees</Link>}
-            />
-
-            <DashboardCard
-                title="Inventory"
-                description="Track and manage all school assets."
-                icon={<ArchiveBoxIcon className="w-7 h-7" />}
-                color="violet"
-                action={<Link to="/inventory">Manage Inventory</Link>}
-            />
-
-            <DashboardCard
-                title="Hostel Management"
-                description="Manage hostel rooms, students, and staff."
-                icon={<BuildingOfficeIcon className="w-7 h-7" />}
-                color="rose"
-                action={<Link to="/hostel">Manage Hostel</Link>}
-            />
             
             {isAdmin && (
                 <>
+                    <DashboardCard
+                        title="Fee Management"
+                        description="Track payments and manage student fees."
+                        icon={<CurrencyDollarIcon className="w-7 h-7" />}
+                        color="violet"
+                        action={<Link to="/fees">Manage Fees</Link>}
+                    />
+
+                    <DashboardCard
+                        title="Inventory"
+                        description="Track and manage all school assets."
+                        icon={<ArchiveBoxIcon className="w-7 h-7" />}
+                        color="violet"
+                        action={<Link to="/inventory">Manage Inventory</Link>}
+                    />
+
+                    <DashboardCard
+                        title="Hostel Management"
+                        description="Manage hostel rooms, students, and staff."
+                        icon={<BuildingOfficeIcon className="w-7 h-7" />}
+                        color="rose"
+                        action={<Link to="/hostel">Manage Hostel</Link>}
+                    />
+                
                     <DashboardCard
                         title="Manage Staff"
                         description="Add, view, and manage staff profiles."

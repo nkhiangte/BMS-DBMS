@@ -2,8 +2,10 @@
 
 
 
+
+
 import React, { useState, useCallback, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
 import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST } from './constants';
 
@@ -66,6 +68,16 @@ import HostelHealthPage from './pages/HostelHealthPage';
 import HostelCommunicationPage from './pages/HostelCommunicationPage';
 import HostelSettingsPage from './pages/HostelSettingsPage';
 import HostelStaffFormModal from './components/HostelStaffFormModal';
+
+// Admin Protected Route Component
+const AdminRoute: React.FC<{ user: User | null }> = ({ user }) => {
+    if (!user) return <Navigate to="/login" replace />;
+    if (user.role !== 'admin') {
+        return <Navigate to="/" replace state={{ message: "You don't have permission to access this page.", type: 'error' }} />;
+    }
+    return <Outlet />;
+};
+
 
 const App: React.FC = () => {
     // --- AUTHENTICATION STATE ---
@@ -168,11 +180,29 @@ const App: React.FC = () => {
      useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
             if (firebaseUser) {
+                 // Fetch user role from Firestore
+                const userDocRef = doc(db, 'users', firebaseUser.uid);
+                const userDoc = await getDoc(userDocRef);
+                let userRole: 'admin' | 'user' = 'user'; // Default to 'user'
+
+                if (userDoc.exists()) {
+                    userRole = userDoc.data()?.role || 'user';
+                } else if (firebaseUser.email === 'admin@bms.edu') {
+                    // This is a fallback to auto-create the first admin user document
+                    userRole = 'admin';
+                    await setDoc(userDocRef, {
+                        email: firebaseUser.email,
+                        displayName: firebaseUser.displayName || 'Admin',
+                        role: 'admin'
+                    });
+                }
+                
                 const appUser: User = {
                     uid: firebaseUser.uid,
                     displayName: firebaseUser.displayName,
                     email: firebaseUser.email,
                     photoURL: firebaseUser.photoURL,
+                    role: userRole
                 };
                 setUser(appUser);
                 await fetchData();
@@ -215,7 +245,12 @@ const App: React.FC = () => {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             if (userCredential.user) {
                 await updateProfile(userCredential.user, { displayName: name });
-                // onAuthStateChanged will handle setting user and fetching data
+                // Create user document in Firestore with default 'user' role
+                await setDoc(doc(db, 'users', userCredential.user.uid), {
+                    displayName: name,
+                    email: email,
+                    role: 'user'
+                });
             }
             return { success: true };
         } catch (err: any) {
@@ -360,18 +395,24 @@ const App: React.FC = () => {
 
     const handleConfirmImport = useCallback(async () => {
         if (pendingImportData) {
-            const batch = writeBatch(db);
-            const newStudentsWithIds: Student[] = [];
-
-            pendingImportData.students.forEach(studentData => {
-                const docRef = doc(collection(db, 'students'));
-                batch.set(docRef, studentData);
-                newStudentsWithIds.push({ ...studentData, id: docRef.id });
-            });
-            
-            await batch.commit();
-            setStudents(prev => [...prev, ...newStudentsWithIds]);
-            setPendingImportData(null);
+            try {
+                const batch = writeBatch(db);
+                const newStudentsWithIds: Student[] = [];
+    
+                pendingImportData.students.forEach(studentData => {
+                    const docRef = doc(collection(db, 'students'));
+                    batch.set(docRef, studentData);
+                    newStudentsWithIds.push({ ...studentData, id: docRef.id });
+                });
+                
+                await batch.commit();
+                setStudents(prev => [...prev, ...newStudentsWithIds]);
+            } catch (error) {
+                console.error("Failed to import students:", error);
+                alert(`An error occurred during import. Please check the data for issues. Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            } finally {
+                setPendingImportData(null);
+            }
         }
     }, [pendingImportData]);
 
@@ -709,6 +750,8 @@ const App: React.FC = () => {
         const navigate = useNavigate();
         const isPrintPage = (location.pathname.startsWith('/report-card/') && location.pathname.split('/').length > 3) || location.pathname.startsWith('/transfers/print') || location.pathname.startsWith('/reports/class-statement') || location.pathname.startsWith('/staff/certificates/print');
         const notificationMessage = (location.state as { message?: string })?.message;
+        const notificationType = (location.state as { type?: 'success' | 'error' })?.type || 'success';
+
 
         useEffect(() => {
             if (notificationMessage) {
@@ -721,51 +764,55 @@ const App: React.FC = () => {
                 <Header user={user!} onLogout={handleLogout} className={isPrintPage ? 'print:hidden' : ''} />
                 <main className="container mx-auto p-4 sm:p-6 lg:p-8">
                     {notificationMessage && (
-                        <div className="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 p-4 rounded-r-lg relative mb-6 shadow-md" role="alert">
-                            <span className="font-bold">Success!</span> {notificationMessage}
+                        <div className={`border-l-4 p-4 rounded-r-lg relative mb-6 shadow-md ${notificationType === 'success' ? 'bg-emerald-50 border-emerald-500 text-emerald-800' : 'bg-red-50 border-red-500 text-red-800'}`} role="alert">
+                            <span className="font-bold">{notificationType === 'success' ? 'Success!' : 'Notice'}</span> {notificationMessage}
                         </div>
                     )}
                     <Routes>
+                        {/* Routes for all logged-in users */}
                         <Route path="/" element={<DashboardPage user={user!} onAddStudent={openAddModal} studentCount={students.filter(s => s.status === StudentStatus.ACTIVE).length} academicYear={academicYear!} onSetAcademicYear={handleSetAcademicYear} />} />
-                        <Route path="/students" element={<StudentListPage students={students.filter(s => s.status === StudentStatus.ACTIVE)} onAdd={openAddModal} onEdit={openEditModal} academicYear={academicYear!} />} />
-                        <Route path="/student/:studentId" element={<StudentDetailPage students={students} onEdit={openEditModal} academicYear={academicYear!} />} />
+                        <Route path="/students" element={<StudentListPage students={students.filter(s => s.status === StudentStatus.ACTIVE)} onAdd={openAddModal} onEdit={openEditModal} academicYear={academicYear!} user={user!} />} />
+                        <Route path="/student/:studentId" element={<StudentDetailPage students={students} onEdit={openEditModal} academicYear={academicYear!} user={user!} />} />
                         <Route path="/reports/search" element={<ReportSearchPage students={students} academicYear={academicYear!} />} />
-                        <Route path="/reports/class-statement/:grade/:examId" element={<ClassMarkStatementPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onUpdateClassMarks={handleUpdateClassMarks} />} />
                         <Route path="/report-card/:studentId" element={<ProgressReportPage students={students} academicYear={academicYear!} />} />
                         <Route path="/report-card/:studentId/:examId" element={<PrintableReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
                         <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={students} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
-                        <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={openImportModal} />} />
-                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={openImportModal} onOpenTransferModal={openTransferModal} onDelete={openDeleteConfirm} />} />
-                        <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={openAddStaffModal} onEdit={openEditStaffModal} onDelete={openDeleteStaffConfirm} />} />
-                        <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={openEditStaffModal} gradeDefinitions={gradeDefinitions} />} />
-                        <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} />} />
-                        <Route path="/staff/certificates/generate" element={<GenerateServiceCertificatePage staff={staff} onSave={handleSaveServiceCertificate} />} />
-                        <Route path="/staff/certificates/print/:certId" element={<PrintServiceCertificatePage serviceCertificateRecords={serviceCertificateRecords} />} />
-                        <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
-                        <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear!} />} />
-                        <Route path="/transfers/records" element={<AllTcRecordsPage tcRecords={tcRecords} />} />
-                        <Route path="/transfers/print/:tcId" element={<PrintTcPage tcRecords={tcRecords} />} />
-                        <Route path="/transfers/update" element={<UpdateTcPage tcRecords={tcRecords} onUpdate={handleUpdateTc} />} />
-                        <Route path="/subjects" element={<ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} />} />
-                        <Route path="/fees" element={<FeeManagementPage students={students} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} />} />
-                        <Route path="/promotion" element={<PromotionPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onPromoteStudents={handlePromoteStudents} />} />
-                        <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={openAddInventoryModal} onEdit={openEditInventoryModal} onDelete={openDeleteInventoryConfirm} />} />
+                        <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={openImportModal} user={user!} />} />
+                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={openImportModal} onOpenTransferModal={openTransferModal} onDelete={openDeleteConfirm} user={user!} />} />
                         <Route path="/change-password" element={<ChangePasswordPage onChangePassword={handleChangePassword} />} />
-
                         
-                        {/* Hostel Routes */}
-                        <Route path="/hostel" element={<HostelDashboardPage />} />
-                        <Route path="/hostel/students" element={<HostelStudentListPage residents={hostelResidents} rooms={hostelRooms} students={students} />} />
-                        <Route path="/hostel/rooms" element={<HostelRoomListPage rooms={hostelRooms} residents={hostelResidents} students={students} />} />
-                        <Route path="/hostel/fees" element={<HostelFeePage />} />
-                        <Route path="/hostel/attendance" element={<HostelAttendancePage />} />
-                        <Route path="/hostel/mess" element={<HostelMessPage />} />
-                        <Route path="/hostel/staff" element={<HostelStaffPage staff={hostelStaff} onAdd={openAddHostelStaffModal} onEdit={openEditHostelStaffModal} onDelete={openDeleteHostelStaffConfirm} />} />
-                        <Route path="/hostel/inventory" element={<HostelInventoryPage inventory={hostelInventory} stockLogs={hostelStockLogs} onUpdateStock={handleUpdateHostelStock} />} />
-                        <Route path="/hostel/discipline" element={<HostelDisciplinePage />} />
-                        <Route path="/hostel/health" element={<HostelHealthPage />} />
-                        <Route path="/hostel/communication" element={<HostelCommunicationPage />} />
-                        <Route path="/hostel/settings" element={<HostelSettingsPage />} />
+                        {/* Admin Only Routes */}
+                        <Route element={<AdminRoute user={user} />}>
+                            <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={openAddStaffModal} onEdit={openEditStaffModal} onDelete={openDeleteStaffConfirm} />} />
+                            <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={openEditStaffModal} gradeDefinitions={gradeDefinitions} />} />
+                            <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} />} />
+                            <Route path="/staff/certificates/generate" element={<GenerateServiceCertificatePage staff={staff} onSave={handleSaveServiceCertificate} />} />
+                            <Route path="/staff/certificates/print/:certId" element={<PrintServiceCertificatePage serviceCertificateRecords={serviceCertificateRecords} />} />
+                            <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
+                            <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear!} />} />
+                            <Route path="/transfers/records" element={<AllTcRecordsPage tcRecords={tcRecords} />} />
+                            <Route path="/transfers/print/:tcId" element={<PrintTcPage tcRecords={tcRecords} />} />
+                            <Route path="/transfers/update" element={<UpdateTcPage tcRecords={tcRecords} onUpdate={handleUpdateTc} />} />
+                            <Route path="/subjects" element={<ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} />} />
+                            <Route path="/fees" element={<FeeManagementPage students={students} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} />} />
+                            <Route path="/promotion" element={<PromotionPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onPromoteStudents={handlePromoteStudents} />} />
+                            <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={openAddInventoryModal} onEdit={openEditInventoryModal} onDelete={openDeleteInventoryConfirm} />} />
+                            <Route path="/reports/class-statement/:grade/:examId" element={<ClassMarkStatementPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onUpdateClassMarks={handleUpdateClassMarks} />} />
+                            
+                            {/* Hostel Routes */}
+                            <Route path="/hostel" element={<HostelDashboardPage />} />
+                            <Route path="/hostel/students" element={<HostelStudentListPage residents={hostelResidents} rooms={hostelRooms} students={students} />} />
+                            <Route path="/hostel/rooms" element={<HostelRoomListPage rooms={hostelRooms} residents={hostelResidents} students={students} />} />
+                            <Route path="/hostel/fees" element={<HostelFeePage />} />
+                            <Route path="/hostel/attendance" element={<HostelAttendancePage />} />
+                            <Route path="/hostel/mess" element={<HostelMessPage />} />
+                            <Route path="/hostel/staff" element={<HostelStaffPage staff={hostelStaff} onAdd={openAddHostelStaffModal} onEdit={openEditHostelStaffModal} onDelete={openDeleteHostelStaffConfirm} />} />
+                            <Route path="/hostel/inventory" element={<HostelInventoryPage inventory={hostelInventory} stockLogs={hostelStockLogs} onUpdateStock={handleUpdateHostelStock} />} />
+                            <Route path="/hostel/discipline" element={<HostelDisciplinePage />} />
+                            <Route path="/hostel/health" element={<HostelHealthPage />} />
+                            <Route path="/hostel/communication" element={<HostelCommunicationPage />} />
+                            <Route path="/hostel/settings" element={<HostelSettingsPage />} />
+                        </Route>
 
                     </Routes>
                 </main>

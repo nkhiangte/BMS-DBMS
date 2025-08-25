@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Student, Grade, GradeDefinition, Staff, EmploymentStatus } from '../types';
+import { Student, Grade, GradeDefinition, Staff, EmploymentStatus, User } from '../types';
 import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon } from '../components/Icons';
 import { formatStudentId, calculateDues } from '../utils';
 import EditSubjectsModal from '../components/EditSubjectsModal';
@@ -14,9 +14,10 @@ interface ClassStudentsPageProps {
   onOpenImportModal: (grade: Grade | null) => void;
   onOpenTransferModal: (student: Student) => void;
   onDelete: (student: Student) => void;
+  user: User;
 }
 
-const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal, onOpenTransferModal, onDelete }) => {
+const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal, onOpenTransferModal, onDelete, user }) => {
   const { grade } = useParams<{ grade: string }>();
   const navigate = useNavigate();
   const decodedGrade = grade ? decodeURIComponent(grade) as Grade : '' as Grade;
@@ -139,28 +140,34 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                          {currentTeacher?.status !== EmploymentStatus.ACTIVE && (
                              <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">{currentTeacher?.status}</span>
                          )}
-                        <button onClick={() => setIsEditingTeacher(true)} title="Edit class teacher" className="p-1.5 text-slate-600 hover:text-slate-800 bg-transparent hover:bg-slate-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                            <EditIcon className="w-4 h-4" />
-                        </button>
+                         {user.role === 'admin' && (
+                            <button onClick={() => setIsEditingTeacher(true)} title="Edit class teacher" className="p-1.5 text-slate-600 hover:text-slate-800 bg-transparent hover:bg-slate-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                <EditIcon className="w-4 h-4" />
+                            </button>
+                         )}
                     </div>
                 )}
             </div>
           </div>
           <div className="flex items-center gap-2">
-             <button
-                onClick={() => onOpenImportModal(decodedGrade)}
-                className="btn btn-primary bg-emerald-600 hover:bg-emerald-700"
-              >
-                <ArrowUpOnSquareIcon className="w-5 h-5" />
-                Import Students
-              </button>
-             <button
-              onClick={() => setIsModalOpen(true)}
-              className="btn btn-secondary"
-            >
-              <EditIcon className="w-5 h-5" />
-              Edit Subjects
-            </button>
+             {user.role === 'admin' && (
+                <>
+                    <button
+                      onClick={() => onOpenImportModal(decodedGrade)}
+                      className="btn btn-primary bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      <ArrowUpOnSquareIcon className="w-5 h-5" />
+                      Import Students
+                    </button>
+                   <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="btn btn-secondary"
+                  >
+                    <EditIcon className="w-5 h-5" />
+                    Edit Subjects
+                  </button>
+                </>
+             )}
             <div className="text-lg font-bold text-slate-800 bg-slate-100 px-4 py-2 rounded-lg">
               Total Students: <span className="text-sky-700">{classStudents.length}</span>
             </div>
@@ -187,16 +194,18 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                                   <p className="text-sm text-slate-600">Roll No: {student.rollNo}</p>
                                   <p className="text-sm font-mono text-slate-800">{formatStudentId(student, academicYear)}</p>
                               </div>
-                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                                  <button onClick={() => onOpenTransferModal(student)} className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50" title="Transfer Student">
-                                      <TransferIcon className="w-4 h-4" />
-                                      <span>Transfer</span>
-                                  </button>
-                                  <button onClick={() => onDelete(student)} className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50" title="Remove Incorrect Entry">
-                                      <TrashIcon className="w-4 h-4" />
-                                      <span>Remove</span>
-                                  </button>
-                              </div>
+                              {user.role === 'admin' && (
+                                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                    <button onClick={() => onOpenTransferModal(student)} className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50" title="Transfer Student">
+                                        <TransferIcon className="w-4 h-4" />
+                                        <span>Transfer</span>
+                                    </button>
+                                    <button onClick={() => onDelete(student)} className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50" title="Remove Incorrect Entry">
+                                        <TrashIcon className="w-4 h-4" />
+                                        <span>Remove</span>
+                                    </button>
+                                </div>
+                              )}
                           </div>
                           <div className="mt-3 pt-3 border-t border-slate-200 space-y-2 text-sm">
                               <p><span className="font-semibold text-slate-700">Father:</span> {student.fatherName}</p>
@@ -230,7 +239,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                     <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Student ID</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Fee Status</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Father's Name</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Actions</th>
+                    {user.role === 'admin' && <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-200">
@@ -259,18 +268,20 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                           )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.fatherName}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <div className="flex items-center gap-4">
-                              <button onClick={() => onOpenTransferModal(student)} className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors" title="Transfer Student">
-                                  <TransferIcon className="w-4 h-4" />
-                                  <span>Transfer</span>
-                              </button>
-                              <button onClick={() => onDelete(student)} className="flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-800 transition-colors" title="Remove Incorrect Entry">
-                                  <TrashIcon className="w-4 h-4" />
-                                  <span>Remove</span>
-                              </button>
-                          </div>
-                      </td>
+                      {user.role === 'admin' && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <div className="flex items-center gap-4">
+                                <button onClick={() => onOpenTransferModal(student)} className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors" title="Transfer Student">
+                                    <TransferIcon className="w-4 h-4" />
+                                    <span>Transfer</span>
+                                </button>
+                                <button onClick={() => onDelete(student)} className="flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-800 transition-colors" title="Remove Incorrect Entry">
+                                    <TrashIcon className="w-4 h-4" />
+                                    <span>Remove</span>
+                                </button>
+                            </div>
+                        </td>
+                      )}
                     </tr>
                   )})}
                 </tbody>

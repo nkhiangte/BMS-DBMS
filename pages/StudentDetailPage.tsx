@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student } from '../types';
+import { Student, User } from '../types';
 import { BackIcon, EditIcon, UserIcon, AcademicCapIcon, DocumentReportIcon, HomeIcon, CurrencyDollarIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons';
 import { formatStudentId, calculateDues } from '../utils';
 
@@ -8,6 +8,7 @@ interface StudentDetailPageProps {
   students: Student[];
   onEdit: (student: Student) => void;
   academicYear: string;
+  user: User;
 }
 
 const PhotoWithFallback: React.FC<{src?: string, alt: string}> = ({ src, alt }) => {
@@ -53,7 +54,7 @@ const DetailSection: React.FC<{title: string, children: React.ReactNode}> = ({ t
 )
 
 
-const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit, academicYear }) => {
+const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit, academicYear, user }) => {
   const { studentId } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
   
@@ -105,13 +106,15 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit,
           <h1 className="text-3xl sm:text-4xl font-bold text-slate-900">{student.name}</h1>
           <p className="text-slate-700 text-lg mt-1">{student.grade} - ID: <span className="font-semibold">{formattedStudentId}</span></p>
            <div className="mt-6 flex flex-wrap gap-3 justify-center md:justify-start">
-             <button
-                onClick={() => onEdit(student)}
-                className="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition hover:-translate-y-0.5"
-              >
-                <EditIcon className="h-5 h-5" />
-                Edit Profile
-              </button>
+             {user.role === 'admin' && (
+                <button
+                  onClick={() => onEdit(student)}
+                  className="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition hover:-translate-y-0.5"
+                >
+                  <EditIcon className="h-5 h-5" />
+                  Edit Profile
+                </button>
+             )}
                <Link
                 to={`/report-card/${student.id}`}
                 className="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition hover:-translate-y-0.5"
@@ -176,12 +179,14 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit,
                           </ul>
                       </div>
                   )}
-                  <div className="mt-4">
-                      <Link to="/fees" className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-violet-600 text-white font-semibold rounded-lg shadow-md hover:bg-violet-700 transition hover:-translate-y-0.5">
-                          <CurrencyDollarIcon className="w-5 h-5" />
-                          Go to Fee Management
-                      </Link>
-                  </div>
+                  {user.role === 'admin' && (
+                    <div className="mt-4">
+                        <Link to="/fees" className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-violet-600 text-white font-semibold rounded-lg shadow-md hover:bg-violet-700 transition hover:-translate-y-0.5">
+                            <CurrencyDollarIcon className="w-5 h-5" />
+                            Go to Fee Management
+                        </Link>
+                    </div>
+                  )}
               </div>
           </DetailSection>
 

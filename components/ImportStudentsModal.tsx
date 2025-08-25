@@ -253,8 +253,10 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
     
     const handleImportClick = () => {
         const validStudents = parsedStudents.filter(s => s.errors.length === 0);
-        if(validStudents.length > 0 && targetGrade) {
-            onImport(validStudents, targetGrade as Grade);
+        if (validStudents.length > 0 && targetGrade) {
+            // Strip the 'errors' property before passing to onImport
+            const studentsToImport = validStudents.map(({ errors, ...studentData }) => studentData);
+            onImport(studentsToImport, targetGrade as Grade);
         }
     };
 

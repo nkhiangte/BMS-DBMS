@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Student } from '../types';
+import { Student, User } from '../types';
 import { GRADES_LIST } from '../constants';
 import StudentTable from '../components/StudentTable';
 import { PlusIcon, SearchIcon, HomeIcon, BackIcon } from '../components/Icons';
@@ -12,9 +12,10 @@ interface StudentListPageProps {
   onAdd: () => void;
   onEdit: (student: Student) => void;
   academicYear: string;
+  user: User;
 }
 
-const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEdit, academicYear }) => {
+const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEdit, academicYear, user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState<string>('');
   const navigate = useNavigate();
@@ -81,19 +82,22 @@ const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEd
           </select>
 
           {/* Add Student Button */}
-          <button
-            onClick={onAdd}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition hover:-translate-y-0.5"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Add Student
-          </button>
+          {user.role === 'admin' && (
+            <button
+              onClick={onAdd}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition hover:-translate-y-0.5"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Add Student
+            </button>
+          )}
         </div>
       </div>
       <StudentTable
         students={filteredStudents}
         onEdit={onEdit}
         academicYear={academicYear}
+        user={user}
       />
     </div>
   );
