@@ -29,6 +29,14 @@ const firebaseConfig = {
   appId: "YOUR_APP_ID"
 };
 
+// Check if the configuration has been updated from the placeholder values.
+export const isFirebaseConfigured = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("YOUR_");
+
+if (!isFirebaseConfigured) {
+    console.warn(
+        "Firebase configuration is incomplete. Please replace the placeholder values in `firebaseConfig.ts` with your actual project credentials. The app will not function correctly until this is done."
+    );
+}
 
 // Initialize Firebase
 const app: FirebaseApp = initializeApp(firebaseConfig);

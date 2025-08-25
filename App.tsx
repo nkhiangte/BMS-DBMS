@@ -10,7 +10,7 @@ import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, S
 import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST } from './constants';
 
 // Firebase Imports
-import { auth, db } from './firebaseConfig';
+import { auth, db, isFirebaseConfigured } from './firebaseConfig';
 import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, createUserWithEmailAndPassword, updateProfile } from '@firebase/auth';
 import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, writeBatch, getDoc, setDoc, query } from '@firebase/firestore';
 
@@ -188,6 +188,12 @@ const App: React.FC = () => {
 
     // --- AUTHENTICATION LOGIC ---
      useEffect(() => {
+        if (!isFirebaseConfigured) {
+            setError("Firebase is not configured. Please add your project credentials to `firebaseConfig.ts` to enable login.");
+            setLoading(false);
+            return;
+        }
+
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
             if (firebaseUser) {
                 const userDocRef = doc(db, 'users', firebaseUser.uid);
@@ -252,6 +258,10 @@ const App: React.FC = () => {
     }, []);
 
     const handleLogin = useCallback(async (email: string, password: string, rememberMe: boolean) => {
+        if (!isFirebaseConfigured) {
+            setError("Firebase is not configured. Please add your project credentials to `firebaseConfig.ts`.");
+            return;
+        }
         try {
             setError('');
             await signInWithEmailAndPassword(auth, email, password);
@@ -266,6 +276,9 @@ const App: React.FC = () => {
     }, []);
 
     const handleSignUp = useCallback(async (name: string, email: string, password: string) => {
+        if (!isFirebaseConfigured) {
+            return { success: false, message: "Firebase is not configured. Please add your project credentials to `firebaseConfig.ts`." };
+        }
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             if (userCredential.user) {
@@ -311,12 +324,16 @@ const App: React.FC = () => {
 
 
     const handleLogout = useCallback(async () => {
+        if (!isFirebaseConfigured) return;
         await signOut(auth);
         setAcademicYear(null);
         localStorage.removeItem('academicYear');
     }, []);
 
     const handleForgotPassword = useCallback(async (email: string) => {
+        if (!isFirebaseConfigured) {
+            return { success: false, message: "Firebase is not configured. Please add your project credentials to `firebaseConfig.ts`." };
+        }
         try {
             await sendPasswordResetEmail(auth, email);
             return { success: true, message: 'Password reset email sent. Please check your inbox.' };
@@ -326,6 +343,9 @@ const App: React.FC = () => {
     }, []);
 
     const handleChangePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+        if (!isFirebaseConfigured) {
+            return { success: false, message: "Firebase is not configured. Please add your project credentials to `firebaseConfig.ts`." };
+        }
         if (!auth.currentUser) return { success: false, message: 'No user is logged in.' };
         
         try {
