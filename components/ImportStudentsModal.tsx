@@ -261,6 +261,7 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
     };
 
     const validStudentCount = useMemo(() => parsedStudents.filter(s => s.errors.length === 0).length, [parsedStudents]);
+    const invalidStudents = useMemo(() => parsedStudents.filter(s => s.errors.length > 0), [parsedStudents]);
 
     if (!isOpen) return null;
 
@@ -315,38 +316,46 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
                     {parsedStudents.length > 0 && (
                         <div>
                             <div className="flex justify-between items-center bg-slate-100 p-3 rounded-t-lg">
-                                <h3 className="font-bold text-slate-800">Validation Preview ({parsedStudents.length} rows found)</h3>
+                                <h3 className="font-bold text-slate-800">Validation Results ({parsedStudents.length} rows found)</h3>
                                 <div className="flex gap-4">
                                      <span className="font-semibold text-emerald-600 flex items-center gap-1.5"><CheckCircleIcon className="w-5 h-5"/> {validStudentCount} Valid</span>
-                                     <span className="font-semibold text-red-600 flex items-center gap-1.5"><XCircleIcon className="w-5 h-5"/> {parsedStudents.length - validStudentCount} Invalid</span>
+                                     <span className="font-semibold text-red-600 flex items-center gap-1.5"><XCircleIcon className="w-5 h-5"/> {invalidStudents.length} Invalid</span>
                                 </div>
                             </div>
-                            <div className="overflow-auto max-h-[30vh] border rounded-b-lg">
-                                <table className="min-w-full divide-y divide-slate-200 text-sm">
-                                    <thead className="bg-slate-50 sticky top-0">
-                                        <tr>
-                                            <th className="px-3 py-2 text-left font-bold text-slate-800">Roll No</th>
-                                            <th className="px-3 py-2 text-left font-bold text-slate-800">Name</th>
-                                            <th className="px-3 py-2 text-left font-bold text-slate-800">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-slate-200">
-                                        {parsedStudents.map((s, i) => (
-                                            <tr key={i} className={s.errors.length > 0 ? 'bg-red-50' : 'bg-emerald-50'}>
-                                                <td className="px-3 py-2">{s.rollNo}</td>
-                                                <td className="px-3 py-2">{s.name}</td>
-                                                <td className="px-3 py-2">
-                                                    {s.errors.length > 0 ? (
-                                                        <span className="font-semibold text-red-700">{s.errors.join(', ')}</span>
-                                                    ) : (
-                                                        <span className="font-semibold text-emerald-700">Ready to import</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                            
+                            {invalidStudents.length > 0 ? (
+                                <>
+                                    <p className="text-sm p-3 bg-red-50 text-red-800 border-x border-b rounded-b-lg">Please fix the following errors in your CSV file and re-upload.</p>
+                                    <div className="overflow-auto max-h-[30vh] border rounded-lg mt-2">
+                                        <table className="min-w-full divide-y divide-slate-200 text-sm">
+                                            <thead className="bg-slate-50 sticky top-0">
+                                                <tr>
+                                                    <th className="px-3 py-2 text-left font-bold text-slate-800">Roll No</th>
+                                                    <th className="px-3 py-2 text-left font-bold text-slate-800">Name</th>
+                                                    <th className="px-3 py-2 text-left font-bold text-slate-800">Errors</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-slate-200">
+                                                {invalidStudents.map((s, i) => (
+                                                    <tr key={i} className="bg-red-50">
+                                                        <td className="px-3 py-2">{s.rollNo}</td>
+                                                        <td className="px-3 py-2">{s.name}</td>
+                                                        <td className="px-3 py-2">
+                                                            <span className="font-semibold text-red-700">{s.errors.join(', ')}</span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="p-6 text-center bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-b-lg">
+                                    <CheckCircleIcon className="w-10 h-10 mx-auto mb-2"/>
+                                    <p className="font-semibold">Validation successful!</p>
+                                    <p>{validStudentCount} student records are valid and ready for import.</p>
+                                </div>
+                            )}
                         </div>
                     )}
 

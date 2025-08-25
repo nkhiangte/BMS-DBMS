@@ -2,6 +2,7 @@
 
 
 
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
@@ -295,6 +296,17 @@ const App: React.FC = () => {
         }
     }, [deletingStaff, closeModal, gradeDefinitions]);
 
+    const handleImportStudents = useCallback(async (newStudents: Omit<Student, 'id'>[], grade: Grade) => {
+        const batch = db.batch();
+        newStudents.forEach(studentData => {
+            const studentDocRef = db.collection('students').doc();
+            const finalStudentData = { ...studentData, grade };
+            batch.set(studentDocRef, finalStudentData);
+        });
+        await batch.commit();
+        closeModal();
+    }, [closeModal]);
+
     // Other Handlers
     const handleAcademicUpdate = useCallback(async (studentId: string, academicPerformance: Exam[]) => {
         await db.collection('students').doc(studentId).set({ academicPerformance }, { merge: true });
@@ -497,7 +509,7 @@ const App: React.FC = () => {
             {isStaffFormModalOpen && <StaffFormModal isOpen={isStaffFormModalOpen} onClose={closeModal} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions} />}
             {isInventoryFormModalOpen && <InventoryFormModal isOpen={isInventoryFormModalOpen} onClose={closeModal} onSubmit={() => {}} item={editingInventoryItem} />}
             {isHostelStaffFormModalOpen && <HostelStaffFormModal isOpen={isHostelStaffFormModalOpen} onClose={closeModal} onSubmit={() => {}} staffMember={editingHostelStaff} />}
-            {isImportModalOpen && <ImportStudentsModal isOpen={isImportModalOpen} onClose={closeModal} onImport={() => {}} grade={importTargetGrade} allStudents={students} allGrades={GRADES_LIST} />}
+            {isImportModalOpen && <ImportStudentsModal isOpen={isImportModalOpen} onClose={closeModal} onImport={handleImportStudents} grade={importTargetGrade} allStudents={students} allGrades={GRADES_LIST} />}
             {transferringStudent && <TransferStudentModal isOpen={!!transferringStudent} onClose={closeModal} student={transferringStudent} allStudents={students} allGrades={GRADES_LIST} onConfirm={() => {}} />}
             <ConfirmationModal isOpen={!!deletingStudent} onClose={closeModal} onConfirm={handleDeleteConfirm} title="Confirm Deletion"><p>Are you sure you want to delete <span className="font-bold">{deletingStudent?.name}</span>?</p></ConfirmationModal>
             <ConfirmationModal isOpen={!!deletingStaff} onClose={closeModal} onConfirm={handleDeleteStaffConfirm} title="Confirm Staff Deletion"><p>Are you sure you want to delete <span className="font-bold">{deletingStaff?.firstName} {deletingStaff?.lastName}</span>?</p></ConfirmationModal>
