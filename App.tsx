@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
@@ -295,14 +296,18 @@ const App: React.FC = () => {
 
     const handleImportStudents = useCallback(async (newStudents: Omit<Student, 'id'>[], grade: Grade) => {
         setIsImporting(true);
-        const batch = db.batch();
-        newStudents.forEach(studentData => {
-            const studentDocRef = db.collection('students').doc();
-            const finalStudentData = { ...studentData, grade };
-            batch.set(studentDocRef, finalStudentData);
-        });
+        const CHUNK_SIZE = 400; // Firestore batch limit is 500
         try {
-            await batch.commit();
+            for (let i = 0; i < newStudents.length; i += CHUNK_SIZE) {
+                const chunk = newStudents.slice(i, i + CHUNK_SIZE);
+                const batch = db.batch();
+                chunk.forEach(studentData => {
+                    const studentDocRef = db.collection('students').doc();
+                    const finalStudentData = { ...studentData, grade };
+                    batch.set(studentDocRef, finalStudentData);
+                });
+                await batch.commit();
+            }
             closeModal();
         } catch (error) {
             console.error("Error importing students:", error);
