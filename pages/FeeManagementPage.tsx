@@ -1,9 +1,10 @@
+
 import React, { useState, FormEvent, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { BackIcon, HomeIcon, SearchIcon, CurrencyDollarIcon, UserIcon, CheckIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons';
 import { Student, Grade, StudentStatus, FeePayments } from '../types';
 import { calculateDues, formatStudentId } from '../utils';
-import { FEE_STRUCTURE, TERMINAL_EXAMS } from '../constants';
+import { FEE_STRUCTURE, TERMINAL_EXAMS, academicMonths } from '../constants';
 
 interface FeeManagementPageProps {
   students: Student[];
@@ -28,8 +29,6 @@ const FeeDetailItem: React.FC<{ label: string; amount: number }> = ({ label, amo
         </span>
     </div>
 );
-
-const academicMonths = ["April", "May", "June", "July", "August", "September", "October", "November", "December", "January", "February", "March"];
 
 const FeeManagementPage: React.FC<FeeManagementPageProps> = ({ students, academicYear, onUpdateFeePayments }) => {
   const navigate = useNavigate();
@@ -214,8 +213,8 @@ const FeeManagementPage: React.FC<FeeManagementPageProps> = ({ students, academi
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {academicMonths.map(month => (
                                 <label key={month} className="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-slate-100">
-                                    <input type="checkbox" checked={paymentData.tuitionFeesPaid[month]} onChange={e => handlePaymentChange('tuition', month, e.target.checked)} className="form-checkbox h-4 w-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500" />
-                                    <span className="text-slate-800 font-semibold text-sm">{month}</span>
+                                    <input type="checkbox" checked={!!paymentData.tuitionFeesPaid[month]} onChange={e => handlePaymentChange('tuition', month, e.target.checked)} className="form-checkbox h-4 w-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500" />
+                                    <span className="text-slate-800">{month}</span>
                                 </label>
                             ))}
                         </div>
@@ -223,21 +222,20 @@ const FeeManagementPage: React.FC<FeeManagementPageProps> = ({ students, academi
                 </div>
             </fieldset>
 
-            <div className="mt-6 flex justify-end">
-                <button type="submit" className="flex items-center justify-center gap-2 px-6 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all duration-300 w-48">
-                    {isSaved ? (
-                        <>
-                            <CheckIcon className="w-5 h-5" />
-                            Saved!
-                        </>
-                    ) : (
-                        'Save Changes'
-                    )}
+            <div className="mt-8 flex justify-end items-center gap-4">
+                 {isSaved && (
+                    <div className="flex items-center gap-2 text-emerald-600 font-semibold animate-fade-in">
+                        <CheckIcon className="w-5 h-5" />
+                        <span>Saved!</span>
+                    </div>
+                 )}
+                <button type="submit" className="px-6 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition flex items-center gap-2">
+                    <CheckIcon className="w-5 h-5"/>
+                    Save Payment Status
                 </button>
             </div>
         </form>
       )}
-
     </div>
   );
 };

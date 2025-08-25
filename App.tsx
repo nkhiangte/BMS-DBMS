@@ -1,19 +1,9 @@
 
-
-
-
-
-
 import React, { useState, useCallback, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, Outlet } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
 import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST } from './constants';
-
-// Firebase Imports
-import { auth, db, isFirebaseConfigured } from './firebaseConfig';
-import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, createUserWithEmailAndPassword, updateProfile } from '@firebase/auth';
-import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, writeBatch, getDoc, setDoc, query } from '@firebase/firestore';
-
+import { getNextGrade, createDefaultFeePayments, calculateStudentResult } from './utils';
 
 import Header from './components/Header';
 import StudentFormModal from './components/StudentFormModal';
@@ -39,16 +29,10 @@ import StaffDetailPage from './pages/StaffDetailPage';
 import FeeManagementPage from './pages/FeeManagementPage';
 import ClassMarkStatementPage from './pages/ClassMarkStatementPage';
 import PromotionPage from './pages/PromotionPage';
-import LoginPage from './pages/LoginPage';
-import SignUpPage from './pages/SignUpPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ChangePasswordPage from './pages/ChangePasswordPage';
 import InventoryPage from './pages/InventoryPage';
 import InventoryFormModal from './components/InventoryFormModal';
 import ImportStudentsModal from './components/ImportStudentsModal';
 import TransferStudentModal from './components/TransferStudentModal';
-import { calculateStudentResult, getNextGrade, createDefaultFeePayments } from './utils';
-import UserManagementPage from './pages/UserManagementPage';
 
 // Staff Certificate Pages
 import StaffDocumentsPage from './pages/StaffDocumentsPage';
@@ -69,24 +53,40 @@ import HostelHealthPage from './pages/HostelHealthPage';
 import HostelCommunicationPage from './pages/HostelCommunicationPage';
 import HostelSettingsPage from './pages/HostelSettingsPage';
 import HostelStaffFormModal from './components/HostelStaffFormModal';
+import AcademicYearForm from './components/AcademicYearForm';
+import { UserManagementPage } from './pages/UserManagementPage';
 
-// Admin Protected Route Component
-const AdminRoute: React.FC<{ user: User | null }> = ({ user }) => {
-    if (!user) return <Navigate to="/login" replace />;
-    if (user.role !== 'admin') {
-        return <Navigate to="/" replace state={{ message: "You don't have permission to access this page.", type: 'error' }} />;
-    }
-    return <Outlet />;
+
+// --- MOCK DATA & LOCAL STORAGE ---
+
+const adminUser: User = {
+    uid: 'admin01',
+    displayName: 'Admin',
+    email: 'admin@bms.edu',
+    photoURL: null,
+    role: 'admin',
 };
+
+const saveDataToLocalStorage = <T,>(key: string, data: T) => {
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+        console.error(`Error saving ${key} to localStorage`, e);
+    }
+}
+
+const loadDataFromLocalStorage = <T,>(key: string, defaultValue: T): T => {
+    try {
+        const stored = localStorage.getItem(key);
+        return stored ? JSON.parse(stored) : defaultValue;
+    } catch (e) {
+        console.error(`Error loading ${key} from localStorage`, e);
+        return defaultValue;
+    }
+}
 
 
 const App: React.FC = () => {
-    // --- AUTHENTICATION STATE ---
-    const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState('');
-    const [allUsers, setAllUsers] = useState<User[]>([]);
-
     // --- APPLICATION STATE & LOGIC ---
     const [academicYear, setAcademicYear] = useState<string | null>(null);
     const [students, setStudents] = useState<Student[]>([]);
@@ -129,251 +129,35 @@ const App: React.FC = () => {
     // --- Confirmation Modal States ---
     const [studentToConfirmEdit, setStudentToConfirmEdit] = useState<Student | null>(null);
     const [pendingImportData, setPendingImportData] = useState<{ students: Omit<Student, 'id'>[], grade: Grade } | null>(null);
-    const [userToApprove, setUserToApprove] = useState<User | null>(null);
-    const [userToDeny, setUserToDeny] = useState<User | null>(null);
 
-    // --- Data Fetching from Firestore ---
-    const fetchData = async () => {
-        try {
-            const collectionsToFetch = {
-                students: setStudents,
-                staff: setStaff,
-                tcRecords: setTcRecords,
-                serviceCertificateRecords: setServiceCertificateRecords,
-                inventory: setInventory,
-                hostelResidents: setHostelResidents,
-                hostelRooms: setHostelRooms,
-                hostelStaff: setHostelStaff,
-                hostelInventory: setHostelInventory,
-                hostelStockLogs: setHostelStockLogs,
-            };
-
-            const promises = Object.keys(collectionsToFetch).map(async (collectionName) => {
-                const q = query(collection(db, collectionName));
-                const querySnapshot = await getDocs(q);
-                return {
-                    name: collectionName,
-                    data: querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
-                };
-            });
-
-            // Handle Grade Definitions separately for potential seeding
-            const gradeDefsDoc = await getDoc(doc(db, "settings", "gradeDefinitions"));
-            if (gradeDefsDoc.exists()) {
-                setGradeDefinitions(gradeDefsDoc.data() as Record<Grade, GradeDefinition>);
-            } else {
-                // Seed the database if it doesn't exist
-                await setDoc(doc(db, "settings", "gradeDefinitions"), GRADE_DEFINITIONS);
-                setGradeDefinitions(GRADE_DEFINITIONS);
-            }
-
-            const usersQuery = query(collection(db, "users"));
-            const usersSnapshot = await getDocs(usersQuery);
-            const usersData = usersSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
-            setAllUsers(usersData);
-
-
-            const results = await Promise.all(promises);
-            results.forEach(result => {
-                const setState = collectionsToFetch[result.name as keyof typeof collectionsToFetch];
-                setState(result.data as any);
-            });
-            
-        } catch (err) {
-            console.error("Error fetching data from Firestore:", err);
-            setError("Could not load data from the database.");
-        }
-    };
-
-
-    // --- AUTHENTICATION LOGIC ---
-     useEffect(() => {
-        if (!isFirebaseConfigured) {
-            setError("Firebase is not configured. Please add your project credentials to `firebaseConfig.ts` to enable login.");
-            setLoading(false);
-            return;
-        }
-
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-            if (firebaseUser) {
-                const userDocRef = doc(db, 'users', firebaseUser.uid);
-                const userDoc = await getDoc(userDocRef);
-                
-                if (userDoc.exists()) {
-                    const userRole = userDoc.data()?.role || 'pending';
-
-                    if (userRole === 'pending') {
-                        await signOut(auth);
-                        setUser(null);
-                        setError("Your account is pending admin approval. Please contact the administrator.");
-                        setLoading(false);
-                        return;
-                    }
-                    
-                    const appUser: User = {
-                        uid: firebaseUser.uid,
-                        displayName: firebaseUser.displayName,
-                        email: firebaseUser.email,
-                        photoURL: firebaseUser.photoURL,
-                        role: userRole
-                    };
-                    setUser(appUser);
-                    await fetchData();
-
-                } else if (firebaseUser.email === 'admin@bms.edu' && !userDoc.exists()) {
-                    await setDoc(userDocRef, {
-                        email: firebaseUser.email,
-                        displayName: firebaseUser.displayName || 'Admin',
-                        role: 'admin'
-                    });
-                     const appUser: User = {
-                        uid: firebaseUser.uid,
-                        displayName: firebaseUser.displayName,
-                        email: firebaseUser.email,
-                        photoURL: firebaseUser.photoURL,
-                        role: 'admin'
-                    };
-                    setUser(appUser);
-                    await fetchData();
-                } else {
-                    await signOut(auth);
-                    setUser(null);
-                }
-            } else {
-                setUser(null);
-                setStudents([]);
-                setStaff([]);
-                setTcRecords([]);
-                setAllUsers([]);
-            }
-            setLoading(false);
-        });
-        
-        const storedYear = localStorage.getItem('academicYear');
-        if (storedYear) {
-            setAcademicYear(storedYear);
-        }
-
-        return () => unsubscribe();
-    }, []);
-
-    const handleLogin = useCallback(async (email: string, password: string, rememberMe: boolean) => {
-        if (!isFirebaseConfigured) {
-            setError("Firebase is not configured. Please add your project credentials to `firebaseConfig.ts`.");
-            return;
-        }
-        try {
-            setError('');
-            await signInWithEmailAndPassword(auth, email, password);
-            if (rememberMe) {
-                localStorage.setItem('rememberedUser', JSON.stringify({ email, password }));
-            } else {
-                localStorage.removeItem('rememberedUser');
-            }
-        } catch (err: any) {
-            setError(err.message);
-        }
-    }, []);
-
-    const handleSignUp = useCallback(async (name: string, email: string, password: string) => {
-        if (!isFirebaseConfigured) {
-            return { success: false, message: "Firebase is not configured. Please add your project credentials to `firebaseConfig.ts`." };
-        }
-        try {
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            if (userCredential.user) {
-                await updateProfile(userCredential.user, { displayName: name });
-                await setDoc(doc(db, 'users', userCredential.user.uid), {
-                    displayName: name,
-                    email: email,
-                    role: 'pending'
-                });
-            }
-            return { success: true, message: "Registration successful! Your account is now pending admin approval." };
-        } catch (err: any) {
-            return { success: false, message: err.message };
-        }
-    }, []);
-
-    const handleApproveUser = useCallback(async (userToApprove: User) => {
-        await updateDoc(doc(db, 'users', userToApprove.uid), { role: 'user' });
-        setAllUsers(prev => prev.map(u => u.uid === userToApprove.uid ? { ...u, role: 'user' } : u));
-    }, []);
-
-    const handleDenyUser = useCallback(async (userToDeny: User) => {
-        await deleteDoc(doc(db, 'users', userToDeny.uid));
-        setAllUsers(prev => prev.filter(u => u.uid !== userToDeny.uid));
-    }, []);
-
-    const handleConfirmApprove = useCallback(() => {
-        if(userToApprove) {
-            handleApproveUser(userToApprove);
-            setUserToApprove(null);
-        }
-    }, [userToApprove, handleApproveUser]);
-
-     const handleConfirmDeny = useCallback(() => {
-        if(userToDeny) {
-            handleDenyUser(userToDeny);
-            setUserToDeny(null);
-        }
-    }, [userToDeny, handleDenyUser]);
-
-    const openApproveConfirm = useCallback((user: User) => setUserToApprove(user), []);
-    const openDenyConfirm = useCallback((user: User) => setUserToDeny(user), []);
-
-
-    const handleLogout = useCallback(async () => {
-        if (!isFirebaseConfigured) return;
-        await signOut(auth);
-        setAcademicYear(null);
-        localStorage.removeItem('academicYear');
-    }, []);
-
-    const handleForgotPassword = useCallback(async (email: string) => {
-        if (!isFirebaseConfigured) {
-            return { success: false, message: "Firebase is not configured. Please add your project credentials to `firebaseConfig.ts`." };
-        }
-        try {
-            await sendPasswordResetEmail(auth, email);
-            return { success: true, message: 'Password reset email sent. Please check your inbox.' };
-        } catch (err: any) {
-            return { success: false, message: err.message };
-        }
-    }, []);
-
-    const handleChangePassword = useCallback(async (currentPassword: string, newPassword: string) => {
-        if (!isFirebaseConfigured) {
-            return { success: false, message: "Firebase is not configured. Please add your project credentials to `firebaseConfig.ts`." };
-        }
-        if (!auth.currentUser) return { success: false, message: 'No user is logged in.' };
-        
-        try {
-            const credential = EmailAuthProvider.credential(auth.currentUser.email!, currentPassword);
-            await reauthenticateWithCredential(auth.currentUser, credential);
-            await updatePassword(auth.currentUser, newPassword);
-            await signOut(auth); // Force sign out for security
-            return { success: true, message: 'Password updated successfully. Please log in again.' };
-        } catch (err: any) {
-            return { success: false, message: err.message };
-        }
+    // --- Data Initialization from Local Storage ---
+    useEffect(() => {
+        setAcademicYear(loadDataFromLocalStorage('academicYear', null));
+        setStudents(loadDataFromLocalStorage('students', []));
+        setStaff(loadDataFromLocalStorage('staff', []));
+        setTcRecords(loadDataFromLocalStorage('tcRecords', []));
+        setServiceCertificateRecords(loadDataFromLocalStorage('serviceCertificateRecords', []));
+        setInventory(loadDataFromLocalStorage('inventory', []));
+        setHostelResidents(loadDataFromLocalStorage('hostelResidents', []));
+        setHostelRooms(loadDataFromLocalStorage('hostelRooms', []));
+        setHostelStaff(loadDataFromLocalStorage('hostelStaff', []));
+        setHostelInventory(loadDataFromLocalStorage('hostelInventory', []));
+        setHostelStockLogs(loadDataFromLocalStorage('hostelStockLogs', []));
+        setGradeDefinitions(loadDataFromLocalStorage('gradeDefinitions', GRADE_DEFINITIONS));
     }, []);
 
     const handleSetAcademicYear = useCallback((year: string) => {
+        saveDataToLocalStorage('academicYear', year);
         setAcademicYear(year);
-        localStorage.setItem('academicYear', year);
     }, []);
 
-    const handleUpdateGradeDefinition = useCallback(async (grade: Grade, newDefinition: GradeDefinition) => {
-        const newGradeDefinitions = {
-            ...gradeDefinitions,
-            [grade]: newDefinition,
-        };
+    const handleUpdateGradeDefinition = useCallback((grade: Grade, newDefinition: GradeDefinition) => {
+        const newGradeDefinitions = { ...gradeDefinitions, [grade]: newDefinition };
+        saveDataToLocalStorage('gradeDefinitions', newGradeDefinitions);
         setGradeDefinitions(newGradeDefinitions);
-        await setDoc(doc(db, "settings", "gradeDefinitions"), newGradeDefinitions, { merge: true });
     }, [gradeDefinitions]);
 
-    const handleAssignClassToStaff = useCallback(async (staffId: string, newGradeKey: Grade | null) => {
+    const handleAssignClassToStaff = useCallback((staffId: string, newGradeKey: Grade | null) => {
         const newDefs = JSON.parse(JSON.stringify(gradeDefinitions));
             
         const oldGradeKey = Object.keys(newDefs).find(g => newDefs[g as Grade]?.classTeacherId === staffId) as Grade | undefined;
@@ -389,23 +173,9 @@ const App: React.FC = () => {
             newDefs[newGradeKey].classTeacherId = staffId;
         }
         
+        saveDataToLocalStorage('gradeDefinitions', newDefs);
         setGradeDefinitions(newDefs);
-        await setDoc(doc(db, "settings", "gradeDefinitions"), newDefs);
     }, [gradeDefinitions]);
-
-    const openAddModal = useCallback(() => {
-        setEditingStudent(null);
-        setIsFormModalOpen(true);
-    }, []);
-
-    const openEditModal = useCallback((student: Student) => {
-        setEditingStudent(student);
-        setIsFormModalOpen(true);
-    }, []);
-
-    const openDeleteConfirm = useCallback((student: Student) => {
-        setDeletingStudent(student);
-    }, []);
 
     const closeModal = useCallback(() => {
         setIsFormModalOpen(false);
@@ -423,630 +193,377 @@ const App: React.FC = () => {
         setIsHostelStaffFormModalOpen(false);
         setEditingHostelStaff(null);
         setDeletingHostelStaff(null);
-        setUserToApprove(null);
-        setUserToDeny(null);
     }, []);
-
-    const handleFormSubmit = useCallback(async (studentData: Omit<Student, 'id'>) => {
+    
+    // --- Student Handlers ---
+    const handleFormSubmit = useCallback((studentData: Omit<Student, 'id'>) => {
         if (editingStudent) {
             setStudentToConfirmEdit({ ...studentData, id: editingStudent.id });
         } else {
-            const docRef = await addDoc(collection(db, 'students'), studentData);
-            setStudents(prev => [
-                ...prev,
-                { ...studentData, id: docRef.id },
-            ]);
+            const newStudent = { ...studentData, id: Date.now().toString() };
+            const newStudents = [...students, newStudent];
+            setStudents(newStudents);
+            saveDataToLocalStorage('students', newStudents);
         }
         closeModal();
-    }, [editingStudent, closeModal]);
+    }, [editingStudent, closeModal, students]);
 
-    const handleConfirmEdit = useCallback(async () => {
+    const handleConfirmEdit = useCallback(() => {
         if (studentToConfirmEdit) {
-            const { id, ...dataToUpdate } = studentToConfirmEdit;
-            await updateDoc(doc(db, 'students', id), dataToUpdate);
-            setStudents(prev =>
-                prev.map(s =>
-                    s.id === studentToConfirmEdit.id ? studentToConfirmEdit : s
-                )
-            );
+            const newStudents = students.map(s => s.id === studentToConfirmEdit.id ? studentToConfirmEdit : s);
+            setStudents(newStudents);
+            saveDataToLocalStorage('students', newStudents);
             setStudentToConfirmEdit(null);
         }
-    }, [studentToConfirmEdit]);
+    }, [studentToConfirmEdit, students]);
 
-    const handleDeleteConfirm = useCallback(async () => {
+    const handleDeleteConfirm = useCallback(() => {
         if (deletingStudent) {
-            await deleteDoc(doc(db, 'students', deletingStudent.id));
-            setStudents(prev => prev.filter(s => s.id !== deletingStudent.id));
+            const newStudents = students.filter(s => s.id !== deletingStudent.id);
+            setStudents(newStudents);
+            saveDataToLocalStorage('students', newStudents);
             closeModal();
         }
-    }, [deletingStudent, closeModal]);
+    }, [deletingStudent, closeModal, students]);
 
     const handleBulkAddStudents = useCallback((studentsData: Omit<Student, 'id'>[], grade: Grade) => {
         setPendingImportData({ students: studentsData, grade });
         closeModal();
     }, [closeModal]);
 
-    const handleConfirmImport = useCallback(async () => {
+    const handleConfirmImport = useCallback(() => {
         if (pendingImportData) {
-            try {
-                const batch = writeBatch(db);
-                const newStudentsWithIds: Student[] = [];
-    
-                pendingImportData.students.forEach(studentData => {
-                    const docRef = doc(collection(db, 'students'));
-                    batch.set(docRef, studentData);
-                    newStudentsWithIds.push({ ...studentData, id: docRef.id });
-                });
-                
-                await batch.commit();
-                setStudents(prev => [...prev, ...newStudentsWithIds]);
-            } catch (error) {
-                console.error("Failed to import students:", error);
-                alert(`An error occurred during import. Please check the data for issues. Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            } finally {
-                setPendingImportData(null);
-            }
+            const newStudentsWithIds = pendingImportData.students.map(s => ({ ...s, id: `${Date.now()}-${Math.random()}` }));
+            const updatedStudents = [...students, ...newStudentsWithIds];
+            setStudents(updatedStudents);
+            saveDataToLocalStorage('students', updatedStudents);
+            setPendingImportData(null);
         }
-    }, [pendingImportData]);
+    }, [pendingImportData, students]);
 
+    const handleAcademicUpdate = useCallback((studentId: string, academicPerformance: Exam[]) => {
+        const newStudents = students.map(s => s.id === studentId ? { ...s, academicPerformance } : s);
+        setStudents(newStudents);
+        saveDataToLocalStorage('students', newStudents);
+    }, [students]);
+    
+    const handleUpdateClassMarks = useCallback((marksByStudentId: Map<string, SubjectMark[]>, examId: string) => {
+        const updatedStudents = students.map(student => {
+            if (marksByStudentId.has(student.id)) {
+                const newMarks = marksByStudentId.get(student.id)!;
+                const existingPerformance = student.academicPerformance || [];
+                const examIndex = existingPerformance.findIndex(e => e.id === examId);
 
-    const handleAcademicUpdate = useCallback(async (studentId: string, academicPerformance: Exam[]) => {
-        await updateDoc(doc(db, 'students', studentId), { academicPerformance });
-        setStudents(prev =>
-            prev.map(s =>
-                s.id === studentId
-                    ? { ...s, academicPerformance }
-                    : s
-            )
-        );
-    }, []);
+                let newPerformance: Exam[];
+                if (examIndex > -1) {
+                    newPerformance = [...existingPerformance];
+                    newPerformance[examIndex] = { ...newPerformance[examIndex], results: newMarks };
+                } else {
+                    const examTemplate = TERMINAL_EXAMS.find(e => e.id === examId)!;
+                    newPerformance = [...existingPerformance, { ...examTemplate, results: newMarks }];
+                }
+                return { ...student, academicPerformance: newPerformance };
+            }
+            return student;
+        });
+        setStudents(updatedStudents);
+        saveDataToLocalStorage('students', updatedStudents);
+    }, [students]);
 
     // --- Staff Handlers ---
-    const openAddStaffModal = useCallback(() => {
-        setEditingStaff(null);
-        setIsStaffFormModalOpen(true);
-    }, []);
-
-    const openEditStaffModal = useCallback((staffMember: Staff) => {
-        setEditingStaff(staffMember);
-        setIsStaffFormModalOpen(true);
-    }, []);
-
-    const openDeleteStaffConfirm = useCallback((staffMember: Staff) => {
-        setDeletingStaff(staffMember);
-    }, []);
-
-    const handleDeleteStaffConfirm = useCallback(async () => {
-        if (deletingStaff) {
-            await deleteDoc(doc(db, 'staff', deletingStaff.id));
-            setStaff(prev => prev.filter(s => s.id !== deletingStaff.id));
-            
-            const assignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === deletingStaff.id) as Grade | undefined;
-            if (assignedGradeKey) {
-                await handleAssignClassToStaff(deletingStaff.id, null);
-            }
-            closeModal();
-        }
-    }, [deletingStaff, closeModal, gradeDefinitions, handleAssignClassToStaff]);
-
-    const handleStaffFormSubmit = useCallback(async (staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => {
+    const handleStaffFormSubmit = useCallback((staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => {
         let updatedStaffId: string;
         const finalAssignedGradeKey = staffData.status === EmploymentStatus.ACTIVE ? assignedGradeKey : null;
 
         if (editingStaff) {
             updatedStaffId = editingStaff.id;
-            const { id, ...dataToUpdate } = { ...staffData, id: editingStaff.id };
-            await updateDoc(doc(db, 'staff', id), dataToUpdate);
-            setStaff(prev =>
-                prev.map(t =>
-                    t.id === editingStaff.id ? { ...t, ...staffData, id: t.id } : t
-                )
-            );
+            const newStaffList = staff.map(t => t.id === editingStaff.id ? { ...staffData, id: t.id } : t);
+            setStaff(newStaffList);
+            saveDataToLocalStorage('staff', newStaffList);
         } else {
-            const docRef = await addDoc(collection(db, 'staff'), staffData);
-            updatedStaffId = docRef.id;
-            setStaff(prev => [
-                ...prev,
-                { ...staffData, id: docRef.id },
-            ]);
+            updatedStaffId = Date.now().toString();
+            const newStaff = { ...staffData, id: updatedStaffId };
+            const newStaffList = [...staff, newStaff];
+            setStaff(newStaffList);
+            saveDataToLocalStorage('staff', newStaffList);
         }
 
-        await handleAssignClassToStaff(updatedStaffId, finalAssignedGradeKey);
+        handleAssignClassToStaff(updatedStaffId, finalAssignedGradeKey);
         closeModal();
-    }, [editingStaff, closeModal, handleAssignClassToStaff]);
-
-    const handleSaveServiceCertificate = useCallback(async (certData: Omit<ServiceCertificateRecord, 'id'>) => {
-        const docRef = await addDoc(collection(db, 'serviceCertificateRecords'), certData);
-        const newRecord: ServiceCertificateRecord = { ...certData, id: docRef.id };
-        setServiceCertificateRecords(prev => [...prev, newRecord]);
-        
-        await updateDoc(doc(db, 'staff', certData.staffDetails.staffNumericId), { status: EmploymentStatus.RESIGNED });
-        setStaff(prevStaff =>
-            prevStaff.map(s => 
-                s.id === certData.staffDetails.staffNumericId
-                ? { ...s, status: EmploymentStatus.RESIGNED }
-                : s
-            )
-        );
-    }, []);
+    }, [editingStaff, closeModal, handleAssignClassToStaff, staff]);
     
-    // --- Inventory Handlers ---
-    const openAddInventoryModal = useCallback(() => {
-        setEditingInventoryItem(null);
-        setIsInventoryFormModalOpen(true);
-    }, []);
-
-    const openEditInventoryModal = useCallback((item: InventoryItem) => {
-        setEditingInventoryItem(item);
-        setIsInventoryFormModalOpen(true);
-    }, []);
-
-    const openDeleteInventoryConfirm = useCallback((item: InventoryItem) => {
-        setDeletingInventoryItem(item);
-    }, []);
-
-    const handleInventoryFormSubmit = useCallback(async (itemData: Omit<InventoryItem, 'id'>) => {
-        if (editingInventoryItem) {
-            const { id, ...dataToUpdate } = { ...itemData, id: editingInventoryItem.id };
-            await updateDoc(doc(db, 'inventory', id), dataToUpdate);
-            setInventory(prev =>
-                prev.map(i =>
-                    i.id === editingInventoryItem.id ? { ...i, ...itemData, id: i.id } : i
-                )
-            );
-        } else {
-            const docRef = await addDoc(collection(db, 'inventory'), itemData);
-            setInventory(prev => [
-                ...prev,
-                { ...itemData, id: docRef.id },
-            ]);
-        }
-        closeModal();
-    }, [editingInventoryItem, closeModal]);
-
-    const handleDeleteInventoryConfirm = useCallback(async () => {
-        if (deletingInventoryItem) {
-            await deleteDoc(doc(db, 'inventory', deletingInventoryItem.id));
-            setInventory(prev => prev.filter(i => i.id !== deletingInventoryItem.id));
+     const handleDeleteStaffConfirm = useCallback(() => {
+        if (deletingStaff) {
+            const newStaffList = staff.filter(s => s.id !== deletingStaff.id);
+            setStaff(newStaffList);
+            saveDataToLocalStorage('staff', newStaffList);
+            
+            const assignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === deletingStaff.id) as Grade | undefined;
+            if (assignedGradeKey) {
+                handleAssignClassToStaff(deletingStaff.id, null);
+            }
             closeModal();
         }
-    }, [deletingInventoryItem, closeModal]);
+    }, [deletingStaff, closeModal, staff, gradeDefinitions, handleAssignClassToStaff]);
 
-    // --- Hostel Handlers ---
-    const handleUpdateHostelStock = useCallback(async (itemId: string, change: number, notes: string) => {
-        const itemToUpdate = hostelInventory.find(item => item.id === itemId);
-        if(!itemToUpdate) return;
+    const handleSaveServiceCertificate = useCallback((certData: Omit<ServiceCertificateRecord, 'id'>) => {
+        const newRecord: ServiceCertificateRecord = { ...certData, id: Date.now().toString() };
         
-        const newStock = itemToUpdate.currentStock + change;
-        await updateDoc(doc(db, 'hostelInventory', itemId), { currentStock: newStock });
+        const staffMember = staff.find(s => s.id === certData.staffDetails.staffNumericId);
+        if (staffMember) {
+            const updatedStaffMember = { ...staffMember, status: EmploymentStatus.RESIGNED };
+            const newStaffList = staff.map(s => s.id === staffMember.id ? updatedStaffMember : s);
+            setStaff(newStaffList);
+            saveDataToLocalStorage('staff', newStaffList);
+        }
 
-        const newLogData: Omit<StockLog, 'id'> = {
-            itemId: itemId,
-            itemName: itemToUpdate.name,
+        const newRecords = [...serviceCertificateRecords, newRecord];
+        setServiceCertificateRecords(newRecords);
+        saveDataToLocalStorage('serviceCertificateRecords', newRecords);
+    }, [serviceCertificateRecords, staff]);
+
+    const handleSaveTc = useCallback((tcData: Omit<TcRecord, 'id'>) => {
+        const newRecord: TcRecord = { ...tcData, id: Date.now().toString() };
+        const newRecords = [...tcRecords, newRecord];
+        setTcRecords(newRecords);
+        saveDataToLocalStorage('tcRecords', newRecords);
+
+        const studentId = tcData.studentDetails.studentNumericId;
+        const student = students.find(s => s.id === studentId);
+        if (student) {
+            const updatedStudent = { 
+                ...student, 
+                status: StudentStatus.TRANSFERRED, 
+                transferDate: tcData.tcData.issueDate 
+            };
+            const newStudents = students.map(s => s.id === studentId ? updatedStudent : s);
+            setStudents(newStudents);
+            saveDataToLocalStorage('students', newStudents);
+        }
+    }, [tcRecords, students]);
+
+    const handleUpdateTc = useCallback((updatedTc: TcRecord) => {
+        const newRecords = tcRecords.map(r => r.id === updatedTc.id ? updatedTc : r);
+        setTcRecords(newRecords);
+        saveDataToLocalStorage('tcRecords', newRecords);
+    }, [tcRecords]);
+    
+    const handleInventoryFormSubmit = useCallback((itemData: Omit<InventoryItem, 'id'>) => {
+        if (editingInventoryItem) {
+            const newInventory = inventory.map(i => i.id === editingInventoryItem.id ? { ...itemData, id: i.id } : i);
+            setInventory(newInventory);
+            saveDataToLocalStorage('inventory', newInventory);
+        } else {
+            const newItem = { ...itemData, id: Date.now().toString() };
+            const newInventory = [...inventory, newItem];
+            setInventory(newInventory);
+            saveDataToLocalStorage('inventory', newInventory);
+        }
+        closeModal();
+    }, [editingInventoryItem, inventory, closeModal]);
+    
+    const handleDeleteInventoryItemConfirm = useCallback(() => {
+        if (deletingInventoryItem) {
+            const newInventory = inventory.filter(i => i.id !== deletingInventoryItem.id);
+            setInventory(newInventory);
+            saveDataToLocalStorage('inventory', newInventory);
+            closeModal();
+        }
+    }, [deletingInventoryItem, inventory, closeModal]);
+    
+    const handleHostelStaffFormSubmit = useCallback((staffData: Omit<HostelStaff, 'id' | 'paymentStatus' | 'attendancePercent'>) => {
+        if (editingHostelStaff) {
+            const newStaff = { ...editingHostelStaff, ...staffData };
+            const newHostelStaffList = hostelStaff.map(s => s.id === editingHostelStaff.id ? newStaff : s);
+            setHostelStaff(newHostelStaffList);
+            saveDataToLocalStorage('hostelStaff', newHostelStaffList);
+        } else {
+            const newStaff = { ...staffData, id: Date.now().toString(), paymentStatus: PaymentStatus.PENDING, attendancePercent: 100 };
+            const newHostelStaffList = [...hostelStaff, newStaff];
+            setHostelStaff(newHostelStaffList);
+            saveDataToLocalStorage('hostelStaff', newHostelStaffList);
+        }
+        closeModal();
+    }, [editingHostelStaff, hostelStaff, closeModal]);
+
+    const handleDeleteHostelStaffConfirm = useCallback(() => {
+        if (deletingHostelStaff) {
+            const newHostelStaffList = hostelStaff.filter(s => s.id !== deletingHostelStaff.id);
+            setHostelStaff(newHostelStaffList);
+            saveDataToLocalStorage('hostelStaff', newHostelStaffList);
+            closeModal();
+        }
+    }, [deletingHostelStaff, hostelStaff, closeModal]);
+
+    const handleUpdateHostelStock = useCallback((itemId: string, change: number, notes: string) => {
+        const item = hostelInventory.find(i => i.id === itemId);
+        if (!item) return;
+
+        const updatedItem = { ...item, currentStock: item.currentStock + change };
+        const newInventory = hostelInventory.map(i => i.id === itemId ? updatedItem : i);
+        setHostelInventory(newInventory);
+        saveDataToLocalStorage('hostelInventory', newInventory);
+
+        const logEntry: StockLog = {
+            id: Date.now().toString(),
+            itemId: item.id,
+            itemName: item.name,
             type: change > 0 ? StockLogType.IN : StockLogType.OUT,
             quantity: Math.abs(change),
             date: new Date().toISOString(),
-            notes: notes,
+            notes,
         };
-        const logDocRef = await addDoc(collection(db, 'hostelStockLogs'), newLogData);
+        const newLogs = [logEntry, ...hostelStockLogs];
+        setHostelStockLogs(newLogs);
+        saveDataToLocalStorage('hostelStockLogs', newLogs);
+    }, [hostelInventory, hostelStockLogs]);
 
-        setHostelInventory(prev => 
-            prev.map(item => item.id === itemId ? { ...item, currentStock: newStock } : item)
-        );
-        setHostelStockLogs(prev => [{...newLogData, id: logDocRef.id}, ...prev]);
-    }, [hostelInventory]);
-    
-    const openAddHostelStaffModal = useCallback(() => {
-        setEditingHostelStaff(null);
-        setIsHostelStaffFormModalOpen(true);
-    }, []);
-
-    const openEditHostelStaffModal = useCallback((staffMember: HostelStaff) => {
-        setEditingHostelStaff(staffMember);
-        setIsHostelStaffFormModalOpen(true);
-    }, []);
-
-    const openDeleteHostelStaffConfirm = useCallback((staffMember: HostelStaff) => {
-        setDeletingHostelStaff(staffMember);
-    }, []);
-
-    const handleHostelStaffFormSubmit = useCallback(async (staffData: Omit<HostelStaff, 'id' | 'paymentStatus' | 'attendancePercent'>) => {
-        if (editingHostelStaff) {
-            const { id, ...dataToUpdate } = { ...editingHostelStaff, ...staffData };
-            await updateDoc(doc(db, 'hostelStaff', id), dataToUpdate);
-            setHostelStaff(prev =>
-                prev.map(s =>
-                    s.id === editingHostelStaff.id ? { ...s, ...staffData, id: s.id } : s
-                )
-            );
-        } else {
-            const newData = { ...staffData, paymentStatus: PaymentStatus.PENDING, attendancePercent: 100 };
-            const docRef = await addDoc(collection(db, 'hostelStaff'), newData);
-            setHostelStaff(prev => [
-                ...prev,
-                { ...newData, id: docRef.id },
-            ]);
-        }
-        closeModal();
-    }, [editingHostelStaff, closeModal]);
-
-    const handleDeleteHostelStaffConfirm = useCallback(async () => {
-        if (deletingHostelStaff) {
-            await deleteDoc(doc(db, 'hostelStaff', deletingHostelStaff.id));
-            setHostelStaff(prev => prev.filter(s => s.id !== deletingHostelStaff.id));
-            closeModal();
-        }
-    }, [deletingHostelStaff, closeModal]);
-
-
-    const handleSaveTc = useCallback(async (tcData: Omit<TcRecord, 'id'>) => {
-        const docRef = await addDoc(collection(db, 'tcRecords'), tcData);
-        const newRecord: TcRecord = { ...tcData, id: docRef.id };
-        setTcRecords(prev => [...prev, newRecord]);
-        
-        await updateDoc(doc(db, 'students', tcData.studentDetails.studentNumericId), {
-            status: StudentStatus.TRANSFERRED,
-            transferDate: tcData.tcData.issueDate
-        });
-        setStudents(prevStudents =>
-            prevStudents.map(s => 
-                s.id === tcData.studentDetails.studentNumericId
-                ? { ...s, status: StudentStatus.TRANSFERRED, transferDate: tcData.tcData.issueDate }
-                : s
-            )
-        );
-    }, []);
-
-    const handleUpdateTc = useCallback(async (updatedTc: TcRecord) => {
-        const { id, ...dataToUpdate } = updatedTc;
-        await updateDoc(doc(db, 'tcRecords', id), dataToUpdate);
-        setTcRecords(prev => 
-            prev.map(record => record.id === updatedTc.id ? updatedTc : record)
-        );
-    }, []);
-
-    const handleUpdateFeePayments = useCallback(async (studentId: string, feePayments: FeePayments) => {
-        await updateDoc(doc(db, 'students', studentId), { feePayments });
-        setStudents(prev =>
-            prev.map(s =>
-                s.id === studentId ? { ...s, feePayments } : s
-            )
-        );
-    }, []);
-
-    const handleUpdateClassMarks = useCallback(async (marksByStudentId: Map<string, SubjectMark[]>, examId: string) => {
-        const batch = writeBatch(db);
-        const updatedStudentsState = [...students];
-
-        marksByStudentId.forEach((newMarks, studentId) => {
-            const studentIndex = updatedStudentsState.findIndex(s => s.id === studentId);
-            if (studentIndex === -1) return;
-            
-            const student = updatedStudentsState[studentIndex];
-            const performance = student.academicPerformance ? JSON.parse(JSON.stringify(student.academicPerformance)) : [];
-            const examIndex = performance.findIndex((e: Exam) => e.id === examId);
-            const examName = TERMINAL_EXAMS.find(e => e.id === examId)?.name || 'Unknown Exam';
-            const cleanedNewMarks = newMarks.filter(m => m.marks != null || m.examMarks != null || m.activityMarks != null);
-
-            if (examIndex > -1) {
-                performance[examIndex].results = cleanedNewMarks;
-            } else {
-                performance.push({ id: examId, name: examName, results: cleanedNewMarks });
-            }
-            updatedStudentsState[studentIndex] = { ...student, academicPerformance: performance };
-            
-            const studentRef = doc(db, 'students', studentId);
-            batch.update(studentRef, { academicPerformance: performance });
-        });
-
-        await batch.commit();
-        setStudents(updatedStudentsState);
+    const handleUpdateFeePayments = useCallback((studentId: string, payments: FeePayments) => {
+        const newStudents = students.map(s => s.id === studentId ? { ...s, feePayments: payments } : s);
+        setStudents(newStudents);
+        saveDataToLocalStorage('students', newStudents);
     }, [students]);
-
-    const handlePromoteStudents = useCallback(async () => {
-        const batch = writeBatch(db);
+    
+    const handlePromoteStudents = useCallback(() => {
         const finalExamId = 'terminal3';
-        
-        students.forEach(student => {
-            if (student.status !== StudentStatus.ACTIVE) return;
+        const newStudents = students.map(student => {
+            if (student.status !== StudentStatus.ACTIVE) return student;
+
             const gradeDef = gradeDefinitions[student.grade];
             const finalExam = student.academicPerformance?.find(e => e.id === finalExamId);
-            const studentRef = doc(db, 'students', student.id);
-            
-            const newFeePayments = createDefaultFeePayments();
 
-            if (!finalExam || !gradeDef) {
-                batch.update(studentRef, { academicPerformance: [], feePayments: newFeePayments });
-                return;
+            if (!finalExam || !gradeDef || finalExam.results.length === 0) {
+                return { ...student, academicPerformance: [], feePayments: createDefaultFeePayments() };
             }
-    
+
             const { finalResult } = calculateStudentResult(finalExam.results, gradeDef, student.grade);
-    
+            
             if (finalResult === 'FAIL') {
-                batch.update(studentRef, { academicPerformance: [], feePayments: newFeePayments });
-            } else {
-                if (student.grade === Grade.X) {
-                    batch.update(studentRef, { 
-                        status: StudentStatus.TRANSFERRED, 
-                        transferDate: `Graduated in ${academicYear}`, 
-                        academicPerformance: [], 
-                        feePayments: newFeePayments 
-                    });
-                } else {
-                    const nextGrade = getNextGrade(student.grade);
-                    if (nextGrade) {
-                        batch.update(studentRef, { 
-                            grade: nextGrade, 
-                            academicPerformance: [], 
-                            feePayments: newFeePayments 
-                        });
-                    }
-                }
+                return { ...student, academicPerformance: [], feePayments: createDefaultFeePayments() };
             }
+
+            if (student.grade === Grade.X) {
+                return { ...student, status: StudentStatus.TRANSFERRED, transferDate: new Date().toISOString().split('T')[0] };
+            }
+
+            const nextGrade = getNextGrade(student.grade);
+            if (nextGrade) {
+                return { ...student, grade: nextGrade, academicPerformance: [], feePayments: createDefaultFeePayments(), rollNo: 0 };
+            }
+            
+            return student;
         });
 
-        await batch.commit();
-        await handleLogout();
-    }, [students, gradeDefinitions, academicYear, handleLogout]);
+        GRADES_LIST.forEach(grade => {
+            const studentsInGrade = newStudents.filter(s => s.grade === grade && s.rollNo === 0).sort((a,b) => a.name.localeCompare(b.name));
+            let rollNoCounter = 1;
+            const existingRollsInGrade = new Set(newStudents.filter(s => s.grade === grade && s.rollNo !== 0).map(s => s.rollNo));
+            
+            studentsInGrade.forEach(studentToUpdate => {
+                while(existingRollsInGrade.has(rollNoCounter)) {
+                    rollNoCounter++;
+                }
+                const index = newStudents.findIndex(s => s.id === studentToUpdate.id);
+                if (index !== -1) {
+                    newStudents[index].rollNo = rollNoCounter;
+                    rollNoCounter++;
+                }
+            });
+        });
 
-    const openImportModal = useCallback((grade: Grade | null) => {
-        setImportTargetGrade(grade);
-        setIsImportModalOpen(true);
-    }, []);
-
-    const openTransferModal = useCallback((student: Student) => {
-        setTransferringStudent(student);
-    }, []);
-
-    const handleTransferStudent = useCallback(async (studentId: string, newGrade: Grade, newRollNo: number) => {
-        await updateDoc(doc(db, 'students', studentId), { grade: newGrade, rollNo: newRollNo });
-        setStudents(prev =>
-            prev.map(s =>
-                s.id === studentId
-                    ? { ...s, grade: newGrade, rollNo: newRollNo }
-                    : s
-            )
-        );
+        setStudents(newStudents);
+        saveDataToLocalStorage('students', newStudents);
+        saveDataToLocalStorage('academicYear', null);
+        setAcademicYear(null);
+    }, [students, gradeDefinitions]);
+    
+    const handleTransferStudent = useCallback((studentId: string, newGrade: Grade, newRollNo: number) => {
+        const newStudents = students.map(s => s.id === studentId ? { ...s, grade: newGrade, rollNo: newRollNo } : s);
+        setStudents(newStudents);
+        saveDataToLocalStorage('students', newStudents);
         closeModal();
-    }, [closeModal]);
+    }, [students, closeModal]);
+    
+    const user = adminUser;
+    
+    const AppContent = () => {
+        const location = useLocation();
+        
+        const isPrintRoute = location.pathname.includes('/print');
 
-    if (loading) {
+        if (isPrintRoute) {
+             return (
+                 <Routes>
+                     <Route path="/transfers/print/:tcId" element={<PrintTcPage tcRecords={tcRecords} />} />
+                     <Route path="/staff/certificates/print/:certId" element={<PrintServiceCertificatePage serviceCertificateRecords={serviceCertificateRecords} />} />
+                     <Route path="/report-card/:studentId" element={<PrintableReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
+                 </Routes>
+             )
+        }
+        
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-xl font-semibold">Loading Application...</div>
+            <div className="flex flex-col min-h-screen">
+                <Header user={user} onLogout={() => {}} className="print-hidden"/>
+                <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
+                     <Routes>
+                        <Route path="/" element={<DashboardPage user={user} onAddStudent={() => setIsFormModalOpen(true)} studentCount={students.filter(s => s.status === StudentStatus.ACTIVE).length} academicYear={academicYear!} onSetAcademicYear={handleSetAcademicYear} allUsers={[user]}/>} />
+                        <Route path="/students" element={<StudentListPage students={students.filter(s => s.status === StudentStatus.ACTIVE)} onAdd={() => setIsFormModalOpen(true)} onEdit={(s) => { setEditingStudent(s); setIsFormModalOpen(true); }} academicYear={academicYear!} user={user} />} />
+                        <Route path="/student/:studentId" element={<StudentDetailPage students={students} onEdit={(s) => { setEditingStudent(s); setIsFormModalOpen(true); }} academicYear={academicYear!} user={user}/>} />
+                        <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={students} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
+                        <Route path="/reports/search" element={<ReportSearchPage students={students} academicYear={academicYear!} />} />
+                        <Route path="/report-card/:studentId" element={<ProgressReportPage students={students} academicYear={academicYear!} />} />
+                        <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} user={user}/>} />
+                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} onOpenTransferModal={setTransferringStudent} onDelete={setDeletingStudent} user={user} />} />
+                        <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
+                        <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear!} />} />
+                        <Route path="/transfers/records" element={<AllTcRecordsPage tcRecords={tcRecords} />} />
+                        <Route path="/transfers/update" element={<UpdateTcPage tcRecords={tcRecords} onUpdate={handleUpdateTc} />} />
+                        <Route path="/subjects" element={<ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} />} />
+                        <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={() => setIsStaffFormModalOpen(true)} onEdit={(s) => { setEditingStaff(s); setIsStaffFormModalOpen(true); }} onDelete={setDeletingStaff} />} />
+                        <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={(s) => { setEditingStaff(s); setIsStaffFormModalOpen(true); }} gradeDefinitions={gradeDefinitions} />} />
+                        <Route path="/fees" element={<FeeManagementPage students={students} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} />} />
+                        <Route path="/reports/class-statement/:grade/:examId" element={<ClassMarkStatementPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onUpdateClassMarks={handleUpdateClassMarks} />} />
+                        <Route path="/promotion" element={<PromotionPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onPromoteStudents={handlePromoteStudents} />} />
+                        <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={() => setIsInventoryFormModalOpen(true)} onEdit={item => { setEditingInventoryItem(item); setIsInventoryFormModalOpen(true); }} onDelete={setDeletingInventoryItem} />} />
+                        <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} />} />
+                        <Route path="/staff/certificates/generate" element={<GenerateServiceCertificatePage staff={staff} onSave={handleSaveServiceCertificate} />} />
+                        <Route path="/hostel" element={<HostelDashboardPage />} />
+                        <Route path="/hostel/students" element={<HostelStudentListPage residents={hostelResidents} rooms={hostelRooms} students={students} />} />
+                        <Route path="/hostel/rooms" element={<HostelRoomListPage rooms={hostelRooms} residents={hostelResidents} students={students} />} />
+                        <Route path="/hostel/fees" element={<HostelFeePage />} />
+                        <Route path="/hostel/attendance" element={<HostelAttendancePage />} />
+                        <Route path="/hostel/mess" element={<HostelMessPage />} />
+                        <Route path="/hostel/staff" element={<HostelStaffPage staff={hostelStaff} onAdd={() => setIsHostelStaffFormModalOpen(true)} onEdit={s => { setEditingHostelStaff(s); setIsHostelStaffFormModalOpen(true); }} onDelete={setDeletingHostelStaff} />} />
+                        <Route path="/hostel/inventory" element={<HostelInventoryPage inventory={hostelInventory} stockLogs={hostelStockLogs} onUpdateStock={handleUpdateHostelStock} />} />
+                        <Route path="/hostel/discipline" element={<HostelDisciplinePage />} />
+                        <Route path="/hostel/health" element={<HostelHealthPage />} />
+                        <Route path="/hostel/communication" element={<HostelCommunicationPage />} />
+                        <Route path="/hostel/settings" element={<HostelSettingsPage />} />
+                        <Route path="/users" element={<UserManagementPage allUsers={[user]}/>} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                </main>
             </div>
         )
     }
 
-    const MainAppContent = () => {
-        const location = useLocation();
-        const navigate = useNavigate();
-        const isPrintPage = (location.pathname.startsWith('/report-card/') && location.pathname.split('/').length > 3) || location.pathname.startsWith('/transfers/print') || location.pathname.startsWith('/reports/class-statement') || location.pathname.startsWith('/staff/certificates/print');
-        const notificationMessage = (location.state as { message?: string })?.message;
-        const notificationType = (location.state as { type?: 'success' | 'error' })?.type || 'success';
-
-
-        useEffect(() => {
-            if (notificationMessage) {
-                navigate(location.pathname, { replace: true });
-            }
-        }, [notificationMessage, location.pathname, navigate]);
-
-        return (
-            <div className="min-h-screen">
-                <Header user={user!} onLogout={handleLogout} className={isPrintPage ? 'print:hidden' : ''} />
-                <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-                    {notificationMessage && (
-                        <div className={`border-l-4 p-4 rounded-r-lg relative mb-6 shadow-md ${notificationType === 'success' ? 'bg-emerald-50 border-emerald-500 text-emerald-800' : 'bg-red-50 border-red-500 text-red-800'}`} role="alert">
-                            <span className="font-bold">{notificationType === 'success' ? 'Success!' : 'Notice'}</span> {notificationMessage}
-                        </div>
-                    )}
-                    <Routes>
-                        {/* Routes for all logged-in users */}
-                        <Route path="/" element={<DashboardPage user={user!} onAddStudent={openAddModal} studentCount={students.filter(s => s.status === StudentStatus.ACTIVE).length} academicYear={academicYear!} onSetAcademicYear={handleSetAcademicYear} allUsers={allUsers} />} />
-                        <Route path="/students" element={<StudentListPage students={students.filter(s => s.status === StudentStatus.ACTIVE)} onAdd={openAddModal} onEdit={openEditModal} academicYear={academicYear!} user={user!} />} />
-                        <Route path="/student/:studentId" element={<StudentDetailPage students={students} onEdit={openEditModal} academicYear={academicYear!} user={user!} />} />
-                        <Route path="/reports/search" element={<ReportSearchPage students={students} academicYear={academicYear!} />} />
-                        <Route path="/report-card/:studentId" element={<ProgressReportPage students={students} academicYear={academicYear!} />} />
-                        <Route path="/report-card/:studentId/:examId" element={<PrintableReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
-                        <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={students} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
-                        <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={openImportModal} user={user!} />} />
-                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={openImportModal} onOpenTransferModal={openTransferModal} onDelete={openDeleteConfirm} user={user!} />} />
-                        <Route path="/change-password" element={<ChangePasswordPage onChangePassword={handleChangePassword} />} />
-                        
-                        {/* Admin Only Routes */}
-                        <Route element={<AdminRoute user={user} />}>
-                            <Route path="/users" element={<UserManagementPage allUsers={allUsers} onApprove={openApproveConfirm} onDeny={openDenyConfirm} />} />
-                            <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={openAddStaffModal} onEdit={openEditStaffModal} onDelete={openDeleteStaffConfirm} />} />
-                            <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={openEditStaffModal} gradeDefinitions={gradeDefinitions} />} />
-                            <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} />} />
-                            <Route path="/staff/certificates/generate" element={<GenerateServiceCertificatePage staff={staff} onSave={handleSaveServiceCertificate} />} />
-                            <Route path="/staff/certificates/print/:certId" element={<PrintServiceCertificatePage serviceCertificateRecords={serviceCertificateRecords} />} />
-                            <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
-                            <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear!} />} />
-                            <Route path="/transfers/records" element={<AllTcRecordsPage tcRecords={tcRecords} />} />
-                            <Route path="/transfers/print/:tcId" element={<PrintTcPage tcRecords={tcRecords} />} />
-                            <Route path="/transfers/update" element={<UpdateTcPage tcRecords={tcRecords} onUpdate={handleUpdateTc} />} />
-                            <Route path="/subjects" element={<ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} />} />
-                            <Route path="/fees" element={<FeeManagementPage students={students} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} />} />
-                            <Route path="/promotion" element={<PromotionPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onPromoteStudents={handlePromoteStudents} />} />
-                            <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={openAddInventoryModal} onEdit={openEditInventoryModal} onDelete={openDeleteInventoryConfirm} />} />
-                            <Route path="/reports/class-statement/:grade/:examId" element={<ClassMarkStatementPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onUpdateClassMarks={handleUpdateClassMarks} />} />
-                            
-                            {/* Hostel Routes */}
-                            <Route path="/hostel" element={<HostelDashboardPage />} />
-                            <Route path="/hostel/students" element={<HostelStudentListPage residents={hostelResidents} rooms={hostelRooms} students={students} />} />
-                            <Route path="/hostel/rooms" element={<HostelRoomListPage rooms={hostelRooms} residents={hostelResidents} students={students} />} />
-                            <Route path="/hostel/fees" element={<HostelFeePage />} />
-                            <Route path="/hostel/attendance" element={<HostelAttendancePage />} />
-                            <Route path="/hostel/mess" element={<HostelMessPage />} />
-                            <Route path="/hostel/staff" element={<HostelStaffPage staff={hostelStaff} onAdd={openAddHostelStaffModal} onEdit={openEditHostelStaffModal} onDelete={openDeleteHostelStaffConfirm} />} />
-                            <Route path="/hostel/inventory" element={<HostelInventoryPage inventory={hostelInventory} stockLogs={hostelStockLogs} onUpdateStock={handleUpdateHostelStock} />} />
-                            <Route path="/hostel/discipline" element={<HostelDisciplinePage />} />
-                            <Route path="/hostel/health" element={<HostelHealthPage />} />
-                            <Route path="/hostel/communication" element={<HostelCommunicationPage />} />
-                            <Route path="/hostel/settings" element={<HostelSettingsPage />} />
-                        </Route>
-
-                    </Routes>
-                </main>
-            </div>
-        );
-    }
-
-    const LoginRedirect = () => {
-        const location = useLocation();
-        return <Navigate to={(location.state as { from?: string })?.from || '/'} />;
-    };
-
     return (
-        <Router>
-            <Routes>
-                <Route path="/*" element={
-                    user ? <MainAppContent /> : <Navigate to="/login" state={{ from: window.location.hash.substring(1) || '/' }} />
-                }/>
-                <Route path="/login" element={
-                    !user ? <LoginPage onLogin={handleLogin} error={error} /> : <LoginRedirect />
-                }/>
-                <Route path="/signup" element={!user ? <SignUpPage onSignUp={handleSignUp} /> : <Navigate to="/" />}/>
-                <Route path="/forgot-password" element={<ForgotPasswordPage onForgotPassword={handleForgotPassword} />} />
-            </Routes>
-            {isFormModalOpen && (
-                <StudentFormModal
-                    isOpen={isFormModalOpen}
-                    onClose={closeModal}
-                    onSubmit={handleFormSubmit}
-                    student={editingStudent}
-                />
-            )}
-             {deletingStudent && (
-                <ConfirmationModal
-                    isOpen={!!deletingStudent}
-                    onClose={closeModal}
-                    onConfirm={handleDeleteConfirm}
-                    title="Remove Student Record"
-                >
-                    <p>Are you sure you want to remove <strong>{deletingStudent.name}</strong>? This action is for correcting incorrect entries and cannot be undone.</p>
-                </ConfirmationModal>
-            )}
-            {studentToConfirmEdit && (
-                <ConfirmationModal
-                    isOpen={!!studentToConfirmEdit}
-                    onClose={() => setStudentToConfirmEdit(null)}
-                    onConfirm={handleConfirmEdit}
-                    title="Confirm Changes"
-                >
-                    <p>Are you sure you want to save the changes for <strong>{studentToConfirmEdit.name}</strong>?</p>
-                </ConfirmationModal>
-            )}
-             {isStaffFormModalOpen && (
-                <StaffFormModal
-                    isOpen={isStaffFormModalOpen}
-                    onClose={closeModal}
-                    onSubmit={handleStaffFormSubmit}
-                    staffMember={editingStaff}
-                    allStaff={staff}
-                    gradeDefinitions={gradeDefinitions}
-                />
-            )}
-             {deletingStaff && (
-                <ConfirmationModal
-                    isOpen={!!deletingStaff}
-                    onClose={closeModal}
-                    onConfirm={handleDeleteStaffConfirm}
-                    title="Remove Staff Record"
-                >
-                    <p>Are you sure you want to remove <strong>{deletingStaff.firstName} {deletingStaff.lastName}</strong>? This action is permanent and cannot be undone.</p>
-                </ConfirmationModal>
-            )}
-            {isInventoryFormModalOpen && (
-                <InventoryFormModal
-                    isOpen={isInventoryFormModalOpen}
-                    onClose={closeModal}
-                    onSubmit={handleInventoryFormSubmit}
-                    item={editingInventoryItem}
-                />
-            )}
-            {deletingInventoryItem && (
-                <ConfirmationModal
-                    isOpen={!!deletingInventoryItem}
-                    onClose={closeModal}
-                    onConfirm={handleDeleteInventoryConfirm}
-                    title="Delete Inventory Item"
-                >
-                    <p>Are you sure you want to delete the item <strong>{deletingInventoryItem.name}</strong>? This action cannot be undone.</p>
-                </ConfirmationModal>
-            )}
-            {isImportModalOpen && (
-                <ImportStudentsModal
-                    isOpen={isImportModalOpen}
-                    onClose={closeModal}
-                    onImport={handleBulkAddStudents}
-                    grade={importTargetGrade}
-                    allStudents={students}
-                    allGrades={GRADES_LIST}
-                />
-            )}
-            {pendingImportData && (
-                 <ConfirmationModal
-                    isOpen={!!pendingImportData}
-                    onClose={() => setPendingImportData(null)}
-                    onConfirm={handleConfirmImport}
-                    title="Confirm Student Import"
-                >
-                    <p>Are you sure you want to import <strong>{pendingImportData.students.length}</strong> students into <strong>{pendingImportData.grade}</strong>? This action cannot be easily undone.</p>
-                </ConfirmationModal>
-            )}
-            {transferringStudent && (
-                <TransferStudentModal
-                    isOpen={!!transferringStudent}
-                    onClose={closeModal}
-                    onConfirm={handleTransferStudent}
-                    student={transferringStudent}
-                    allStudents={students}
-                    allGrades={GRADES_LIST}
-                />
-            )}
-            {isHostelStaffFormModalOpen && (
-                <HostelStaffFormModal
-                    isOpen={isHostelStaffFormModalOpen}
-                    onClose={closeModal}
-                    onSubmit={handleHostelStaffFormSubmit}
-                    staffMember={editingHostelStaff}
-                />
-            )}
-            {deletingHostelStaff && (
-                <ConfirmationModal
-                    isOpen={!!deletingHostelStaff}
-                    onClose={closeModal}
-                    onConfirm={handleDeleteHostelStaffConfirm}
-                    title="Remove Hostel Staff"
-                >
-                    <p>Are you sure you want to remove <strong>{deletingHostelStaff.name}</strong>? This action cannot be undone.</p>
-                </ConfirmationModal>
-            )}
-            {userToApprove && (
-                <ConfirmationModal
-                    isOpen={!!userToApprove}
-                    onClose={closeModal}
-                    onConfirm={handleConfirmApprove}
-                    title="Approve User Registration"
-                >
-                    <p>Are you sure you want to approve the user <strong>{userToApprove.displayName}</strong> ({userToApprove.email})? They will gain access to the application.</p>
-                </ConfirmationModal>
-            )}
-            {userToDeny && (
-                <ConfirmationModal
-                    isOpen={!!userToDeny}
-                    onClose={closeModal}
-                    onConfirm={handleConfirmDeny}
-                    title="Deny User Registration"
-                >
-                    <p>Are you sure you want to deny the user <strong>{userToDeny.displayName}</strong> ({userToDeny.email})? Their registration record will be deleted.</p>
-                </ConfirmationModal>
-            )}
-        </Router>
+        <HashRouter>
+            {!academicYear ? <AcademicYearForm onSetAcademicYear={handleSetAcademicYear} /> : <AppContent />}
+            {isFormModalOpen && <StudentFormModal isOpen={isFormModalOpen} onClose={closeModal} onSubmit={handleFormSubmit} student={editingStudent} />}
+            {isStaffFormModalOpen && <StaffFormModal isOpen={isStaffFormModalOpen} onClose={closeModal} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions} />}
+            {isInventoryFormModalOpen && <InventoryFormModal isOpen={isInventoryFormModalOpen} onClose={closeModal} onSubmit={handleInventoryFormSubmit} item={editingInventoryItem} />}
+            {isHostelStaffFormModalOpen && <HostelStaffFormModal isOpen={isHostelStaffFormModalOpen} onClose={closeModal} onSubmit={handleHostelStaffFormSubmit} staffMember={editingHostelStaff} />}
+            {isImportModalOpen && <ImportStudentsModal isOpen={isImportModalOpen} onClose={closeModal} onImport={handleBulkAddStudents} grade={importTargetGrade} allStudents={students} allGrades={GRADES_LIST} />}
+            {transferringStudent && <TransferStudentModal isOpen={!!transferringStudent} onClose={closeModal} student={transferringStudent} allStudents={students} allGrades={GRADES_LIST} onConfirm={handleTransferStudent} />}
+            <ConfirmationModal isOpen={!!deletingStudent} onClose={closeModal} onConfirm={handleDeleteConfirm} title="Confirm Deletion"><p>Are you sure you want to delete <span className="font-bold">{deletingStudent?.name}</span>? This action cannot be undone.</p></ConfirmationModal>
+            <ConfirmationModal isOpen={!!deletingStaff} onClose={closeModal} onConfirm={handleDeleteStaffConfirm} title="Confirm Staff Deletion"><p>Are you sure you want to delete <span className="font-bold">{deletingStaff?.firstName} {deletingStaff?.lastName}</span>? This action cannot be undone.</p></ConfirmationModal>
+            <ConfirmationModal isOpen={!!deletingInventoryItem} onClose={closeModal} onConfirm={handleDeleteInventoryItemConfirm} title="Confirm Item Deletion"><p>Are you sure you want to delete <span className="font-bold">{deletingInventoryItem?.name}</span>? This action cannot be undone.</p></ConfirmationModal>
+            <ConfirmationModal isOpen={!!deletingHostelStaff} onClose={closeModal} onConfirm={handleDeleteHostelStaffConfirm} title="Confirm Hostel Staff Deletion"><p>Are you sure you want to delete <span className="font-bold">{deletingHostelStaff?.name}</span>? This action cannot be undone.</p></ConfirmationModal>
+            <ConfirmationModal isOpen={!!studentToConfirmEdit} onClose={() => setStudentToConfirmEdit(null)} onConfirm={handleConfirmEdit} title="Confirm Edit"><p>Are you sure you want to save changes for <span className="font-bold">{studentToConfirmEdit?.name}</span>?</p></ConfirmationModal>
+            <ConfirmationModal isOpen={!!pendingImportData} onClose={() => setPendingImportData(null)} onConfirm={handleConfirmImport} title="Confirm Bulk Import"><p>Are you sure you want to import {pendingImportData?.students.length} new students into {pendingImportData?.grade}?</p></ConfirmationModal>
+        </HashRouter>
     );
-};
+}
 
 export default App;

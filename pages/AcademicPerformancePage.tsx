@@ -140,7 +140,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
                             onClick={handleSave}
                             className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition"
                         >
-                            <CheckIcon className="h-5 w-5" />
+                            <CheckIcon className="h-5 h-5" />
                             Save Changes
                         </button>
                     </>
@@ -149,7 +149,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
                         onClick={handleEditToggle}
                         className="flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition"
                     >
-                        <EditIcon className="h-5 w-5" />
+                        <EditIcon className="h-5 h-5" />
                         Edit Records
                     </button>
                 )}

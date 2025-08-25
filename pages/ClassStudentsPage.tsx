@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, Staff, EmploymentStatus, User } from '../types';
 import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon } from '../components/Icons';
 import { formatStudentId, calculateDues } from '../utils';
@@ -132,171 +132,94 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                             ))}
                         </select>
                         <button onClick={handleTeacherSave} title="Save" className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-full transition-colors"><CheckIcon className="w-5 h-5" /></button>
-                        <button onClick={() => { setIsEditingTeacher(false); setSelectedTeacherId(gradeDef.classTeacherId || ''); }} title="Cancel" className="p-1.5 text-red-600 hover:bg-red-100 rounded-full transition-colors"><XIcon className="w-5 h-5" /></button>
+                        <button onClick={() => { setIsEditingTeacher(false); setSelectedTeacherId(gradeDef.classTeacherId || ''); }} title="Cancel" className="p-1.5 text-rose-600 hover:bg-rose-100 rounded-full transition-colors"><XIcon className="w-5 h-5" /></button>
                     </div>
                 ) : (
-                    <div className="flex items-center gap-2 group">
-                        <span className="text-slate-800 font-semibold">{currentTeacherName}</span>
-                         {currentTeacher?.status !== EmploymentStatus.ACTIVE && (
-                             <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">{currentTeacher?.status}</span>
-                         )}
-                         {user.role === 'admin' && (
-                            <button onClick={() => setIsEditingTeacher(true)} title="Edit class teacher" className="p-1.5 text-slate-600 hover:text-slate-800 bg-transparent hover:bg-slate-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                                <EditIcon className="w-4 h-4" />
-                            </button>
-                         )}
+                    <div className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-800">{currentTeacherName}</span>
+                        {user.role === 'admin' && (
+                            <button onClick={() => setIsEditingTeacher(true)} title="Change Class Teacher" className="p-1.5 text-sky-600 hover:bg-sky-100 rounded-full transition-colors"><EditIcon className="w-5 h-5" /></button>
+                        )}
                     </div>
                 )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-             {user.role === 'admin' && (
-                <>
-                    <button
-                      onClick={() => onOpenImportModal(decodedGrade)}
-                      className="btn btn-primary bg-emerald-600 hover:bg-emerald-700"
-                    >
-                      <ArrowUpOnSquareIcon className="w-5 h-5" />
-                      Import Students
-                    </button>
-                   <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="btn btn-secondary"
-                  >
-                    <EditIcon className="w-5 h-5" />
-                    Edit Subjects
-                  </button>
-                </>
-             )}
-            <div className="text-lg font-bold text-slate-800 bg-slate-100 px-4 py-2 rounded-lg">
-              Total Students: <span className="text-sky-700">{classStudents.length}</span>
+           {user.role === 'admin' && (
+            <div className="flex items-center gap-3">
+                 <button
+                    onClick={() => onOpenImportModal(decodedGrade)}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition hover:-translate-y-0.5"
+                >
+                    <ArrowUpOnSquareIcon className="w-5 h-5" />
+                    Import to this Class
+                </button>
             </div>
-          </div>
+          )}
         </div>
         
-        {classStudents.length === 0 ? (
-          <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-lg">
-              <p className="text-slate-700 text-lg font-semibold">No active student records found for this class.</p>
-          </div>
-        ) : (
-          <>
-            {/* Mobile Card View */}
-            <div className="md:hidden space-y-4">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Roll No</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Student ID</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Father's Name</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Dues Status</th>
+                {user.role === 'admin' && <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-200">
               {classStudents.map(student => {
                   const dues = calculateDues(student);
                   return (
-                      <div key={student.id} className="bg-slate-50 rounded-lg p-4 shadow-sm border border-slate-200">
-                          <div className="flex justify-between items-start">
-                              <div>
-                                  <Link to={`/student/${student.id}`} className="font-bold text-lg text-sky-700 hover:underline">
-                                      {student.name}
-                                  </Link>
-                                  <p className="text-sm text-slate-600">Roll No: {student.rollNo}</p>
-                                  <p className="text-sm font-mono text-slate-800">{formatStudentId(student, academicYear)}</p>
-                              </div>
-                              {user.role === 'admin' && (
-                                <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                                    <button onClick={() => onOpenTransferModal(student)} className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50" title="Transfer Student">
-                                        <TransferIcon className="w-4 h-4" />
-                                        <span>Transfer</span>
-                                    </button>
-                                    <button onClick={() => onDelete(student)} className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50" title="Remove Incorrect Entry">
-                                        <TrashIcon className="w-4 h-4" />
-                                        <span>Remove</span>
-                                    </button>
-                                </div>
-                              )}
-                          </div>
-                          <div className="mt-3 pt-3 border-t border-slate-200 space-y-2 text-sm">
-                              <p><span className="font-semibold text-slate-700">Father:</span> {student.fatherName}</p>
-                              <div className="flex items-center gap-2">
-                                  <span className="font-semibold text-slate-700">Fee Status:</span>
-                                  {dues.length === 0 ? (
-                                      <div className="flex items-center gap-1.5 text-emerald-600">
-                                          <CheckCircleIcon className="w-5 h-5" />
-                                          <span className="font-medium">Cleared</span>
-                                      </div>
-                                  ) : (
-                                      <div className="flex items-center gap-1.5 text-amber-600">
-                                          <XCircleIcon className="w-5 h-5" />
-                                          <span className="font-medium">Dues Pending</span>
-                                      </div>
-                                  )}
-                              </div>
-                          </div>
-                      </div>
-                  )
-              })}
-            </div>
-            
-            {/* Desktop Table View */}
-            <div className="overflow-x-auto hidden md:block">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Roll No</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Name</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Student ID</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Fee Status</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Father's Name</th>
-                    {user.role === 'admin' && <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Actions</th>}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
-                  {classStudents.map(student => {
-                    const dues = calculateDues(student);
-                    return (
-                    <tr key={student.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.rollNo}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">
-                        <Link to={`/student/${student.id}`} className="hover:underline text-sky-700 font-semibold">
-                          {student.name}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{formatStudentId(student, academicYear)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {dues.length === 0 ? (
-                              <div className="flex items-center gap-1.5 text-emerald-600">
-                                  <CheckCircleIcon className="w-5 h-5" />
-                                  <span className="font-medium">Cleared</span>
-                              </div>
-                          ) : (
-                              <div className="flex items-center gap-1.5 text-amber-600">
-                                  <XCircleIcon className="w-5 h-5" />
-                                  <span className="font-medium">Dues Pending</span>
-                              </div>
-                          )}
+                    <tr key={student.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-800">{student.rollNo}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-mono">{formatStudentId(student, academicYear)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <Link to={`/student/${student.id}`} className="text-sky-700 hover:underline">{student.name}</Link>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.fatherName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {dues.length === 0 ? (
+                            <span className="flex items-center gap-1.5 text-emerald-600 font-semibold"><CheckCircleIcon className="w-5 h-5"/> Cleared</span>
+                        ) : (
+                            <span className="flex items-center gap-1.5 text-amber-600 font-semibold"><XCircleIcon className="w-5 h-5"/> Pending</span>
+                        )}
+                      </td>
                       {user.role === 'admin' && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <div className="flex items-center gap-4">
-                                <button onClick={() => onOpenTransferModal(student)} className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors" title="Transfer Student">
-                                    <TransferIcon className="w-4 h-4" />
-                                    <span>Transfer</span>
-                                </button>
-                                <button onClick={() => onDelete(student)} className="flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-800 transition-colors" title="Remove Incorrect Entry">
-                                    <TrashIcon className="w-4 h-4" />
-                                    <span>Remove</span>
-                                </button>
-                            </div>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end gap-2">
+                             <button onClick={() => onOpenTransferModal(student)} className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full" title="Transfer Student to another class">
+                                <TransferIcon className="w-5 h-5" />
+                            </button>
+                            <button onClick={() => onDelete(student)} className="p-2 text-red-600 hover:bg-red-100 rounded-full" title="Delete Student Record">
+                                <TrashIcon className="w-5 h-5" />
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>
-                  )})}
-                </tbody>
-              </table>
+                  )
+              })}
+            </tbody>
+          </table>
+          {classStudents.length === 0 && (
+            <div className="text-center py-10 border-t">
+                <p className="text-slate-700 font-semibold">No active students in this class.</p>
             </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
-      <EditSubjectsModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        grade={decodedGrade}
-        initialGradeDefinition={gradeDef}
-        onSave={handleSaveSubjects}
-      />
+      {isModalOpen && (
+        <EditSubjectsModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSaveSubjects}
+          grade={decodedGrade}
+          initialGradeDefinition={gradeDef}
+        />
+      )}
     </>
   );
 };
