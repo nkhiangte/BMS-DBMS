@@ -1,6 +1,6 @@
 import React from 'react';
 import { User } from '../types';
-import { BackIcon, HomeIcon } from '../components/Icons';
+import { BackIcon, HomeIcon, CheckIcon } from '../components/Icons';
 import { Link, useNavigate } from 'react-router-dom';
 
 interface UserManagementPageProps {
@@ -39,7 +39,7 @@ export const UserManagementPage: React.FC<UserManagementPageProps> = ({ allUsers
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Name</th>
                             <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Email</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Role</th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Role / Action</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-slate-200">
@@ -49,16 +49,28 @@ export const UserManagementPage: React.FC<UserManagementPageProps> = ({ allUsers
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{user.email}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
                                     {user.uid === currentUser.uid ? (
-                                        <span className='px-2 inline-flex text-xs leading-5 rounded-full bg-sky-100 text-sky-800'>
+                                        <span className='px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-sky-100 text-sky-800'>
                                             {user.role} (You)
                                         </span>
+                                    ) : user.role === 'pending' ? (
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
+                                                Pending Approval
+                                            </span>
+                                            <button
+                                                onClick={() => onUpdateUserRole(user.uid, 'user')}
+                                                className="flex items-center gap-1 px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-full hover:bg-emerald-700 transition"
+                                            >
+                                                <CheckIcon className="w-4 h-4" />
+                                                Approve
+                                            </button>
+                                        </div>
                                     ) : (
                                         <select 
                                             value={user.role} 
                                             onChange={(e) => handleRoleChange(user.uid, e.target.value)}
                                             className="form-select rounded-md border-slate-300 shadow-sm focus:border-sky-300 focus:ring focus:ring-sky-200 focus:ring-opacity-50"
                                         >
-                                            <option value="pending">Pending</option>
                                             <option value="user">User</option>
                                             <option value="admin">Admin</option>
                                         </select>
