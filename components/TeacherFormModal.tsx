@@ -195,6 +195,12 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
         { key: 'lastName', label: 'Last Name' },
         { key: 'employeeId', label: 'Employee ID' },
         { key: 'dateOfJoining', label: 'Date of Joining' },
+        { key: 'contactNumber', label: 'Contact Number' },
+        { key: 'emailAddress', label: 'Email Address' },
+        { key: 'aadhaarNumber', label: 'Aadhaar Number' },
+        { key: 'emergencyContactName', label: 'Emergency Contact Name' },
+        { key: 'emergencyContactRelationship', label: 'Emergency Contact Relationship' },
+        { key: 'emergencyContactNumber', label: 'Emergency Contact Number' },
     ];
 
     const missingFields = requiredFields.filter(field => {
@@ -211,7 +217,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
     const finalData: Omit<Staff, 'id'> = {
         ...formData,
         yearsOfExperience: Number(formData.yearsOfExperience) || 0,
-        basicSalary: formData.basicSalary ? Number(formData.basicSalary) : undefined,
+        basicSalary: formData.basicSalary != null && formData.basicSalary !== '' ? Number(formData.basicSalary) : undefined,
     };
 
     if (finalData.staffType === 'Non-Teaching') {
