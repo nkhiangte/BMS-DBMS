@@ -1,4 +1,3 @@
-
 import { Student, Grade, FeePayments, SubjectMark, GradeDefinition } from './types';
 import { FEE_STRUCTURE, academicMonths, GRADES_LIST } from './constants';
 
@@ -137,4 +136,26 @@ export const getNextGrade = (currentGrade: Grade): Grade | null => {
         return null;
     }
     return GRADES_LIST[currentIndex + 1];
+};
+
+export const formatDateForDisplay = (isoDate?: string): string => {
+  if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+    return isoDate || '';
+  }
+  const [year, month, day] = isoDate.split('-');
+  return `${day}/${month}/${year}`;
+};
+
+export const formatDateForStorage = (displayDate?: string): string => {
+  if (!displayDate) {
+    return '';
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(displayDate)) {
+    return displayDate;
+  }
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(displayDate)) {
+    return ''; 
+  }
+  const [day, month, year] = displayDate.split('/');
+  return `${year}-${month}-${day}`;
 };
