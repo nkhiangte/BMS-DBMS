@@ -1,7 +1,8 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Student, Grade, GradeDefinition, StudentStatus, SubjectMark } from '../types';
+import { Student, Grade, GradeDefinition, StudentStatus, SubjectMark, User } from '../types';
 import { GRADES_LIST } from '../constants';
 import { calculateStudentResult } from '../utils';
 import { BackIcon, HomeIcon, CheckIcon, AcademicCapIcon } from '../components/Icons';
@@ -12,9 +13,10 @@ interface PromotionPageProps {
   gradeDefinitions: Record<Grade, GradeDefinition>;
   academicYear: string;
   onPromoteStudents: () => void;
+  user: User;
 }
 
-const PromotionPage: React.FC<PromotionPageProps> = ({ students, gradeDefinitions, academicYear, onPromoteStudents }) => {
+const PromotionPage: React.FC<PromotionPageProps> = ({ students, gradeDefinitions, academicYear, onPromoteStudents, user }) => {
     const navigate = useNavigate();
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
@@ -79,10 +81,12 @@ const PromotionPage: React.FC<PromotionPageProps> = ({ students, gradeDefinition
                     </p>
                 </div>
                 
-                <div className="bg-amber-50 border-l-4 border-amber-400 text-amber-800 p-4 my-8 rounded-r-lg">
-                    <h3 className="font-bold">Important Notice</h3>
-                    <p>This is a critical, one-way action. Once confirmed, student grades will be updated, academic and fee records will be reset for the new session, and the current session will end. This action cannot be undone.</p>
-                </div>
+                {user.role === 'admin' && (
+                  <div className="bg-amber-50 border-l-4 border-amber-400 text-amber-800 p-4 my-8 rounded-r-lg">
+                      <h3 className="font-bold">Important Notice</h3>
+                      <p>This is a critical, one-way action. Once confirmed, student grades will be updated, academic and fee records will be reset for the new session, and the current session will end. This action cannot be undone.</p>
+                  </div>
+                )}
 
                 <h2 className="text-xl font-bold text-slate-800 mb-4">Promotion Summary</h2>
                 <div className="overflow-x-auto">
@@ -110,15 +114,17 @@ const PromotionPage: React.FC<PromotionPageProps> = ({ students, gradeDefinition
                     </table>
                 </div>
 
-                <div className="mt-8 flex justify-end">
-                    <button 
-                        onClick={() => setIsConfirmModalOpen(true)}
-                        className="flex items-center justify-center gap-2 px-6 py-3 bg-rose-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-transform hover:scale-105"
-                    >
-                        <CheckIcon className="w-6 h-6" />
-                        Confirm & Finalize Session {academicYear}
-                    </button>
-                </div>
+                {user.role === 'admin' && (
+                  <div className="mt-8 flex justify-end">
+                      <button 
+                          onClick={() => setIsConfirmModalOpen(true)}
+                          className="flex items-center justify-center gap-2 px-6 py-3 bg-rose-600 text-white font-bold text-lg rounded-lg shadow-lg hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-transform hover:scale-105"
+                      >
+                          <CheckIcon className="w-6 h-6" />
+                          Confirm & Finalize Session {academicYear}
+                      </button>
+                  </div>
+                )}
             </div>
 
             <ConfirmationModal

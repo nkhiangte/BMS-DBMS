@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Grade, GradeDefinition } from '../types';
+import { Grade, GradeDefinition, User } from '../types';
 import { GRADES_LIST } from '../constants';
 import { BackIcon, HomeIcon, EditIcon, BookOpenIcon } from '../components/Icons';
 import EditSubjectsModal from '../components/EditSubjectsModal';
@@ -10,9 +10,10 @@ import EditSubjectsModal from '../components/EditSubjectsModal';
 interface ManageSubjectsPageProps {
   gradeDefinitions: Record<Grade, GradeDefinition>;
   onUpdateGradeDefinition: (grade: Grade, newDefinition: GradeDefinition) => void;
+  user: User;
 }
 
-const ManageSubjectsPage: React.FC<ManageSubjectsPageProps> = ({ gradeDefinitions, onUpdateGradeDefinition }) => {
+const ManageSubjectsPage: React.FC<ManageSubjectsPageProps> = ({ gradeDefinitions, onUpdateGradeDefinition, user }) => {
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingGrade, setEditingGrade] = useState<Grade | null>(null);
@@ -70,14 +71,16 @@ const ManageSubjectsPage: React.FC<ManageSubjectsPageProps> = ({ gradeDefinition
                                         <BookOpenIcon className="w-6 h-6 text-sky-600" />
                                         {grade}
                                     </h2>
-                                    <button
-                                        onClick={() => handleEditClick(grade)}
-                                        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1 text-xs bg-white border border-slate-300 text-slate-700 font-semibold rounded-md shadow-sm hover:bg-slate-100"
-                                        title={`Edit curriculum for ${grade}`}
-                                    >
-                                        <EditIcon className="w-4 h-4" />
-                                        Edit
-                                    </button>
+                                    {user.role === 'admin' && (
+                                        <button
+                                            onClick={() => handleEditClick(grade)}
+                                            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1 text-xs bg-white border border-slate-300 text-slate-700 font-semibold rounded-md shadow-sm hover:bg-slate-100"
+                                            title={`Edit curriculum for ${grade}`}
+                                        >
+                                            <EditIcon className="w-4 h-4" />
+                                            Edit
+                                        </button>
+                                    )}
                                 </div>
                                 <ul className="text-slate-700 space-y-1 text-sm flex-grow">
                                     {(gradeDef.subjects || []).length > 0 ? (

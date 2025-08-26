@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, Exam, SubjectMark, Grade, GradeDefinition } from '../types';
+import { Student, Exam, SubjectMark, Grade, GradeDefinition, User } from '../types';
 import { TERMINAL_EXAMS } from '../constants';
 import { BackIcon, EditIcon, CheckIcon, XIcon, HomeIcon } from '../components/Icons';
 import AcademicRecordTable from '../components/AcademicRecordTable';
@@ -13,9 +13,10 @@ interface AcademicPerformancePageProps {
   onUpdateAcademic: (studentId: string, performance: Exam[]) => void;
   gradeDefinitions: Record<Grade, GradeDefinition>;
   academicYear: string;
+  user: User;
 }
 
-const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ students, onUpdateAcademic, gradeDefinitions, academicYear }) => {
+const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ students, onUpdateAcademic, gradeDefinitions, academicYear, user }) => {
   const { studentId } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
 
@@ -127,31 +128,33 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
                 <p className="text-slate-700 text-lg mt-1">{student.name} ({formatStudentId(student, academicYear)})</p>
             </div>
             <div className="flex gap-3">
-                {isEditing ? (
-                    <>
-                        <button
-                            onClick={handleCancel}
-                            className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition"
-                        >
-                            <XIcon className="h-5 w-5" />
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition"
-                        >
-                            <CheckIcon className="h-5 h-5" />
-                            Save Changes
-                        </button>
-                    </>
-                ) : (
-                    <button
-                        onClick={handleEditToggle}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition"
-                    >
-                        <EditIcon className="h-5 h-5" />
-                        Edit Records
-                    </button>
+                {user.role === 'admin' && (
+                  isEditing ? (
+                      <>
+                          <button
+                              onClick={handleCancel}
+                              className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition"
+                          >
+                              <XIcon className="h-5 w-5" />
+                              Cancel
+                          </button>
+                          <button
+                              onClick={handleSave}
+                              className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition"
+                          >
+                              <CheckIcon className="h-5 h-5" />
+                              Save Changes
+                          </button>
+                      </>
+                  ) : (
+                      <button
+                          onClick={handleEditToggle}
+                          className="flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition"
+                      >
+                          <EditIcon className="h-5 h-5" />
+                          Edit Records
+                      </button>
+                  )
                 )}
             </div>
         </div>
@@ -162,7 +165,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
                     key={exam.id}
                     examName={exam.name}
                     results={exam.results}
-                    isEditing={isEditing}
+                    isEditing={isEditing && user.role === 'admin'}
                     onUpdate={(newResults) => handleUpdateExamResults(exam.id, newResults)}
                     subjectDefinitions={gradeDef.subjects}
                 />

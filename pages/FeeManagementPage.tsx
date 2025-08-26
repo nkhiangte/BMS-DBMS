@@ -1,8 +1,9 @@
 
+
 import React, { useState, FormEvent, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BackIcon, HomeIcon, SearchIcon, CurrencyDollarIcon, UserIcon, CheckIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons';
-import { Student, Grade, StudentStatus, FeePayments } from '../types';
+import { Student, Grade, StudentStatus, FeePayments, User } from '../types';
 import { calculateDues, formatStudentId } from '../utils';
 import { FEE_STRUCTURE, TERMINAL_EXAMS, academicMonths } from '../constants';
 
@@ -10,6 +11,7 @@ interface FeeManagementPageProps {
   students: Student[];
   academicYear: string;
   onUpdateFeePayments: (studentId: string, payments: FeePayments) => void;
+  user: User;
 }
 
 const ReadonlyField: React.FC<{ label: string; value?: string | number }> = ({ label, value }) => (
@@ -30,7 +32,7 @@ const FeeDetailItem: React.FC<{ label: string; amount: number }> = ({ label, amo
     </div>
 );
 
-const FeeManagementPage: React.FC<FeeManagementPageProps> = ({ students, academicYear, onUpdateFeePayments }) => {
+const FeeManagementPage: React.FC<FeeManagementPageProps> = ({ students, academicYear, onUpdateFeePayments, user }) => {
   const navigate = useNavigate();
   const [studentIdInput, setStudentIdInput] = useState('');
   const [foundStudent, setFoundStudent] = useState<Student | null>(null);
@@ -118,6 +120,8 @@ const FeeManagementPage: React.FC<FeeManagementPageProps> = ({ students, academi
   const tempStudentForDues: Student | null = foundStudent && paymentData ? { ...foundStudent, feePayments: paymentData } : null;
   const dues = tempStudentForDues ? calculateDues(tempStudentForDues) : [];
 
+  const isReadOnly = user.role !== 'admin';
+
   return (
     <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
       <div className="mb-6 flex justify-between items-center">
@@ -189,51 +193,55 @@ const FeeManagementPage: React.FC<FeeManagementPageProps> = ({ students, academi
                 </div>
             </fieldset>
 
-            <fieldset className="border p-4 rounded-lg">
-                <legend className="text-lg font-bold text-slate-800 px-2">Payment Status</legend>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 mt-4">
-                    <div className="space-y-4">
-                        <h4 className="font-bold text-slate-800 border-b pb-2">One-Time & Term Fees</h4>
-                         <label className="flex items-center space-x-3 cursor-pointer p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
-                           <input type="checkbox" checked={paymentData.admissionFeePaid} onChange={e => handlePaymentChange('admission', 'admissionFeePaid', e.target.checked)} className="form-checkbox h-5 w-5 text-sky-600 border-slate-300 rounded focus:ring-sky-500" />
-                           <span className="text-slate-800 font-semibold">Admission Fee Paid</span>
-                        </label>
-                        {TERMINAL_EXAMS.map((exam, i) => (
-                             <label key={exam.id} className="flex items-center space-x-3 cursor-pointer p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
-                                <input type="checkbox" checked={paymentData.examFeesPaid[`terminal${i + 1}` as keyof typeof paymentData.examFeesPaid]} onChange={e => handlePaymentChange('exam', `terminal${i + 1}`, e.target.checked)} className="form-checkbox h-5 w-5 text-sky-600 border-slate-300 rounded focus:ring-sky-500" />
-                                <span className="text-slate-800 font-semibold">{exam.name} Fee Paid</span>
+            <fieldset disabled={isReadOnly}>
+                <div className="border p-4 rounded-lg">
+                    <legend className="text-lg font-bold text-slate-800 px-2">Payment Status</legend>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 mt-4">
+                        <div className="space-y-4">
+                            <h4 className="font-bold text-slate-800 border-b pb-2">One-Time & Term Fees</h4>
+                            <label className="flex items-center space-x-3 cursor-pointer p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
+                            <input type="checkbox" checked={paymentData.admissionFeePaid} onChange={e => handlePaymentChange('admission', 'admissionFeePaid', e.target.checked)} className="form-checkbox h-5 w-5 text-sky-600 border-slate-300 rounded focus:ring-sky-500" disabled={isReadOnly} />
+                            <span className="text-slate-800 font-semibold">Admission Fee Paid</span>
                             </label>
-                        ))}
-                    </div>
-                    <div>
-                        <div className="flex justify-between items-center border-b pb-2 mb-4">
-                            <h4 className="font-bold text-slate-800">Monthly Tuition Fees</h4>
-                            <button type="button" onClick={handleToggleAllTuition} className="text-xs font-semibold text-sky-600 hover:underline">{allTuitionPaid ? 'Unmark All' : 'Mark All'}</button>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {academicMonths.map(month => (
-                                <label key={month} className="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-slate-100">
-                                    <input type="checkbox" checked={!!paymentData.tuitionFeesPaid[month]} onChange={e => handlePaymentChange('tuition', month, e.target.checked)} className="form-checkbox h-4 w-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500" />
-                                    <span className="text-slate-800">{month}</span>
+                            {TERMINAL_EXAMS.map((exam, i) => (
+                                <label key={exam.id} className="flex items-center space-x-3 cursor-pointer p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
+                                    <input type="checkbox" checked={paymentData.examFeesPaid[`terminal${i + 1}` as keyof typeof paymentData.examFeesPaid]} onChange={e => handlePaymentChange('exam', `terminal${i + 1}`, e.target.checked)} className="form-checkbox h-5 w-5 text-sky-600 border-slate-300 rounded focus:ring-sky-500" disabled={isReadOnly} />
+                                    <span className="text-slate-800 font-semibold">{exam.name} Fee Paid</span>
                                 </label>
                             ))}
+                        </div>
+                        <div>
+                            <div className="flex justify-between items-center border-b pb-2 mb-4">
+                                <h4 className="font-bold text-slate-800">Monthly Tuition Fees</h4>
+                                {!isReadOnly && <button type="button" onClick={handleToggleAllTuition} className="text-xs font-semibold text-sky-600 hover:underline">{allTuitionPaid ? 'Unmark All' : 'Mark All'}</button>}
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {academicMonths.map(month => (
+                                    <label key={month} className="flex items-center space-x-2 cursor-pointer p-2 rounded-md hover:bg-slate-100">
+                                        <input type="checkbox" checked={!!paymentData.tuitionFeesPaid[month]} onChange={e => handlePaymentChange('tuition', month, e.target.checked)} className="form-checkbox h-4 w-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500" disabled={isReadOnly} />
+                                        <span className="text-slate-800">{month}</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
             </fieldset>
 
-            <div className="mt-8 flex justify-end items-center gap-4">
-                 {isSaved && (
-                    <div className="flex items-center gap-2 text-emerald-600 font-semibold animate-fade-in">
-                        <CheckIcon className="w-5 h-5" />
-                        <span>Saved!</span>
-                    </div>
-                 )}
-                <button type="submit" className="px-6 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition flex items-center gap-2">
-                    <CheckIcon className="w-5 h-5"/>
-                    Save Payment Status
-                </button>
-            </div>
+            {!isReadOnly && (
+                <div className="mt-8 flex justify-end items-center gap-4">
+                    {isSaved && (
+                        <div className="flex items-center gap-2 text-emerald-600 font-semibold animate-fade-in">
+                            <CheckIcon className="w-5 h-5" />
+                            <span>Saved!</span>
+                        </div>
+                    )}
+                    <button type="submit" className="px-6 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition flex items-center gap-2">
+                        <CheckIcon className="w-5 h-5"/>
+                        Save Payment Status
+                    </button>
+                </div>
+            )}
         </form>
       )}
     </div>

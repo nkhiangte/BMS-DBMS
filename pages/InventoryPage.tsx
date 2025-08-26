@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { InventoryItem } from '../types';
+import { InventoryItem, User } from '../types';
 import { PlusIcon, SearchIcon, HomeIcon, BackIcon, ArchiveBoxIcon } from '../components/Icons';
 import InventoryTable from '../components/InventoryTable';
 import { INVENTORY_CATEGORY_LIST, INVENTORY_STATUS_LIST } from '../constants';
@@ -10,9 +10,10 @@ interface InventoryPageProps {
   onAdd: () => void;
   onEdit: (item: InventoryItem) => void;
   onDelete: (item: InventoryItem) => void;
+  user: User;
 }
 
-const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onAdd, onEdit, onDelete }) => {
+const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onAdd, onEdit, onDelete, user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -100,19 +101,22 @@ const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onAdd, onEdit,
           </select>
 
           {/* Add Item Button */}
-          <button
-            onClick={onAdd}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Add Item
-          </button>
+          {user.role === 'admin' && (
+            <button
+              onClick={onAdd}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Add Item
+            </button>
+          )}
         </div>
       </div>
       <InventoryTable
         items={filteredInventory}
         onEdit={onEdit}
         onDelete={onDelete}
+        user={user}
       />
     </div>
   );

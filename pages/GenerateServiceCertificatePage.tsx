@@ -1,13 +1,15 @@
 
+
 import React, { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Staff, ServiceCertificateRecord, EmploymentStatus } from '../types';
+import { Staff, ServiceCertificateRecord, EmploymentStatus, User } from '../types';
 import { BackIcon, HomeIcon, DocumentPlusIcon, CheckIcon } from '../components/Icons';
 import ConfirmationModal from '../components/ConfirmationModal';
 
 interface GenerateServiceCertificatePageProps {
   staff: Staff[];
   onSave: (certRecord: Omit<ServiceCertificateRecord, 'id'>) => void;
+  user: User;
 }
 
 const ReadonlyField: React.FC<{ label: string; value?: string | number }> = ({ label, value }) => (
@@ -42,7 +44,7 @@ const FormField: React.FC<{
     </div>
 );
 
-const GenerateServiceCertificatePage: React.FC<GenerateServiceCertificatePageProps> = ({ staff, onSave }) => {
+const GenerateServiceCertificatePage: React.FC<GenerateServiceCertificatePageProps> = ({ staff, onSave, user }) => {
   const navigate = useNavigate();
   
   const [staffIdInput, setStaffIdInput] = useState<string>('');
@@ -186,33 +188,36 @@ const GenerateServiceCertificatePage: React.FC<GenerateServiceCertificatePagePro
       <p className="text-slate-700 mb-8">Enter a staff's Employee ID to fetch their details and generate a certificate.</p>
 
       {/* Staff Selector */}
-      <div className="mb-8 max-w-lg">
-        <label htmlFor="staff-id-input" className="block text-sm font-bold text-slate-800 mb-2">Enter Employee ID</label>
-        <div className="flex gap-2 items-start">
-            <div className="flex-grow">
-                <input
-                    id="staff-id-input"
-                    type="text"
-                    placeholder="e.g., BMS-T-001"
-                    value={staffIdInput}
-                    onChange={e => setStaffIdInput(e.target.value.toUpperCase())}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleStaffSearch(); }}}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg"
-                />
-                 {searchError && <p className="text-red-500 text-sm mt-1">{searchError}</p>}
-            </div>
-            <button
-                type="button"
-                onClick={handleStaffSearch}
-                className="px-6 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 h-[42px]"
-            >
-                Find
-            </button>
+      <fieldset disabled={user.role !== 'admin'}>
+        <div className="mb-8 max-w-lg">
+          <label htmlFor="staff-id-input" className="block text-sm font-bold text-slate-800 mb-2">Enter Employee ID</label>
+          <div className="flex gap-2 items-start">
+              <div className="flex-grow">
+                  <input
+                      id="staff-id-input"
+                      type="text"
+                      placeholder="e.g., BMS-T-001"
+                      value={staffIdInput}
+                      onChange={e => setStaffIdInput(e.target.value.toUpperCase())}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleStaffSearch(); }}}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg"
+                  />
+                  {searchError && <p className="text-red-500 text-sm mt-1">{searchError}</p>}
+              </div>
+              <button
+                  type="button"
+                  onClick={handleStaffSearch}
+                  className="px-6 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 h-[42px]"
+              >
+                  Find
+              </button>
+          </div>
         </div>
-      </div>
+      </fieldset>
 
       {foundStaff && (
         <form onSubmit={handleSubmit}>
+          <fieldset disabled={user.role !== 'admin'}>
             <div className="space-y-6">
                 <fieldset className="border p-4 rounded-lg">
                     <legend className="text-lg font-bold text-slate-800 px-2">Staff Details</legend>
@@ -258,22 +263,25 @@ const GenerateServiceCertificatePage: React.FC<GenerateServiceCertificatePagePro
                 </fieldset>
             </div>
             
-            <div className="mt-8 flex justify-end gap-3">
-                <button
-                    type="button"
-                    onClick={() => navigate('/staff/certificates')}
-                    className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50"
-                >
-                    Cancel
-                </button>
-                <button
-                    type="submit"
-                    className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 flex items-center gap-2"
-                >
-                    <DocumentPlusIcon className="w-5 h-5" />
-                    Generate & Save Certificate
-                </button>
-            </div>
+            {user.role === 'admin' && (
+              <div className="mt-8 flex justify-end gap-3">
+                  <button
+                      type="button"
+                      onClick={() => navigate('/staff/certificates')}
+                      className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50"
+                  >
+                      Cancel
+                  </button>
+                  <button
+                      type="submit"
+                      className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 flex items-center gap-2"
+                  >
+                      <DocumentPlusIcon className="w-5 h-5" />
+                      Generate & Save Certificate
+                  </button>
+              </div>
+            )}
+            </fieldset>
         </form>
       )}
 

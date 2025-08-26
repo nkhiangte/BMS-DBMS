@@ -464,31 +464,31 @@ const App: React.FC = () => {
                         <Route path="/" element={<DashboardPage user={user} onAddStudent={() => { setEditingStudent(null); setIsFormModalOpen(true); }} studentCount={students.filter(s => s.status === 'Active').length} academicYear={academicYear} onSetAcademicYear={handleSetAcademicYear} allUsers={allUsers} />} />
                         <Route path="/students" element={<StudentListPage students={students.filter(s => s.status === StudentStatus.ACTIVE)} onAdd={() => { setEditingStudent(null); setIsFormModalOpen(true); }} onEdit={(s) => { setEditingStudent(s); setIsFormModalOpen(true); }} academicYear={academicYear!} user={user} />} />
                         <Route path="/student/:studentId" element={<StudentDetailPage students={students} onEdit={(s) => { setEditingStudent(s); setIsFormModalOpen(true); }} academicYear={academicYear!} user={user} />} />
-                        <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={students} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} />} />
+                        <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={students} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} user={user} />} />
                         <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} user={user} />} />
                         <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} onOpenTransferModal={(s) => setTransferringStudent(s)} onDelete={(s) => setDeletingStudent(s)} user={user} />} />
-                        <Route path="/fees" element={<FeeManagementPage students={students} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} />} />
+                        <Route path="/fees" element={<FeeManagementPage students={students} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} user={user} />} />
                         <Route path="/reports/search" element={<ReportSearchPage students={students} academicYear={academicYear!} />} />
                         <Route path="/reports/class-statement/:grade/:examId" element={<ClassMarkStatementPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onUpdateClassMarks={() => {}} />} />
-                        <Route path="/promotion" element={<PromotionPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onPromoteStudents={handlePromoteStudents} />} />
+                        <Route path="/promotion" element={<PromotionPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onPromoteStudents={handlePromoteStudents} user={user} />} />
                         <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
-                        <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear!} />} />
-                        <Route path="/transfers/update" element={<UpdateTcPage tcRecords={tcRecords} onUpdate={handleUpdateTc} />} />
+                        <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear!} user={user} />} />
+                        <Route path="/transfers/update" element={<UpdateTcPage tcRecords={tcRecords} onUpdate={handleUpdateTc} user={user} />} />
                         <Route path="/transfers/records" element={<AllTcRecordsPage tcRecords={tcRecords} />} />
-                        <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={() => { setEditingStaff(null); setIsStaffFormModalOpen(true); }} onEdit={(s) => { setEditingStaff(s); setIsStaffFormModalOpen(true); }} onDelete={(s) => setDeletingStaff(s)} />} />
+                        <Route path="/staff" element={<ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={() => { setEditingStaff(null); setIsStaffFormModalOpen(true); }} onEdit={(s) => { setEditingStaff(s); setIsStaffFormModalOpen(true); }} onDelete={(s) => setDeletingStaff(s)} user={user} />} />
                         <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={(s) => { setEditingStaff(s); setIsStaffFormModalOpen(true); }} gradeDefinitions={gradeDefinitions} />} />
-                        <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} />} />
-                        <Route path="/staff/certificates/generate" element={<GenerateServiceCertificatePage staff={staff} onSave={handleSaveServiceCertificate} />} />
-                        <Route path="/subjects" element={<ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} />} />
-                        <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={() => { setEditingInventoryItem(null); setIsInventoryFormModalOpen(true); }} onEdit={(i) => { setEditingInventoryItem(i); setIsInventoryFormModalOpen(true); }} onDelete={(i) => setDeletingInventoryItem(i)} />} />
+                        <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} user={user} />} />
+                        <Route path="/staff/certificates/generate" element={<GenerateServiceCertificatePage staff={staff} onSave={handleSaveServiceCertificate} user={user} />} />
+                        <Route path="/subjects" element={<ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} user={user} />} />
+                        <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={() => { setEditingInventoryItem(null); setIsInventoryFormModalOpen(true); }} onEdit={(i) => { setEditingInventoryItem(i); setIsInventoryFormModalOpen(true); }} onDelete={(i) => setDeletingInventoryItem(i)} user={user} />} />
                         <Route path="/hostel" element={<HostelDashboardPage />} />
                         <Route path="/hostel/students" element={<HostelStudentListPage residents={hostelResidents} rooms={hostelRooms} students={students} />} />
                         <Route path="/hostel/rooms" element={<HostelRoomListPage rooms={hostelRooms} residents={hostelResidents} students={students} />} />
                         <Route path="/hostel/fees" element={<HostelFeePage />} />
                         <Route path="/hostel/attendance" element={<HostelAttendancePage />} />
                         <Route path="/hostel/mess" element={<HostelMessPage />} />
-                        <Route path="/hostel/staff" element={<HostelStaffPage staff={hostelStaff} onAdd={() => { setEditingHostelStaff(null); setIsHostelStaffFormModalOpen(true); }} onEdit={(s) => { setEditingHostelStaff(s); setIsHostelStaffFormModalOpen(true); }} onDelete={(s) => setDeletingHostelStaff(s)} />} />
-                        <Route path="/hostel/inventory" element={<HostelInventoryPage inventory={hostelInventory} stockLogs={hostelStockLogs} onUpdateStock={() => {}} />} />
+                        <Route path="/hostel/staff" element={<HostelStaffPage staff={hostelStaff} onAdd={() => { setEditingHostelStaff(null); setIsHostelStaffFormModalOpen(true); }} onEdit={(s) => { setEditingHostelStaff(s); setIsHostelStaffFormModalOpen(true); }} onDelete={(s) => setDeletingHostelStaff(s)} user={user} />} />
+                        <Route path="/hostel/inventory" element={<HostelInventoryPage inventory={hostelInventory} stockLogs={hostelStockLogs} onUpdateStock={() => {}} user={user} />} />
                         <Route path="/hostel/discipline" element={<HostelDisciplinePage />} />
                         <Route path="/hostel/health" element={<HostelHealthPage />} />
                         <Route path="/hostel/communication" element={<HostelCommunicationPage />} />

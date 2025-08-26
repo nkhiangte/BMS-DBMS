@@ -1,14 +1,15 @@
 import React from 'react';
-import { InventoryItem, InventoryStatus } from '../types';
+import { InventoryItem, InventoryStatus, User } from '../types';
 import { EditIcon, TrashIcon } from './Icons';
 
 interface InventoryTableProps {
   items: InventoryItem[];
   onEdit: (item: InventoryItem) => void;
   onDelete: (item: InventoryItem) => void;
+  user: User;
 }
 
-const InventoryTable: React.FC<InventoryTableProps> = ({ items, onEdit, onDelete }) => {
+const InventoryTable: React.FC<InventoryTableProps> = ({ items, onEdit, onDelete, user }) => {
     const getStatusColor = (status: InventoryStatus): string => {
         switch (status) {
         case InventoryStatus.GOOD:
@@ -45,14 +46,16 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onEdit, onDelete
                             {item.status}
                         </span>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                        <button onClick={() => onEdit(item)} className="p-2 text-sky-600 hover:bg-sky-100 rounded-full" title="Edit">
-                            <EditIcon className="w-5 h-5" />
-                        </button>
-                        <button onClick={() => onDelete(item)} className="p-2 text-red-600 hover:bg-red-100 rounded-full" title="Delete">
-                            <TrashIcon className="w-5 h-5" />
-                        </button>
-                    </div>
+                    {user.role === 'admin' && (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            <button onClick={() => onEdit(item)} className="p-2 text-sky-600 hover:bg-sky-100 rounded-full" title="Edit">
+                                <EditIcon className="w-5 h-5" />
+                            </button>
+                            <button onClick={() => onDelete(item)} className="p-2 text-red-600 hover:bg-red-100 rounded-full" title="Delete">
+                                <TrashIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                    )}
                 </div>
                 <div className="mt-3 pt-3 border-t border-slate-200 space-y-1 text-sm">
                     <p><span className="font-semibold text-slate-700">Quantity:</span> {item.quantity}</p>
@@ -74,9 +77,11 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onEdit, onDelete
               <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Status</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Location</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Purchase Date</th>
-              <th scope="col" className="relative px-6 py-3">
-                <span className="sr-only">Actions</span>
-              </th>
+              {user.role === 'admin' && (
+                <th scope="col" className="relative px-6 py-3">
+                  <span className="sr-only">Actions</span>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
@@ -92,16 +97,18 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onEdit, onDelete
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{item.location}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{item.purchaseDate}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex items-center justify-end gap-4">
-                    <button onClick={() => onEdit(item)} className="text-sky-600 hover:text-sky-800 transition-colors" title="Edit">
-                      <EditIcon className="w-5 h-5" />
-                    </button>
-                    <button onClick={() => onDelete(item)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete">
-                      <TrashIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                </td>
+                {user.role === 'admin' && (
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex items-center justify-end gap-4">
+                      <button onClick={() => onEdit(item)} className="text-sky-600 hover:text-sky-800 transition-colors" title="Edit">
+                        <EditIcon className="w-5 h-5" />
+                      </button>
+                      <button onClick={() => onDelete(item)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete">
+                        <TrashIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

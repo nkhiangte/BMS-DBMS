@@ -2,14 +2,15 @@
 
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ServiceCertificateRecord } from '../types';
+import { ServiceCertificateRecord, User } from '../types';
 import { BackIcon, HomeIcon, PrinterIcon, DocumentPlusIcon } from '../components/Icons';
 
 interface StaffDocumentsPageProps {
   serviceCertificateRecords: ServiceCertificateRecord[];
+  user: User;
 }
 
-const StaffDocumentsPage: React.FC<StaffDocumentsPageProps> = ({ serviceCertificateRecords }) => {
+const StaffDocumentsPage: React.FC<StaffDocumentsPageProps> = ({ serviceCertificateRecords, user }) => {
   const navigate = useNavigate();
   const records = [...serviceCertificateRecords].sort((a,b) => b.certData.issueDate.localeCompare(a.certData.issueDate));
 
@@ -38,13 +39,15 @@ const StaffDocumentsPage: React.FC<StaffDocumentsPageProps> = ({ serviceCertific
             <h1 className="text-3xl font-bold text-slate-800">Service Certificate Records</h1>
             <p className="text-slate-700 mt-1">A list of all service certificates that have been generated.</p>
         </div>
-         <Link
-            to="/staff/certificates/generate"
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition"
-        >
-            <DocumentPlusIcon className="w-5 h-5" />
-            <span>Generate New Certificate</span>
-        </Link>
+         {user.role === 'admin' && (
+            <Link
+                to="/staff/certificates/generate"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition"
+            >
+                <DocumentPlusIcon className="w-5 h-5" />
+                <span>Generate New Certificate</span>
+            </Link>
+         )}
       </div>
 
       {records.length === 0 ? (

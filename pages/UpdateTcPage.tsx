@@ -2,7 +2,7 @@
 
 import React, { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { TcRecord } from '../types';
+import { TcRecord, User } from '../types';
 import { BackIcon, HomeIcon, SearchIcon, CheckIcon } from '../components/Icons';
 
 // Reusing these helper components from TcRegistrationPage.tsx
@@ -41,9 +41,10 @@ const FormField: React.FC<{
 interface UpdateTcPageProps {
   tcRecords: TcRecord[];
   onUpdate: (tcRecord: TcRecord) => void;
+  user: User;
 }
 
-const UpdateTcPage: React.FC<UpdateTcPageProps> = ({ tcRecords, onUpdate }) => {
+const UpdateTcPage: React.FC<UpdateTcPageProps> = ({ tcRecords, onUpdate, user }) => {
   const navigate = useNavigate();
   
   const [studentIdInput, setStudentIdInput] = useState<string>('');
@@ -142,6 +143,7 @@ const UpdateTcPage: React.FC<UpdateTcPageProps> = ({ tcRecords, onUpdate }) => {
 
       {foundRecord && formData && (
         <form onSubmit={handleSubmit}>
+          <fieldset disabled={user.role !== 'admin'}>
             <div className="space-y-6">
                 <fieldset className="border p-4 rounded-lg bg-slate-50">
                     <legend className="text-lg font-bold text-slate-800 px-2">Student Details (Read-only)</legend>
@@ -214,22 +216,25 @@ const UpdateTcPage: React.FC<UpdateTcPageProps> = ({ tcRecords, onUpdate }) => {
                 </fieldset>
             </div>
             
-            <div className="mt-8 flex justify-end gap-3">
-                <button
-                    type="button"
-                    onClick={() => { setFoundRecord(null); setSearchError(''); }}
-                    className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition"
-                >
-                    Cancel Edit
-                </button>
-                <button
-                    type="submit"
-                    className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition flex items-center gap-2"
-                >
-                    <CheckIcon className="w-5 h-5" />
-                    Update & Save TC
-                </button>
-            </div>
+            {user.role === 'admin' && (
+              <div className="mt-8 flex justify-end gap-3">
+                  <button
+                      type="button"
+                      onClick={() => { setFoundRecord(null); setSearchError(''); }}
+                      className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition"
+                  >
+                      Cancel Edit
+                  </button>
+                  <button
+                      type="submit"
+                      className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition flex items-center gap-2"
+                  >
+                      <CheckIcon className="w-5 h-5" />
+                      Update & Save TC
+                  </button>
+              </div>
+            )}
+          </fieldset>
         </form>
       )}
     </div>

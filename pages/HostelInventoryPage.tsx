@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BackIcon, HomeIcon, ArchiveBoxIcon, InboxArrowDownIcon, ArrowUpOnSquareIcon, ExclamationTriangleIcon } from '../components/Icons';
-import { HostelInventoryItem, StockLog, StockLogType } from '../types';
+import { HostelInventoryItem, StockLog, StockLogType, User } from '../types';
 import StockUpdateModal from '../components/StockUpdateModal';
 
 interface HostelInventoryPageProps {
     inventory: HostelInventoryItem[];
     stockLogs: StockLog[];
     onUpdateStock: (itemId: string, change: number, notes: string) => void;
+    user: User;
 }
 
 const StatCard: React.FC<{ title: string; value: number; icon: React.ReactNode; color: string; }> = ({ title, value, icon, color }) => (
@@ -22,7 +23,7 @@ const StatCard: React.FC<{ title: string; value: number; icon: React.ReactNode; 
     </div>
 );
 
-const HostelInventoryPage: React.FC<HostelInventoryPageProps> = ({ inventory, stockLogs, onUpdateStock }) => {
+const HostelInventoryPage: React.FC<HostelInventoryPageProps> = ({ inventory, stockLogs, onUpdateStock, user }) => {
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<HostelInventoryItem | null>(null);
@@ -99,7 +100,7 @@ const HostelInventoryPage: React.FC<HostelInventoryPageProps> = ({ inventory, st
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Category</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Current Stock</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Reorder Level</th>
-                                <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-slate-800 uppercase tracking-wider">Actions</th>
+                                {user.role === 'admin' && <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-slate-800 uppercase tracking-wider">Actions</th>}
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-200">
@@ -119,16 +120,18 @@ const HostelInventoryPage: React.FC<HostelInventoryPageProps> = ({ inventory, st
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-semibold">{item.reorderLevel}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <button onClick={() => handleOpenModal(item, 'add')} className="p-2 bg-emerald-100 text-emerald-700 rounded-full hover:bg-emerald-200 transition" title="Add Stock">
-                                                <InboxArrowDownIcon className="w-5 h-5" />
-                                            </button>
-                                            <button onClick={() => handleOpenModal(item, 'issue')} className="p-2 bg-amber-100 text-amber-700 rounded-full hover:bg-amber-200 transition" title="Issue Stock">
-                                                <ArrowUpOnSquareIcon className="w-5 h-5" />
-                                            </button>
-                                        </div>
-                                    </td>
+                                    {user.role === 'admin' && (
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                          <div className="flex items-center justify-center gap-2">
+                                              <button onClick={() => handleOpenModal(item, 'add')} className="p-2 bg-emerald-100 text-emerald-700 rounded-full hover:bg-emerald-200 transition" title="Add Stock">
+                                                  <InboxArrowDownIcon className="w-5 h-5" />
+                                              </button>
+                                              <button onClick={() => handleOpenModal(item, 'issue')} className="p-2 bg-amber-100 text-amber-700 rounded-full hover:bg-amber-200 transition" title="Issue Stock">
+                                                  <ArrowUpOnSquareIcon className="w-5 h-5" />
+                                              </button>
+                                          </div>
+                                      </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
