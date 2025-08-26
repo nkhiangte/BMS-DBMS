@@ -281,6 +281,10 @@ const App: React.FC = () => {
     const handleStaffFormSubmit = useCallback(async (staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => {
         try {
             const dataToSave = { ...staffData };
+            if (dataToSave.basicSalary === undefined) {
+                (dataToSave as any).basicSalary = null;
+            }
+
             if (dataToSave.photographUrl) {
                 dataToSave.photographUrl = await uploadPhoto(dataToSave.photographUrl);
             }
