@@ -1,6 +1,5 @@
 
-
-import React, { useState, useEffect, FormEvent, useRef } from 'react';
+import React, { useState, useEffect, FormEvent, useRef, useMemo } from 'react';
 import { Staff, Grade, GradeDefinition, Gender, MaritalStatus, Department, Designation, EmployeeType, BloodGroup, EmploymentStatus, StaffType, Qualification } from '../types';
 import { UserIcon, ChevronDownIcon, ChevronUpIcon } from './Icons';
 import { GRADES_LIST, GENDER_LIST, MARITAL_STATUS_LIST, DEPARTMENT_LIST, DESIGNATION_LIST, EMPLOYEE_TYPE_LIST, BLOOD_GROUP_LIST, EMPLOYMENT_STATUS_LIST, STAFF_TYPE_LIST, QUALIFICATION_LIST } from '../constants';
@@ -192,6 +191,16 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
     onSubmit(finalData, assignedGrade ? (assignedGrade as Grade) : null);
   };
 
+  const gradeOptions = useMemo(() => {
+    return GRADES_LIST.map(grade => {
+      const classDef = gradeDefinitions[grade];
+      const assignedStaff = classDef.classTeacherId ? allStaff.find(t => t.id === classDef.classTeacherId) : null;
+      const isAssignedToOther = assignedStaff && (!staffMember || assignedStaff.id !== staffMember.id);
+      const assignedStaffName = assignedStaff ? `${assignedStaff.firstName} ${assignedStaff.lastName}` : '';
+      return { grade, isAssignedToOther, assignedStaffName };
+    });
+  }, [allStaff, gradeDefinitions, staffMember]);
+
   if (!isOpen) return null;
   
   const teachingDesignations = [Designation.PRINCIPAL, Designation.HEAD_OF_DEPARTMENT, Designation.TEACHER, Designation.LAB_ASSISTANT];
@@ -344,13 +353,9 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                     <label htmlFor="assignedGrade" className="block text-sm font-bold text-slate-800">Class Teacher Assignment</label>
                     <select name="assignedGrade" id="assignedGrade" value={assignedGrade} onChange={(e) => setAssignedGrade(e.target.value)} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" disabled={formData.status !== EmploymentStatus.ACTIVE}>
                         <option value="">-- Unassigned --</option>
-                        {GRADES_LIST.map(grade => {
-                          const classDef = gradeDefinitions[grade];
-                          const assignedStaff = classDef.classTeacherId ? allStaff.find(t => t.id === classDef.classTeacherId) : null;
-                          const isAssignedToOther = assignedStaff && (!staffMember || assignedStaff.id !== staffMember.id);
-                          const assignedStaffName = assignedStaff ? `${assignedStaff.firstName} ${assignedStaff.lastName}` : '';
-                          return (<option key={grade} value={grade} disabled={isAssignedToOther}>{grade} {isAssignedToOther ? `(${assignedStaffName})` : ''}</option>);
-                        })}
+                        {gradeOptions.map(({ grade, isAssignedToOther, assignedStaffName }) => (
+                            <option key={grade} value={grade} disabled={isAssignedToOther}>{grade} {isAssignedToOther ? `(${assignedStaffName})` : ''}</option>
+                        ))}
                     </select>
                     {formData.status !== EmploymentStatus.ACTIVE && <p className="text-xs text-slate-700 mt-1">Status must be 'Active' to assign a class.</p>}
                   </div>
@@ -373,7 +378,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
               </div>
                <div>
                 <label htmlFor="basicSalary" className="block text-sm font-bold text-slate-800">Basic Salary (per month)</label>
-                <input type="number" name="basicSalary" id="basicSalary" value={formData.basicSalary} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="number" name="basicSalary" id="basicSalary" value={formData.basicSalary ?? ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
               </div>
                <div>
                 <label htmlFor="panNumber" className="block text-sm font-bold text-slate-800">PAN Number</label>
