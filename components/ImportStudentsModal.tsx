@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Student, Grade, StudentStatus, Gender, Category, BloodGroup } from '../types';
 import { createDefaultFeePayments } from '../utils';
@@ -213,12 +212,12 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
                 lastSchoolAttended: row['Last School Attended'] || '',
                 healthConditions: row['Health Issues'] || '',
                 achievements: row['Achievements'] || '',
-                bloodGroup: parsedBloodGroup,
                 cwsn: parsedCwsn,
                 academicPerformance: [],
                 feePayments: createDefaultFeePayments(),
                 status: StudentStatus.ACTIVE,
-                errors
+                ...(parsedBloodGroup && { bloodGroup: parsedBloodGroup }), // Conditionally add bloodGroup
+                errors,
             };
             students.push(student);
         });

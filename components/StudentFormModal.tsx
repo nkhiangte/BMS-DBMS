@@ -154,14 +154,20 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const submissionData = {
-        ...formData,
+    const { bloodGroup, ...restOfData } = formData;
+    
+    const submissionData: Omit<Student, 'id'> = {
+        ...restOfData,
         rollNo: parseInt(String(formData.rollNo), 10) || 0,
         grade: formData.grade as Grade,
         gender: formData.gender as Gender,
         category: formData.category as Category,
-        bloodGroup: formData.bloodGroup || undefined,
     };
+
+    if (bloodGroup) {
+        submissionData.bloodGroup = bloodGroup;
+    }
+    
     onSubmit(submissionData);
   };
 
