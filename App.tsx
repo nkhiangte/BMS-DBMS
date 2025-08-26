@@ -2,6 +2,7 @@
 
 
 
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
@@ -70,7 +71,11 @@ import { UserManagementPage } from './pages/UserManagementPage';
 
 // IMPORTANT: Replace with your own imgbb API key.
 // You can get a free key from https://api.imgbb.com/
-const IMGBB_API_KEY = "ceadbeb666f524f8f5705e118af9210f";
+// FIX: Explicitly type IMGBB_API_KEY as string to resolve a TypeScript error.
+// TypeScript infers a `const` initialized with a string literal as that literal type.
+// This caused an error when comparing it to a different string literal ("YOUR_IMGBB_API_KEY")
+// because the types had no overlap. Widening the type to `string` makes the comparison valid.
+const IMGBB_API_KEY: string = "ceadbeb666f524f8f5705e118af9210f";
 
 const PendingApprovalPage: React.FC<{ onLogout: () => void; email: string | null }> = ({ onLogout, email }) => (
     <div className="flex items-center justify-center min-h-screen bg-slate-100">

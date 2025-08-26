@@ -165,12 +165,12 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
 
-    setFormData((prev: any) => {
+    setFormData(prev => {
       let finalValue: any = value;
       if (type === 'number') {
         const parsed = parseInt(value, 10);
         if (isNaN(parsed)) {
-          finalValue = name === 'basicSalary' ? null : 0;
+          finalValue = name === 'basicSalary' ? undefined : 0;
         } else {
           finalValue = parsed;
         }
@@ -246,9 +246,9 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
     // Ensure numeric types are correct
     finalData.yearsOfExperience = Number(finalData.yearsOfExperience) || 0;
 
-    // Handle optional basicSalary: if it is null or undefined, set to null for Firestore.
-    if (finalData.basicSalary == null) {
-      (finalData as any).basicSalary = null;
+    // Handle optional basicSalary: if it is null or undefined, set to undefined. Firestore omits undefined fields.
+    if (finalData.basicSalary == null || String(finalData.basicSalary).trim() === '') {
+      finalData.basicSalary = undefined;
     } else {
       finalData.basicSalary = Number(finalData.basicSalary);
     }
