@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
@@ -207,16 +208,48 @@ const App: React.FC = () => {
         setIsImportModalOpen(false); setImportTargetGrade(null); setTransferringStudent(null);
     }, []);
 
-    const uploadPhoto = async (photoDataUrl: string, path: string): Promise<string> => {
+    const uploadPhoto = async (photoDataUrl: string): Promise<string> => {
+        // If it's not a new base64 image (i.e., it's empty or already an http URL), return it directly.
         if (!photoDataUrl || !photoDataUrl.startsWith('data:image')) {
-            if (photoDataUrl && photoDataUrl.startsWith('https://firebasestorage.googleapis.com')) {
-                return photoDataUrl;
-            }
-            return '';
+            return photoDataUrl;
         }
-        const storageRef = storage.ref(path);
-        const snapshot = await storageRef.putString(photoDataUrl, 'data_url');
-        return snapshot.ref.getDownloadURL();
+
+        // This is a public, rate-limited API key for demo purposes.
+        // For a production application, you should request your own key from postimages.org
+        // and ideally proxy requests through a backend to protect it.
+        const POSTIMAGES_API_KEY = 'cdef02febe6477d49ec4b69f0c6d0560'; // A common public key
+        const POSTIMAGES_UPLOAD_URL = 'https://api.postimages.org/1/upload';
+
+        try {
+            // Extract the base64 part of the data URL
+            const base64Data = photoDataUrl.split(',')[1];
+
+            const formData = new FormData();
+            formData.append('key', POSTIMAGES_API_KEY);
+            formData.append('image', base64Data);
+
+            const response = await fetch(POSTIMAGES_UPLOAD_URL, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Postimages upload failed: ${response.statusText} - ${errorText}`);
+            }
+
+            const responseData = await response.json();
+            
+            if (responseData.status === 'OK' && responseData.url) {
+                return responseData.url; // Return the Postimages URL
+            } else {
+                throw new Error(`Postimages upload failed: ${responseData.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error uploading photo to Postimages:', error);
+            alert(`There was an error uploading the photo. Please try again. Error: ${error instanceof Error ? error.message : String(error)}`);
+            return ''; // Return empty string on failure
+        }
     };
 
     // --- DATA MUTATION FUNCTIONS (to Firestore) ---
@@ -229,7 +262,7 @@ const App: React.FC = () => {
     const handleFormSubmit = useCallback(async (studentData: Omit<Student, 'id'>) => {
         const dataToSave = { ...studentData };
         if(dataToSave.photographUrl) {
-            dataToSave.photographUrl = await uploadPhoto(dataToSave.photographUrl, `students/${Date.now()}-${dataToSave.name}`);
+            dataToSave.photographUrl = await uploadPhoto(dataToSave.photographUrl);
         }
         if (editingStudent) {
             await db.collection('students').doc(editingStudent.id).set(dataToSave);
@@ -250,7 +283,7 @@ const App: React.FC = () => {
         try {
             const dataToSave = { ...staffData };
             if (dataToSave.photographUrl) {
-                dataToSave.photographUrl = await uploadPhoto(dataToSave.photographUrl, `staff/${Date.now()}-${dataToSave.firstName}`);
+                dataToSave.photographUrl = await uploadPhoto(dataToSave.photographUrl);
             }
     
             let staffId = editingStaff?.id;

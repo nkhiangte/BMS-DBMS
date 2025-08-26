@@ -1,8 +1,31 @@
-
 import React, { useState, useEffect, FormEvent, useRef, useMemo } from 'react';
-import { Staff, Grade, GradeDefinition, Gender, MaritalStatus, Department, Designation, EmployeeType, BloodGroup, EmploymentStatus, StaffType, Qualification } from '../types';
+import {
+  Staff,
+  Grade,
+  GradeDefinition,
+  Gender,
+  MaritalStatus,
+  Department,
+  Designation,
+  EmployeeType,
+  BloodGroup,
+  EmploymentStatus,
+  StaffType,
+  Qualification
+} from '../types';
 import { UserIcon, ChevronDownIcon, ChevronUpIcon } from './Icons';
-import { GRADES_LIST, GENDER_LIST, MARITAL_STATUS_LIST, DEPARTMENT_LIST, DESIGNATION_LIST, EMPLOYEE_TYPE_LIST, BLOOD_GROUP_LIST, EMPLOYMENT_STATUS_LIST, STAFF_TYPE_LIST, QUALIFICATION_LIST } from '../constants';
+import {
+  GRADES_LIST,
+  GENDER_LIST,
+  MARITAL_STATUS_LIST,
+  DEPARTMENT_LIST,
+  DESIGNATION_LIST,
+  EMPLOYEE_TYPE_LIST,
+  BLOOD_GROUP_LIST,
+  EMPLOYMENT_STATUS_LIST,
+  STAFF_TYPE_LIST,
+  QUALIFICATION_LIST
+} from '../constants';
 
 interface StaffFormModalProps {
   isOpen: boolean;
@@ -14,64 +37,68 @@ interface StaffFormModalProps {
 }
 
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            if (!e.target?.result) {
-                return reject(new Error("FileReader did not return a result."));
-            }
-            const img = new Image();
-            img.onload = () => {
-                let width = img.width;
-                let height = img.height;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (!e.target?.result) {
+        return reject(new Error("FileReader did not return a result."));
+      }
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
 
-                if (width > height) {
-                    if (width > maxWidth) {
-                        height = Math.round((height * maxWidth) / width);
-                        width = maxWidth;
-                    }
-                } else {
-                    if (height > maxHeight) {
-                        width = Math.round((width * maxHeight) / height);
-                        height = maxHeight;
-                    }
-                }
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
 
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    return reject(new Error('Could not get canvas context'));
-                }
-                ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', quality));
-            };
-            img.onerror = (err) => reject(err);
-            img.src = e.target.result as string;
-        };
-        reader.onerror = (err) => reject(err);
-        reader.readAsDataURL(file);
-    });
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          return reject(new Error('Could not get canvas context'));
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = (err) => reject(err);
+      img.src = e.target.result as string;
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
 };
 
-const AccordionSection: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => {
-    const [isOpen, setIsOpen] = useState(defaultOpen);
+const AccordionSection: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({
+  title,
+  children,
+  defaultOpen = false
+}) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
 
-    return (
-        <div className="border rounded-lg overflow-hidden">
-            <button
-                type="button"
-                className="w-full flex justify-between items-center p-3 bg-slate-50 hover:bg-slate-100 focus:outline-none"
-                onClick={() => setIsOpen(!isOpen)}
-                aria-expanded={isOpen}
-            >
-                <h3 className="font-semibold text-slate-800">{title}</h3>
-                {isOpen ? <ChevronUpIcon className="w-5 h-5 text-slate-700" /> : <ChevronDownIcon className="w-5 h-5 text-slate-700" />}
-            </button>
-            {isOpen && <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{children}</div>}
-        </div>
-    );
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <button
+        type="button"
+        className="w-full flex justify-between items-center p-3 bg-slate-50 hover:bg-slate-100 focus:outline-none"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+      >
+        <h3 className="font-semibold text-slate-800">{title}</h3>
+        {isOpen ? <ChevronUpIcon className="w-5 h-5 text-slate-700" /> : <ChevronDownIcon className="w-5 h-5 text-slate-700" />}
+      </button>
+      {isOpen && <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{children}</div>}
+    </div>
+  );
 };
 
 const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubmit, staffMember, allStaff, gradeDefinitions }) => {
@@ -113,7 +140,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
     medicalConditions: '',
   });
 
-  const [formData, setFormData] = useState<any>(getInitialFormData());
+  const [formData, setFormData] = useState(getInitialFormData());
   const [assignedGrade, setAssignedGrade] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -121,11 +148,11 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
     if (isOpen) {
       if (staffMember) {
         setFormData({
-            ...getInitialFormData(),
-            ...staffMember,
+          ...getInitialFormData(),
+          ...staffMember
         });
         const assignedGradeEntry = Object.entries(gradeDefinitions).find(
-            ([, def]) => def.classTeacherId === staffMember.id
+          ([, def]) => def.classTeacherId === staffMember.id
         );
         setAssignedGrade(assignedGradeEntry ? assignedGradeEntry[0] : '');
       } else {
@@ -137,100 +164,103 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    
-    setFormData(prev => {
-        let finalValue: any = value;
-        if (type === 'number') {
-            const parsed = parseInt(value, 10);
-            if (isNaN(parsed)) {
-                finalValue = name === 'basicSalary' ? undefined : 0;
-            } else {
-                finalValue = parsed;
-            }
+
+    setFormData((prev: any) => {
+      let finalValue: any = value;
+      if (type === 'number') {
+        const parsed = parseInt(value, 10);
+        if (isNaN(parsed)) {
+          finalValue = name === 'basicSalary' ? null : 0;
+        } else {
+          finalValue = parsed;
         }
-        const newState = { ...prev, [name]: finalValue };
-        
-        if (name === 'staffType') {
-            newState.designation = value === 'Teaching' ? Designation.TEACHER : Designation.CLERK;
-        }
-        return newState;
+      }
+      const newState = { ...prev, [name]: finalValue };
+
+      if (name === 'staffType') {
+        newState.designation = value === 'Teaching' ? Designation.TEACHER : Designation.CLERK;
+      }
+      return newState;
     });
   };
 
   const handleSubjectsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const subjects = e.target.value.split(',').map(s => s.trim()).filter(s => s);
-      setFormData(prev => ({...prev, subjectsTaught: subjects }));
+    const subjects = e.target.value.split(',').map((s) => s.trim()).filter((s) => s);
+    setFormData((prev: any) => ({ ...prev, subjectsTaught: subjects }));
   };
-  
+
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-        const file = e.target.files[0];
-        try {
-            const compressedDataUrl = await resizeImage(file, 512, 512, 0.8);
-            setFormData(prev => ({ ...prev, photographUrl: compressedDataUrl }));
-        } catch (error) {
-            console.error("Error compressing image:", error);
-            alert("There was an error processing the image. It will be saved without compression.");
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, photographUrl: reader.result as string }));
-            };
-            reader.readAsDataURL(file);
-        }
+      const file = e.target.files[0];
+      try {
+        const compressedDataUrl = await resizeImage(file, 512, 512, 0.8);
+        setFormData((prev: any) => ({ ...prev, photographUrl: compressedDataUrl }));
+      } catch (error) {
+        console.error("Error compressing image:", error);
+        alert("There was an error processing the image. It will be saved without compression.");
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormData((prev: any) => ({ ...prev, photographUrl: reader.result as string }));
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
   const handleRemovePhoto = () => {
-    setFormData(prev => ({ ...prev, photographUrl: '' }));
+    setFormData((prev: any) => ({ ...prev, photographUrl: '' }));
     if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+      fileInputRef.current.value = '';
     }
-  }
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
     const requiredFields: { key: keyof Staff; label: string }[] = [
-        { key: 'firstName', label: 'First Name' },
-        { key: 'lastName', label: 'Last Name' },
-        { key: 'employeeId', label: 'Employee ID' },
-        { key: 'dateOfJoining', label: 'Date of Joining' },
-        { key: 'contactNumber', label: 'Contact Number' },
-        { key: 'emailAddress', label: 'Email Address' },
-        { key: 'aadhaarNumber', label: 'Aadhaar Number' },
-        { key: 'emergencyContactName', label: 'Emergency Contact Name' },
-        { key: 'emergencyContactRelationship', label: 'Emergency Contact Relationship' },
-        { key: 'emergencyContactNumber', label: 'Emergency Contact Number' },
+      { key: 'firstName', label: 'First Name' },
+      { key: 'lastName', label: 'Last Name' },
+      { key: 'employeeId', label: 'Employee ID' },
+      { key: 'dateOfJoining', label: 'Date of Joining' },
+      { key: 'contactNumber', label: 'Contact Number' },
+      { key: 'emailAddress', label: 'Email Address' },
+      { key: 'aadhaarNumber', label: 'Aadhaar Number' },
+      { key: 'emergencyContactName', label: 'Emergency Contact Name' },
+      { key: 'emergencyContactRelationship', label: 'Emergency Contact Relationship' },
+      { key: 'emergencyContactNumber', label: 'Emergency Contact Number' }
     ];
 
-    const missingFields = requiredFields.filter(field => {
-        const value = formData[field.key];
-        return !value || String(value).trim() === '';
+    const missingFields = requiredFields.filter((field) => {
+      const value = formData[field.key as keyof typeof formData];
+      return value === null || value === undefined || String(value).trim() === '';
     });
 
     if (missingFields.length > 0) {
-        const missingFieldLabels = missingFields.map(field => field.label);
-        alert(`Please fill in all required fields:\n\n- ${missingFieldLabels.join('\n- ')}`);
-        return;
+      const missingFieldLabels = missingFields.map((field) => field.label);
+      alert(`Please fill in all required fields:\n\n- ${missingFieldLabels.join('\n- ')}`);
+      return;
     }
 
     const finalData: Omit<Staff, 'id'> = {
-        ...formData,
-        yearsOfExperience: Number(formData.yearsOfExperience) || 0,
-        basicSalary: formData.basicSalary != null && formData.basicSalary !== '' ? Number(formData.basicSalary) : undefined,
+      ...formData,
+      yearsOfExperience: Number(formData.yearsOfExperience) || 0,
+      // FIX: Removed incorrect comparison of `formData.basicSalary` to an empty string,
+      // as its type is `number | null`, not `string`. The `!= null` check is sufficient.
+      basicSalary:
+        formData.basicSalary != null ? Number(formData.basicSalary) : undefined
     };
 
     if (finalData.staffType === 'Non-Teaching') {
-        finalData.subjectsTaught = [];
+      finalData.subjectsTaught = [];
     }
-    
+
     onSubmit(finalData, assignedGrade ? (assignedGrade as Grade) : null);
   };
-  
+
   const gradeOptions = useMemo(() => {
-    return GRADES_LIST.map(grade => {
+    return GRADES_LIST.map((grade) => {
       const classDef = gradeDefinitions[grade];
-      const assignedStaff = classDef.classTeacherId ? allStaff.find(t => t.id === classDef.classTeacherId) : null;
+      const assignedStaff = classDef.classTeacherId ? allStaff.find((t) => t.id === classDef.classTeacherId) : null;
       const isAssignedToOther = assignedStaff && (!staffMember || assignedStaff.id !== staffMember.id);
       const assignedStaffName = assignedStaff ? `${assignedStaff.firstName} ${assignedStaff.lastName}` : '';
       return { grade, isAssignedToOther, assignedStaffName };
@@ -238,32 +268,40 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
   }, [allStaff, gradeDefinitions, staffMember]);
 
   if (!isOpen) return null;
-  
+
   const teachingDesignations = [Designation.PRINCIPAL, Designation.HEAD_OF_DEPARTMENT, Designation.TEACHER, Designation.LAB_ASSISTANT];
   const nonTeachingDesignations = [Designation.CLERK, Designation.LIBRARIAN, Designation.SPORTS_TEACHER];
   const availableDesignations = formData.staffType === 'Teaching' ? teachingDesignations : nonTeachingDesignations;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col" onClick={(e) => e.stopPropagation()}>
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
-         <div className="p-6 border-b">
-             <h2 className="text-2xl font-bold text-slate-800">{staffMember ? 'Edit Staff Details' : 'Add New Staff Member'}</h2>
-         </div>
+          <div className="p-6 border-b">
+            <h2 className="text-2xl font-bold text-slate-800">{staffMember ? 'Edit Staff Details' : 'Add New Staff Member'}</h2>
+          </div>
           <div className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
-            
+            {/* Staff Category */}
             <div className="bg-slate-100 p-4 rounded-lg">
-                <label htmlFor="staffType" className="block text-sm font-bold text-slate-800 mb-2">Staff Category</label>
-                <div className="flex gap-4">
-                {STAFF_TYPE_LIST.map(type => (
-                    <label key={type} className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
-                        <input type="radio" name="staffType" value={type} checked={formData.staffType === type} onChange={handleChange} className="h-4 w-4 text-sky-600 focus:ring-sky-500" />
-                        {type}
-                    </label>
+              <label htmlFor="staffType" className="block text-sm font-bold text-slate-800 mb-2">Staff Category</label>
+              <div className="flex gap-4">
+                {STAFF_TYPE_LIST.map((type) => (
+                  <label key={type} className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+                    <input
+                      type="radio"
+                      name="staffType"
+                      value={type}
+                      checked={formData.staffType === type}
+                      onChange={handleChange}
+                      className="h-4 w-4 text-sky-600 focus:ring-sky-500"
+                    />
+                    {type}
+                  </label>
                 ))}
-                </div>
+              </div>
             </div>
 
+            {/* Section 1: Personal */}
             <AccordionSection title="1. Personal Details & Contact" defaultOpen={true}>
               <div>
                 <label htmlFor="firstName" className="block text-sm font-bold text-slate-800">First Name</label>
@@ -276,7 +314,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
               <div>
                 <label htmlFor="gender" className="block text-sm font-bold text-slate-800">Gender</label>
                 <select name="gender" id="gender" value={formData.gender} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
-                  {GENDER_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                  {GENDER_LIST.map((g) => <option key={g} value={g}>{g}</option>)}
                 </select>
               </div>
               <div>
@@ -287,10 +325,10 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                 <label htmlFor="nationality" className="block text-sm font-bold text-slate-800">Nationality</label>
                 <input type="text" name="nationality" id="nationality" value={formData.nationality} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
               </div>
-               <div>
+              <div>
                 <label htmlFor="maritalStatus" className="block text-sm font-bold text-slate-800">Marital Status</label>
                 <select name="maritalStatus" id="maritalStatus" value={formData.maritalStatus} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
-                  {MARITAL_STATUS_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                  {MARITAL_STATUS_LIST.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
               <div>
@@ -299,9 +337,9 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
               </div>
               <div>
                 <label htmlFor="emailAddress" className="block text-sm font-bold text-slate-800">Email Address</label>
-                <input type="email" name="emailAddress" id="emailAddress" value={formData.emailAddress} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required/>
+                <input type="email" name="emailAddress" id="emailAddress" value={formData.emailAddress} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
               </div>
-               <div className="lg:col-span-1 md:col-span-2">
+              <div className="lg:col-span-1 md:col-span-2">
                 <label htmlFor="aadhaarNumber" className="block text-sm font-bold text-slate-800">Aadhaar Number</label>
                 <input type="text" name="aadhaarNumber" id="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
               </div>
@@ -315,15 +353,17 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
               </div>
               <div className="lg:col-span-3 md:col-span-2">
                 <label className="block text-sm font-bold text-slate-800">Profile Photo</label>
-                 <div className="mt-2 flex items-center gap-4">
-                    <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border">
-                        {formData.photographUrl ? <img src={formData.photographUrl} alt="Staff preview" className="w-full h-full object-cover" /> : <UserIcon className="w-16 h-16 text-slate-600" />}
-                    </div>
-                    <div className="flex flex-col gap-2">
-                        <input type="file" ref={fileInputRef} onChange={handlePhotoChange} accept="image/*" className="hidden" id="staff-photo-upload" />
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50 text-sm">Upload Photo</button>
-                        {formData.photographUrl && <button type="button" onClick={handleRemovePhoto} className="px-4 py-2 bg-red-50 border border-red-200 text-red-700 font-semibold rounded-lg shadow-sm hover:bg-red-100 text-sm">Remove</button>}
-                    </div>
+                <div className="mt-2 flex items-center gap-4">
+                  <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border">
+                    {formData.photographUrl
+                      ? <img src={formData.photographUrl} alt="Staff preview" className="w-full h-full object-cover" />
+                      : <UserIcon className="w-16 h-16 text-slate-600" />}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <input type="file" ref={fileInputRef} onChange={handlePhotoChange} accept="image/*" className="hidden" id="staff-photo-upload" />
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50 text-sm">Upload Photo</button>
+                    {formData.photographUrl && <button type="button" onClick={handleRemovePhoto} className="px-4 py-2 bg-red-50 border border-red-200 text-red-700 font-semibold rounded-lg shadow-sm hover:bg-red-100 text-sm">Remove</button>}
+                  </div>
                 </div>
               </div>
             </AccordionSection>
@@ -341,7 +381,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                 </div>
                 <div>
                     <label htmlFor="yearsOfExperience" className="block text-sm font-bold text-slate-800">Total Years of Experience</label>
-                    <input type="number" name="yearsOfExperience" id="yearsOfExperience" value={formData.yearsOfExperience ?? ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    <input type="number" name="yearsOfExperience" id="yearsOfExperience" value={formData.yearsOfExperience} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
                 </div>
                 <div className="lg:col-span-3 md:col-span-2">
                     <label htmlFor="previousExperience" className="block text-sm font-bold text-slate-800">Previous Experience Details</label>
@@ -390,18 +430,18 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                     <select name="assignedGrade" id="assignedGrade" value={assignedGrade} onChange={(e) => setAssignedGrade(e.target.value)} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" disabled={formData.status !== EmploymentStatus.ACTIVE}>
                         <option value="">-- Unassigned --</option>
                         {gradeOptions.map(({ grade, isAssignedToOther, assignedStaffName }) => (
-                            <option key={grade} value={grade} disabled={isAssignedToOther}>{grade} {isAssignedToOther ? `(${assignedStaffName})` : ''}</option>
+                          <option key={grade} value={grade} disabled={isAssignedToOther}>{grade} {isAssignedToOther ? `(${assignedStaffName})` : ''}</option>
                         ))}
                     </select>
                     {formData.status !== EmploymentStatus.ACTIVE && <p className="text-xs text-slate-700 mt-1">Status must be 'Active' to assign a class.</p>}
                   </div>
                   <div className="md:col-span-2 lg:col-span-2">
                     <label htmlFor="subjectsTaught" className="block text-sm font-bold text-slate-800">Subjects Handled</label>
-                    <input type="text" name="subjectsTaught" id="subjectsTaught" value={formData.subjectsTaught.join(', ')} onChange={handleSubjectsChange} placeholder="e.g. Physics, Mathematics" className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    <input type="text" name="subjectsTaught" id="subjectsTaught" value={Array.isArray(formData.subjectsTaught) ? formData.subjectsTaught.join(', ') : ''} onChange={handleSubjectsChange} placeholder="e.g. Physics, Mathematics" className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
                   </div>
                   <div className="lg:col-span-3">
                     <label htmlFor="teacherLicenseNumber" className="block text-sm font-bold text-slate-800">Teacher License Number (Optional)</label>
-                    <input type="text" name="teacherLicenseNumber" id="teacherLicenseNumber" value={formData.teacherLicenseNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    <input type="text" name="teacherLicenseNumber" id="teacherLicenseNumber" value={formData.teacherLicenseNumber || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
                   </div>
                 </>
               )}
@@ -410,38 +450,38 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
             <AccordionSection title="4. Payroll Details (Optional)">
               <div>
                 <label htmlFor="salaryGrade" className="block text-sm font-bold text-slate-800">Salary Grade / Pay Scale</label>
-                <input type="text" name="salaryGrade" id="salaryGrade" value={formData.salaryGrade} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="text" name="salaryGrade" id="salaryGrade" value={formData.salaryGrade || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
               </div>
                <div>
                 <label htmlFor="basicSalary" className="block text-sm font-bold text-slate-800">Basic Salary (per month)</label>
-                <input type="number" name="basicSalary" id="basicSalary" value={formData.basicSalary ?? ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="number" name="basicSalary" id="basicSalary" value={formData.basicSalary || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
               </div>
                <div>
                 <label htmlFor="panNumber" className="block text-sm font-bold text-slate-800">PAN Number</label>
-                <input type="text" name="panNumber" id="panNumber" value={formData.panNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="text" name="panNumber" id="panNumber" value={formData.panNumber || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
               </div>
                <div>
                 <label htmlFor="bankName" className="block text-sm font-bold text-slate-800">Bank Name & Branch</label>
-                <input type="text" name="bankName" id="bankName" value={formData.bankName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="text" name="bankName" id="bankName" value={formData.bankName || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
               </div>
               <div className="md:col-span-2">
                 <label htmlFor="bankAccountNumber" className="block text-sm font-bold text-slate-800">Bank Account Number</label>
-                <input type="text" name="bankAccountNumber" id="bankAccountNumber" value={formData.bankAccountNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="text" name="bankAccountNumber" id="bankAccountNumber" value={formData.bankAccountNumber || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
               </div>
             </AccordionSection>
             
             <AccordionSection title="5. Emergency Contact & Medical">
               <div>
                 <label htmlFor="emergencyContactName" className="block text-sm font-bold text-slate-800">Emergency Contact Name</label>
-                <input type="text" name="emergencyContactName" id="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                <input type="text" name="emergencyContactName" id="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
               </div>
               <div>
                 <label htmlFor="emergencyContactRelationship" className="block text-sm font-bold text-slate-800">Relationship</label>
-                <input type="text" name="emergencyContactRelationship" id="emergencyContactRelationship" value={formData.emergencyContactRelationship} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                <input type="text" name="emergencyContactRelationship" id="emergencyContactRelationship" value={formData.emergencyContactRelationship} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
               </div>
               <div>
                 <label htmlFor="emergencyContactNumber" className="block text-sm font-bold text-slate-800">Emergency Contact Number</label>
-                <input type="tel" name="emergencyContactNumber" id="emergencyContactNumber" value={formData.emergencyContactNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                <input type="tel" name="emergencyContactNumber" id="emergencyContactNumber" value={formData.emergencyContactNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
               </div>
               <div>
                  <label htmlFor="bloodGroup" className="block text-sm font-bold text-slate-800">Blood Group</label>
@@ -452,7 +492,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
               </div>
               <div className="lg:col-span-2 md:col-span-2">
                 <label htmlFor="medicalConditions" className="block text-sm font-bold text-slate-800">Medical Conditions (Optional)</label>
-                <input type="text" name="medicalConditions" id="medicalConditions" value={formData.medicalConditions} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="text" name="medicalConditions" id="medicalConditions" value={formData.medicalConditions || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
               </div>
             </AccordionSection>
             
