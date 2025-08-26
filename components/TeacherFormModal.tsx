@@ -241,20 +241,23 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
       return;
     }
 
-    const finalData: Omit<Staff, 'id'> = {
-      ...formData,
-      yearsOfExperience: Number(formData.yearsOfExperience) || 0,
-      // FIX: Removed incorrect comparison of `formData.basicSalary` to an empty string,
-      // as its type is `number | null`, not `string`. The `!= null` check is sufficient.
-      basicSalary:
-        formData.basicSalary != null ? Number(formData.basicSalary) : undefined
-    };
+    const finalData = { ...formData };
+    
+    // Ensure numeric types are correct
+    finalData.yearsOfExperience = Number(finalData.yearsOfExperience) || 0;
 
+    // Handle optional basicSalary: if it is null or undefined, set to null for Firestore.
+    if (finalData.basicSalary == null) {
+      (finalData as any).basicSalary = null;
+    } else {
+      finalData.basicSalary = Number(finalData.basicSalary);
+    }
+    
     if (finalData.staffType === 'Non-Teaching') {
       finalData.subjectsTaught = [];
     }
 
-    onSubmit(finalData, assignedGrade ? (assignedGrade as Grade) : null);
+    onSubmit(finalData as Omit<Staff, 'id'>, assignedGrade ? (assignedGrade as Grade) : null);
   };
 
   const gradeOptions = useMemo(() => {
@@ -454,7 +457,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
               </div>
                <div>
                 <label htmlFor="basicSalary" className="block text-sm font-bold text-slate-800">Basic Salary (per month)</label>
-                <input type="number" name="basicSalary" id="basicSalary" value={formData.basicSalary || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="number" name="basicSalary" id="basicSalary" value={formData.basicSalary ?? ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
               </div>
                <div>
                 <label htmlFor="panNumber" className="block text-sm font-bold text-slate-800">PAN Number</label>
