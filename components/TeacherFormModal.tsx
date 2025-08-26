@@ -164,23 +164,30 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-
+    
     setFormData(prev => {
-      let finalValue: any = value;
-      if (type === 'number') {
-        const parsed = parseInt(value, 10);
-        if (isNaN(parsed)) {
-          finalValue = name === 'basicSalary' ? undefined : 0;
-        } else {
-          finalValue = parsed;
+        let finalValue: any = value;
+        if (type === 'number') {
+            if (value === '') {
+                // If input is cleared, use undefined for optional fields, 0 for others.
+                finalValue = (name === 'basicSalary') ? undefined : 0;
+            } else {
+                const parsed = parseInt(value, 10);
+                // If it's not a valid number, ignore the change to avoid NaN.
+                if (!isNaN(parsed)) {
+                    finalValue = parsed;
+                } else {
+                    finalValue = (prev as any)[name]; // Revert to previous value
+                }
+            }
         }
-      }
-      const newState = { ...prev, [name]: finalValue };
-
-      if (name === 'staffType') {
-        newState.designation = value === 'Teaching' ? Designation.TEACHER : Designation.CLERK;
-      }
-      return newState;
+        
+        const newState = { ...prev, [name]: finalValue };
+        
+        if (name === 'staffType') {
+            newState.designation = value === 'Teaching' ? Designation.TEACHER : Designation.CLERK;
+        }
+        return newState;
     });
   };
 
@@ -243,18 +250,19 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
 
     const finalData = { ...formData };
     
-    // Ensure numeric types are correct
+    // Ensure numeric types are correct and not NaN
     finalData.yearsOfExperience = Number(finalData.yearsOfExperience) || 0;
 
-    // Handle optional basicSalary: if it is null or undefined, set to undefined. Firestore omits undefined fields.
-    if (finalData.basicSalary == null || String(finalData.basicSalary).trim() === '') {
+    // Handle optional basicSalary: if it is null, undefined, empty string, or NaN, set to undefined.
+    const salaryValue = finalData.basicSalary;
+    if (salaryValue == null || String(salaryValue).trim() === '' || isNaN(Number(salaryValue))) {
       finalData.basicSalary = undefined;
     } else {
-      finalData.basicSalary = Number(finalData.basicSalary);
+      finalData.basicSalary = Number(salaryValue);
     }
     
     if (finalData.staffType === 'Non-Teaching') {
-      finalData.subjectsTaught = [];
+        finalData.subjectsTaught = [];
     }
 
     onSubmit(finalData as Omit<Staff, 'id'>, assignedGrade ? (assignedGrade as Grade) : null);
@@ -476,15 +484,15 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
             <AccordionSection title="5. Emergency Contact & Medical">
               <div>
                 <label htmlFor="emergencyContactName" className="block text-sm font-bold text-slate-800">Emergency Contact Name</label>
-                <input type="text" name="emergencyContactName" id="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="text" name="emergencyContactName" id="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required/>
               </div>
               <div>
                 <label htmlFor="emergencyContactRelationship" className="block text-sm font-bold text-slate-800">Relationship</label>
-                <input type="text" name="emergencyContactRelationship" id="emergencyContactRelationship" value={formData.emergencyContactRelationship} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="text" name="emergencyContactRelationship" id="emergencyContactRelationship" value={formData.emergencyContactRelationship} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required/>
               </div>
               <div>
                 <label htmlFor="emergencyContactNumber" className="block text-sm font-bold text-slate-800">Emergency Contact Number</label>
-                <input type="tel" name="emergencyContactNumber" id="emergencyContactNumber" value={formData.emergencyContactNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="tel" name="emergencyContactNumber" id="emergencyContactNumber" value={formData.emergencyContactNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required/>
               </div>
               <div>
                  <label htmlFor="bloodGroup" className="block text-sm font-bold text-slate-800">Blood Group</label>

@@ -3,6 +3,8 @@
 
 
 
+
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
@@ -289,10 +291,6 @@ const App: React.FC = () => {
     const handleStaffFormSubmit = useCallback(async (staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => {
         try {
             const dataToSave = { ...staffData };
-            if (dataToSave.basicSalary === undefined) {
-                (dataToSave as any).basicSalary = null;
-            }
-
             if (dataToSave.photographUrl) {
                 dataToSave.photographUrl = await uploadPhoto(dataToSave.photographUrl);
             }
@@ -319,7 +317,7 @@ const App: React.FC = () => {
             closeModal();
         } catch (error) {
             console.error("Error saving staff member:", error);
-            alert(`Failed to save staff member. Please check the developer console for more details. Error: ${error}`);
+            alert(`Failed to save staff member. Please check the developer console for more details. Error: ${error instanceof Error ? error.message : String(error)}`);
         }
     }, [editingStaff, closeModal, gradeDefinitions]);
 
