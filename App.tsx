@@ -214,39 +214,38 @@ const App: React.FC = () => {
             return photoDataUrl;
         }
 
-        // This is a public, rate-limited API key for demo purposes.
-        // For a production application, you should request your own key from postimages.org
-        // and ideally proxy requests through a backend to protect it.
-        const POSTIMAGES_API_KEY = 'cdef02febe6477d49ec4b69f0c6d0560'; // A common public key
-        const POSTIMAGES_UPLOAD_URL = 'https://api.postimages.org/1/upload';
-
         try {
-            // Extract the base64 part of the data URL
-            const base64Data = photoDataUrl.split(',')[1];
+            // Convert base64 data URL to a Blob for multipart/form-data upload.
+            const imageResponse = await fetch(photoDataUrl);
+            const imageBlob = await imageResponse.blob();
 
             const formData = new FormData();
-            formData.append('key', POSTIMAGES_API_KEY);
-            formData.append('image', base64Data);
-
-            const response = await fetch(POSTIMAGES_UPLOAD_URL, {
+            formData.append('upload', imageBlob, `photo_${Date.now()}.jpg`);
+            
+            // This endpoint is for anonymous uploads to postimages.org.
+            // It may fail due to CORS policies or API changes by the third-party service.
+            const apiResponse = await fetch('https://postimages.org/api/1/upload', {
                 method: 'POST',
                 body: formData,
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Postimages upload failed: ${response.statusText} - ${errorText}`);
+            if (!apiResponse.ok) {
+                // Try to get more info from the response body if possible
+                const errorText = await apiResponse.text();
+                throw new Error(`Failed to upload. Server responded with ${apiResponse.status}: ${errorText}`);
             }
 
-            const responseData = await response.json();
-            
-            if (responseData.status === 'OK' && responseData.url) {
-                return responseData.url; // Return the Postimages URL
+            const result = await apiResponse.json();
+
+            if (result.status === 'success' && result.data?.url) {
+                // postimages.org provides various links, we'll use the direct link.
+                return result.data.url;
             } else {
-                throw new Error(`Postimages upload failed: ${responseData.error || 'Unknown error'}`);
+                throw new Error(result.error?.message || 'Unknown error from postimages.org API.');
             }
         } catch (error) {
-            console.error('Error uploading photo to Postimages:', error);
+            console.error('Error uploading photo to postimages.org:', error);
+            // The "Failed to fetch" error often indicates a CORS or network issue.
             alert(`There was an error uploading the photo. Please try again. Error: ${error instanceof Error ? error.message : String(error)}`);
             return ''; // Return empty string on failure
         }
