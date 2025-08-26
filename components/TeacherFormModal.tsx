@@ -130,7 +130,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
     subjectsTaught: [],
     teacherLicenseNumber: '',
     salaryGrade: '',
-    basicSalary: undefined,
+    basicSalary: null,
     bankAccountNumber: '',
     bankName: '',
     panNumber: '',
@@ -170,7 +170,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
         if (type === 'number') {
             if (value === '') {
                 // If input is cleared, use undefined for optional fields, 0 for others.
-                finalValue = (name === 'basicSalary') ? undefined : 0;
+                finalValue = (name === 'basicSalary') ? null : 0;
             } else {
                 const parsed = parseInt(value, 10);
                 // If it's not a valid number, ignore the change to avoid NaN.
@@ -248,24 +248,24 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
       return;
     }
 
-    const finalData = { ...formData };
+    const submissionData: Partial<Staff> = { ...formData };
     
     // Ensure numeric types are correct and not NaN
-    finalData.yearsOfExperience = Number(finalData.yearsOfExperience) || 0;
+    submissionData.yearsOfExperience = Number(submissionData.yearsOfExperience) || 0;
 
-    // Handle optional basicSalary: if it is null, undefined, empty string, or NaN, set to undefined.
-    const salaryValue = finalData.basicSalary;
+    // Handle optional basicSalary: remove if invalid to prevent Firestore error.
+    const salaryValue = submissionData.basicSalary;
     if (salaryValue == null || String(salaryValue).trim() === '' || isNaN(Number(salaryValue))) {
-      finalData.basicSalary = undefined;
+      delete submissionData.basicSalary;
     } else {
-      finalData.basicSalary = Number(salaryValue);
+      submissionData.basicSalary = Number(salaryValue);
     }
     
-    if (finalData.staffType === 'Non-Teaching') {
-        finalData.subjectsTaught = [];
+    if (submissionData.staffType === 'Non-Teaching') {
+        submissionData.subjectsTaught = [];
     }
 
-    onSubmit(finalData as Omit<Staff, 'id'>, assignedGrade ? (assignedGrade as Grade) : null);
+    onSubmit(submissionData as Omit<Staff, 'id'>, assignedGrade ? (assignedGrade as Grade) : null);
   };
 
   const gradeOptions = useMemo(() => {
