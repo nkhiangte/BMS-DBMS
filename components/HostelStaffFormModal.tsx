@@ -154,7 +154,7 @@ const HostelStaffFormModal: React.FC<HostelStaffFormModalProps> = ({ isOpen, onC
                             </div>
                             <div>
                                 <label htmlFor="dateOfJoining" className="block text-sm font-bold text-slate-800">Date of Joining</label>
-                                <input type="date" name="dateOfJoining" id="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                                <input type="text" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" name="dateOfJoining" id="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
                             </div>
                             <div>
                                 <label htmlFor="dutyShift" className="block text-sm font-bold text-slate-800">Duty Shift (Optional)</label>

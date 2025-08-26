@@ -330,7 +330,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
               </div>
               <div>
                 <label htmlFor="dateOfBirth" className="block text-sm font-bold text-slate-800">Date of Birth</label>
-                <input type="date" name="dateOfBirth" id="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="text" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" name="dateOfBirth" id="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
               </div>
               <div>
                 <label htmlFor="nationality" className="block text-sm font-bold text-slate-800">Nationality</label>
@@ -407,7 +407,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
               </div>
               <div>
                 <label htmlFor="dateOfJoining" className="block text-sm font-bold text-slate-800">Date of Joining</label>
-                <input type="date" name="dateOfJoining" id="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                <input type="text" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" name="dateOfJoining" id="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
               </div>
                <div>
                 <label htmlFor="status" className="block text-sm font-bold text-slate-800">Employment Status</label>

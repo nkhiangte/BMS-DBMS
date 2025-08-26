@@ -198,7 +198,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
               </div>
               <div>
                 <label htmlFor="dateOfBirth" className="block text-sm font-bold text-slate-800">Date of Birth</label>
-                <input type="date" name="dateOfBirth" id="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm" required />
+                <input type="text" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" name="dateOfBirth" id="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm" required />
               </div>
               <div>
                  <label htmlFor="gender" className="block text-sm font-bold text-slate-800">Gender</label>
