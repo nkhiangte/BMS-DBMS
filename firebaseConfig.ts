@@ -2,7 +2,6 @@
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
-import 'firebase/compat/storage';
 
 // Your Firebase configuration
 const firebaseConfig = {
@@ -22,7 +21,6 @@ if (!firebase.apps.length) {
 // Initialize and export services using the compat syntax
 const auth = firebase.auth();
 const db = firebase.firestore();
-const storage = firebase.storage();
 
 // --- Enable Offline Persistence ---
 // This allows the app to work offline by caching data.
@@ -46,4 +44,4 @@ db.enablePersistence()
 
 
 // Export for use in your app
-export { auth, db, storage, firebaseConfig };
+export { auth, db, firebaseConfig };

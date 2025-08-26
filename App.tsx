@@ -1,12 +1,14 @@
 
 
+
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
 import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST } from './constants';
 import { getNextGrade, createDefaultFeePayments, calculateStudentResult } from './utils';
 
-import { auth, db, storage, firebaseConfig } from './firebaseConfig';
+import { auth, db, firebaseConfig } from './firebaseConfig';
 import firebase from 'firebase/compat/app';
 
 import Header from './components/Header';
@@ -65,6 +67,10 @@ import HostelSettingsPage from './pages/HostelSettingsPage';
 import HostelStaffFormModal from './components/HostelStaffFormModal';
 import AcademicYearForm from './components/AcademicYearForm';
 import { UserManagementPage } from './pages/UserManagementPage';
+
+// IMPORTANT: Replace with your own imgbb API key.
+// You can get a free key from https://api.imgbb.com/
+const IMGBB_API_KEY = "ceadbeb666f524f8f5705e118af9210f";
 
 const PendingApprovalPage: React.FC<{ onLogout: () => void; email: string | null }> = ({ onLogout, email }) => (
     <div className="flex items-center justify-center min-h-screen bg-slate-100">
@@ -175,7 +181,7 @@ const App: React.FC = () => {
         ];
         
         const unsubscribers = collectionsToSync.map(([path, setter]) => 
-            db.collection(path).onSnapshot(snapshot => {
+            db.collection(path).orderBy('name').onSnapshot(snapshot => {
                 setter(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             })
         );
@@ -209,26 +215,42 @@ const App: React.FC = () => {
     }, []);
 
     const uploadPhoto = async (photoDataUrl: string): Promise<string> => {
-        // If it's not a new base64 image (i.e., it's empty or already an http URL), return it directly.
         if (!photoDataUrl || !photoDataUrl.startsWith('data:image')) {
             return photoDataUrl;
         }
-
+    
+        if (IMGBB_API_KEY === "YOUR_IMGBB_API_KEY") {
+            console.warn("imgbb API key is not configured. Photo will not be uploaded. Please add your key in App.tsx.");
+            alert("Image upload is not configured. Please contact the administrator.");
+            return ''; 
+        }
+    
         try {
-            const fileName = `photos/${Date.now()}.jpg`;
-            const storageRef = storage.ref(fileName);
-
-            // Upload the base64 string directly. The SDK handles the conversion.
-            const uploadTaskSnapshot = await storageRef.putString(photoDataUrl, 'data_url');
-            
-            // Get the download URL after the upload is complete.
-            const downloadUrl = await uploadTaskSnapshot.ref.getDownloadURL();
-            
-            return downloadUrl;
+            const base64img = photoDataUrl.split(',')[1];
+            const formData = new FormData();
+            formData.append('image', base64img);
+    
+            const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                method: 'POST',
+                body: formData,
+            });
+    
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData?.error?.message || `HTTP error! status: ${response.status}`);
+            }
+    
+            const result = await response.json();
+    
+            if (result.data && result.data.url) {
+                return result.data.url;
+            } else {
+                throw new Error('imgbb API did not return an image URL.');
+            }
         } catch (error) {
-            console.error('Error uploading photo to Firebase Storage:', error);
+            console.error('Error uploading photo to imgbb:', error);
             alert(`There was an error uploading the photo. Please try again. Error: ${error instanceof Error ? error.message : String(error)}`);
-            return ''; // Return empty string on failure
+            return '';
         }
     };
 
@@ -388,6 +410,87 @@ const App: React.FC = () => {
         await batch.commit();
         await db.collection('settings').doc('academic').set({ year: null });
     };
+    
+    // --- Hostel and Inventory Handlers (wired up) ---
+    const handleHostelStaffFormSubmit = useCallback(async (staffData: Omit<HostelStaff, 'id'>) => {
+        try {
+            const dataToSave = { ...staffData };
+            if (dataToSave.photographUrl) {
+                dataToSave.photographUrl = await uploadPhoto(dataToSave.photographUrl);
+            }
+    
+            if (editingHostelStaff) {
+                await db.collection('hostelStaff').doc(editingHostelStaff.id).set(dataToSave);
+            } else {
+                await db.collection('hostelStaff').add(dataToSave);
+            }
+            
+            closeModal();
+        } catch (error) {
+            console.error("Error saving hostel staff member:", error);
+            alert(`Failed to save hostel staff member. Error: ${error}`);
+        }
+    }, [editingHostelStaff, closeModal]);
+
+    const handleDeleteHostelStaffConfirm = useCallback(async () => {
+        if (deletingHostelStaff) {
+            await db.collection('hostelStaff').doc(deletingHostelStaff.id).delete();
+            closeModal();
+        }
+    }, [deletingHostelStaff, closeModal]);
+
+    const handleInventoryFormSubmit = useCallback(async (itemData: Omit<InventoryItem, 'id'>) => {
+        try {
+            if (editingInventoryItem) {
+                await db.collection('inventory').doc(editingInventoryItem.id).set(itemData);
+            } else {
+                await db.collection('inventory').add(itemData);
+            }
+            closeModal();
+        } catch (error) {
+            console.error("Error saving inventory item:", error);
+            alert(`Failed to save inventory item. Error: ${error}`);
+        }
+    }, [editingInventoryItem, closeModal]);
+    
+    const handleDeleteInventoryItemConfirm = useCallback(async () => {
+        if (deletingInventoryItem) {
+            await db.collection('inventory').doc(deletingInventoryItem.id).delete();
+            closeModal();
+        }
+    }, [deletingInventoryItem, closeModal]);
+    
+    const handleUpdateHostelStock = useCallback(async (itemId: string, change: number, notes: string) => {
+        const itemRef = db.collection('hostelInventory').doc(itemId);
+        const logRef = db.collection('hostelStockLogs').doc();
+        
+        try {
+            await db.runTransaction(async (transaction) => {
+                const itemDoc = await transaction.get(itemRef);
+                if (!itemDoc.exists) { throw new Error("Item does not exist!"); }
+                const itemData = itemDoc.data() as HostelInventoryItem;
+                const newStock = itemData.currentStock + change;
+    
+                if (newStock < 0) { throw new Error("Stock cannot be negative."); }
+                
+                transaction.update(itemRef, { currentStock: newStock });
+    
+                const logEntry: Omit<StockLog, 'id'> = {
+                    itemId: itemId,
+                    itemName: itemData.name,
+                    type: change > 0 ? StockLogType.IN : StockLogType.OUT,
+                    quantity: Math.abs(change),
+                    date: new Date().toISOString(),
+                    notes: notes,
+                };
+                transaction.set(logRef, logEntry);
+            });
+        } catch (error) {
+            console.error("Error updating stock:", error);
+            alert(`Failed to update stock. Error: ${error}`);
+        }
+    }, []);
+
 
     // --- AUTHENTICATION FUNCTIONS ---
     const handleLogin = async (email: string, pass: string) => {
@@ -518,7 +621,7 @@ const App: React.FC = () => {
                         <Route path="/hostel/attendance" element={<HostelAttendancePage />} />
                         <Route path="/hostel/mess" element={<HostelMessPage />} />
                         <Route path="/hostel/staff" element={<HostelStaffPage staff={hostelStaff} onAdd={() => { setEditingHostelStaff(null); setIsHostelStaffFormModalOpen(true); }} onEdit={(s) => { setEditingHostelStaff(s); setIsHostelStaffFormModalOpen(true); }} onDelete={(s) => setDeletingHostelStaff(s)} user={user}/>} />
-                        <Route path="/hostel/inventory" element={<HostelInventoryPage inventory={hostelInventory} stockLogs={hostelStockLogs} onUpdateStock={() => {}} user={user}/>} />
+                        <Route path="/hostel/inventory" element={<HostelInventoryPage inventory={hostelInventory} stockLogs={hostelStockLogs} onUpdateStock={handleUpdateHostelStock} user={user}/>} />
                         <Route path="/hostel/discipline" element={<HostelDisciplinePage />} />
                         <Route path="/hostel/health" element={<HostelHealthPage />} />
                         <Route path="/hostel/communication" element={<HostelCommunicationPage />} />
@@ -531,10 +634,10 @@ const App: React.FC = () => {
                 {deletingStudent && <ConfirmationModal isOpen={!!deletingStudent} onClose={closeModal} onConfirm={handleDeleteConfirm} title="Delete Student"><p>Are you sure you want to delete <span className="font-bold">{deletingStudent.name}</span>? This action cannot be undone.</p></ConfirmationModal>}
                 {isStaffFormModalOpen && <StaffFormModal isOpen={isStaffFormModalOpen} onClose={closeModal} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions} />}
                 {deletingStaff && <ConfirmationModal isOpen={!!deletingStaff} onClose={closeModal} onConfirm={handleDeleteStaffConfirm} title="Delete Staff Member"><p>Are you sure you want to delete <span className="font-bold">{deletingStaff.firstName} {deletingStaff.lastName}</span>? This action cannot be undone.</p></ConfirmationModal>}
-                {isInventoryFormModalOpen && <InventoryFormModal isOpen={isInventoryFormModalOpen} onClose={closeModal} onSubmit={() => {}} item={editingInventoryItem} />}
-                {deletingInventoryItem && <ConfirmationModal isOpen={!!deletingInventoryItem} onClose={closeModal} onConfirm={() => {}} title="Delete Inventory Item"><p>Are you sure you want to delete <span className="font-bold">{deletingInventoryItem.name}</span>? This action cannot be undone.</p></ConfirmationModal>}
-                {isHostelStaffFormModalOpen && <HostelStaffFormModal isOpen={isHostelStaffFormModalOpen} onClose={closeModal} onSubmit={() => {}} staffMember={editingHostelStaff} />}
-                {deletingHostelStaff && <ConfirmationModal isOpen={!!deletingHostelStaff} onClose={closeModal} onConfirm={() => {}} title="Delete Hostel Staff"><p>Are you sure you want to delete <span className="font-bold">{deletingHostelStaff.name}</span>? This action cannot be undone.</p></ConfirmationModal>}
+                {isInventoryFormModalOpen && <InventoryFormModal isOpen={isInventoryFormModalOpen} onClose={closeModal} onSubmit={handleInventoryFormSubmit} item={editingInventoryItem} />}
+                {deletingInventoryItem && <ConfirmationModal isOpen={!!deletingInventoryItem} onClose={closeModal} onConfirm={handleDeleteInventoryItemConfirm} title="Delete Inventory Item"><p>Are you sure you want to delete <span className="font-bold">{deletingInventoryItem.name}</span>? This action cannot be undone.</p></ConfirmationModal>}
+                {isHostelStaffFormModalOpen && <HostelStaffFormModal isOpen={isHostelStaffFormModalOpen} onClose={closeModal} onSubmit={handleHostelStaffFormSubmit} staffMember={editingHostelStaff} />}
+                {deletingHostelStaff && <ConfirmationModal isOpen={!!deletingHostelStaff} onClose={closeModal} onConfirm={handleDeleteHostelStaffConfirm} title="Delete Hostel Staff"><p>Are you sure you want to delete <span className="font-bold">{deletingHostelStaff.name}</span>? This action cannot be undone.</p></ConfirmationModal>}
                 {isImportModalOpen && <ImportStudentsModal isOpen={isImportModalOpen} onClose={closeModal} onImport={handleImportStudents} grade={importTargetGrade} allStudents={students} allGrades={GRADES_LIST} isImporting={isImporting} />}
                 {transferringStudent && <TransferStudentModal isOpen={!!transferringStudent} onClose={closeModal} onConfirm={() => {}} student={transferringStudent} allStudents={students} allGrades={GRADES_LIST} />}
             </div>

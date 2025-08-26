@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, FormEvent, useRef } from 'react';
 import { HostelStaff, Gender, HostelStaffRole, HostelBlock, PaymentStatus } from '../types';
 import { UserIcon } from './Icons';
@@ -7,7 +8,7 @@ import { GENDER_LIST, HOSTEL_STAFF_ROLE_LIST, HOSTEL_BLOCK_LIST } from '../const
 interface HostelStaffFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (staffData: Omit<HostelStaff, 'id' | 'paymentStatus' | 'attendancePercent'>) => void;
+  onSubmit: (staffData: Omit<HostelStaff, 'id'>) => void;
   staffMember: HostelStaff | null;
 }
 
@@ -55,7 +56,7 @@ const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: n
 
 
 const HostelStaffFormModal: React.FC<HostelStaffFormModalProps> = ({ isOpen, onClose, onSubmit, staffMember }) => {
-    const getInitialFormData = (): Omit<HostelStaff, 'id' | 'paymentStatus' | 'attendancePercent'> => ({
+    const getInitialFormData = (): Omit<HostelStaff, 'id'> => ({
         name: '',
         gender: Gender.MALE,
         role: HostelStaffRole.WARDEN,
@@ -65,6 +66,9 @@ const HostelStaffFormModal: React.FC<HostelStaffFormModalProps> = ({ isOpen, onC
         dutyShift: '',
         assignedBlock: undefined,
         salary: 0,
+        // FIX: Used PaymentStatus enum member for type safety.
+        paymentStatus: PaymentStatus.PENDING,
+        attendancePercent: 100,
     });
 
     const [formData, setFormData] = useState(getInitialFormData());
