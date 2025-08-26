@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, FormEvent } from 'react';
-import { Staff, Grade, GradeDefinition, Gender, MaritalStatus, Designation } from '../types';
-import { compressAndUploadImage } from '../utils/imageUtils';
+// FIX: Added missing type imports from '../types' to align with Staff interface.
+import { Staff, Grade, GradeDefinition, Gender, MaritalStatus, Designation, Qualification, BloodGroup, Department, EmployeeType, EmploymentStatus } from '../types';
 
 interface StaffFormModalProps {
   isOpen: boolean;
@@ -11,6 +12,50 @@ interface StaffFormModalProps {
   gradeDefinitions: Record<Grade, GradeDefinition>;
 }
 
+// FIX: Copied from StudentFormModal.tsx to handle image resizing locally.
+const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            if (!e.target?.result) {
+                return reject(new Error("FileReader did not return a result."));
+            }
+            const img = new Image();
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    return reject(new Error('Could not get canvas context'));
+                }
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = (err) => reject(err);
+            img.src = e.target.result as string;
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(file);
+    });
+};
+
+
 const StaffFormModal: React.FC<StaffFormModalProps> = ({
   isOpen,
   onClose,
@@ -19,27 +64,43 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({
   gradeDefinitions,
 }) => {
   // ---------- Initial Data ----------
+  // FIX: Corrected and completed initial form data to match the 'Staff' interface from types.ts.
   const getInitialFormData = (): Omit<Staff, 'id'> => ({
-    fullName: '',
-    gender: Gender.MALE,
-    maritalStatus: MaritalStatus.SINGLE,
-    dateOfBirth: '',
-    dateOfJoining: '',
-    nationality: '',
-    designation: Designation.TEACHER,
-    specialization: '',
-    qualifications: '',
-    contactNumber: '',
-    email: '',
-    subjectsTaught: [],
-    yearsOfExperience: null,
     staffType: 'Teaching',
+    employeeId: '',
+    firstName: '',
+    lastName: '',
+    gender: Gender.MALE,
+    dateOfBirth: '',
+    nationality: 'Indian',
+    maritalStatus: MaritalStatus.SINGLE,
     photographUrl: '',
-    basicSalary: null, // ✅ no undefined
-    allowances: 0,
-    deductions: 0,
-    netSalary: 0,
-    address: '',
+    bloodGroup: BloodGroup.O_POSITIVE,
+    aadhaarNumber: '',
+    contactNumber: '',
+    emailAddress: '',
+    permanentAddress: '',
+    currentAddress: '',
+    educationalQualification: Qualification.GRADUATE,
+    specialization: '',
+    yearsOfExperience: 0,
+    previousExperience: '',
+    dateOfJoining: '',
+    department: Department.LANGUAGES,
+    designation: Designation.TEACHER,
+    employeeType: EmployeeType.FULL_TIME,
+    status: EmploymentStatus.ACTIVE,
+    subjectsTaught: [],
+    teacherLicenseNumber: '',
+    salaryGrade: '',
+    basicSalary: null,
+    bankAccountNumber: '',
+    bankName: '',
+    panNumber: '',
+    emergencyContactName: '',
+    emergencyContactRelationship: '',
+    emergencyContactNumber: '',
+    medicalConditions: '',
   });
 
   // ---------- State ----------
@@ -50,18 +111,21 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({
   // ---------- Prefill when editing ----------
   useEffect(() => {
     if (staffMember) {
+      // FIX: Ensure all fields from the Staff type are present when setting form data.
       setFormData({
+        ...getInitialFormData(),
         ...staffMember,
-        yearsOfExperience:
-          staffMember.yearsOfExperience === undefined ? null : staffMember.yearsOfExperience,
-        basicSalary: staffMember.basicSalary ?? null,
       });
-      setAssignedGrade(staffMember.assignedGrade || '');
+      // FIX: Property 'assignedGrade' does not exist on type 'Staff'. Look up assigned grade from gradeDefinitions.
+      const assignedGradeKey = Object.keys(gradeDefinitions).find(
+        (g) => gradeDefinitions[g as Grade]?.classTeacherId === staffMember.id
+      ) as Grade | null;
+      setAssignedGrade(assignedGradeKey || '');
     } else {
       setFormData(getInitialFormData());
       setAssignedGrade('');
     }
-  }, [staffMember]);
+  }, [staffMember, gradeDefinitions]);
 
   if (!isOpen) return null;
 
@@ -72,10 +136,16 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({
     const { name, value, type } = e.target;
 
     setFormData((prev) => {
-      let finalValue: string | number | null = value;
+      let finalValue: any = value;
 
+      // FIX: Handle number inputs correctly to avoid setting null on required number fields.
       if (type === 'number') {
-        finalValue = value === '' ? null : Number(value); // ✅ null instead of 0
+        const parsed = parseInt(value, 10);
+        if (name === 'basicSalary') {
+            finalValue = isNaN(parsed) ? undefined : parsed;
+        } else { // for yearsOfExperience
+            finalValue = isNaN(parsed) ? 0 : parsed;
+        }
       }
 
       const newState = { ...prev, [name]: finalValue };
@@ -92,11 +162,12 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({
     if (e.target.files?.length) {
       try {
         const file = e.target.files[0];
-        const url = await compressAndUploadImage(file);
-        setFormData((prev) => ({ ...prev, photographUrl: url }));
+        // FIX: Replaced call to non-existent 'compressAndUploadImage' with local 'resizeImage'.
+        const resizedDataUrl = await resizeImage(file, 512, 512, 0.8);
+        setFormData((prev) => ({ ...prev, photographUrl: resizedDataUrl }));
       } catch (error) {
-        console.error('Image upload failed:', error);
-        alert('Failed to upload photo. Please try again.');
+        console.error('Image processing failed:', error);
+        alert('Failed to process photo. Please try a different image.');
       }
     }
   };
@@ -141,15 +212,26 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+        <form id="staff-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Full Name */}
+            {/* FIX: Replaced 'fullName' with 'firstName' and 'lastName' fields. */}
             <div>
-              <label className="block text-sm font-medium mb-1">Full Name</label>
+              <label className="block text-sm font-medium mb-1">First Name</label>
               <input
                 type="text"
-                name="fullName"
-                value={formData.fullName}
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                className="w-full border rounded-lg p-2"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Last Name</label>
+              <input
+                type="text"
+                name="lastName"
+                value={formData.lastName}
                 onChange={handleChange}
                 className="w-full border rounded-lg p-2"
                 required
@@ -269,16 +351,19 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({
               />
             </div>
 
-            {/* Qualifications */}
+            {/* FIX: Renamed 'qualifications' to 'educationalQualification' and made it a select dropdown. */}
             <div>
-              <label className="block text-sm font-medium mb-1">Qualifications</label>
-              <input
-                type="text"
-                name="qualifications"
-                value={formData.qualifications}
+              <label className="block text-sm font-medium mb-1">Highest Qualification</label>
+              <select
+                name="educationalQualification"
+                value={formData.educationalQualification}
                 onChange={handleChange}
                 className="w-full border rounded-lg p-2"
-              />
+              >
+                {Object.values(Qualification).map((q) => (
+                    <option key={q} value={q}>{q}</option>
+                ))}
+              </select>
             </div>
 
             {/* Contact Number */}
@@ -293,13 +378,13 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({
               />
             </div>
 
-            {/* Email */}
+            {/* FIX: Renamed 'email' to 'emailAddress'. */}
             <div>
               <label className="block text-sm font-medium mb-1">Email</label>
               <input
                 type="email"
-                name="email"
-                value={formData.email}
+                name="emailAddress"
+                value={formData.emailAddress}
                 onChange={handleChange}
                 className="w-full border rounded-lg p-2"
               />
@@ -329,41 +414,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({
               />
             </div>
 
-            {/* Allowances */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Allowances</label>
-              <input
-                type="number"
-                name="allowances"
-                value={formData.allowances}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              />
-            </div>
-
-            {/* Deductions */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Deductions</label>
-              <input
-                type="number"
-                name="deductions"
-                value={formData.deductions}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              />
-            </div>
-
-            {/* Net Salary */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Net Salary</label>
-              <input
-                type="number"
-                name="netSalary"
-                value={formData.netSalary}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              />
-            </div>
+            {/* FIX: Removed obsolete fields: allowances, deductions, netSalary. */}
 
             {/* Assigned Grade */}
             <div>
@@ -382,12 +433,22 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({
               </select>
             </div>
 
-            {/* Address */}
+            {/* FIX: Replaced 'address' with 'currentAddress' and 'permanentAddress'. */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Address</label>
+              <label className="block text-sm font-medium mb-1">Current Address</label>
               <textarea
-                name="address"
-                value={formData.address}
+                name="currentAddress"
+                value={formData.currentAddress}
+                onChange={handleChange}
+                className="w-full border rounded-lg p-2"
+                rows={3}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Permanent Address</label>
+              <textarea
+                name="permanentAddress"
+                value={formData.permanentAddress}
                 onChange={handleChange}
                 className="w-full border rounded-lg p-2"
                 rows={3}

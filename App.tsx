@@ -33,7 +33,7 @@ import UpdateTcPage from './pages/UpdateTcPage';
 import PrintableReportCardPage from './pages/PrintableReportCardPage';
 import ManageSubjectsPage from './pages/ManageSubjectsPage';
 import ManageStaffPage from './pages/ManageStaffPage';
-import StaffFormModal from './components/TeacherFormModal';
+import StaffFormModal from './components/StaffFormModal';
 import StaffDetailPage from './pages/StaffDetailPage';
 import FeeManagementPage from './pages/FeeManagementPage';
 import ClassMarkStatementPage from './pages/ClassMarkStatementPage';
