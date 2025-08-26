@@ -428,6 +428,16 @@ const App: React.FC = () => {
     const handleUpdateUserRole = async (uid: string, newRole: 'admin' | 'user' | 'pending') => {
         await db.collection('users').doc(uid).set({ role: newRole }, { merge: true });
     };
+    const handleDeleteUser = async (uid: string) => {
+        // Note: For security, deleting a user from Firebase Auth should be done
+        // via a trusted backend/cloud function. This only removes their app access role.
+        if (uid === user?.uid) {
+            console.error("Admin cannot delete themselves.");
+            return;
+        }
+        await db.collection('users').doc(uid).delete();
+    };
+
 
     // --- RENDER LOGIC ---
     if (authLoading) {
@@ -494,7 +504,7 @@ const App: React.FC = () => {
                         <Route path="/hostel/communication" element={<HostelCommunicationPage />} />
                         <Route path="/hostel/settings" element={<HostelSettingsPage />} />
                         <Route path="/change-password" element={<ChangePasswordPage onChangePassword={handleChangePassword} />} />
-                        {user.role === 'admin' && <Route path="/users" element={<UserManagementPage allUsers={allUsers} currentUser={user} onUpdateUserRole={handleUpdateUserRole} />} />}
+                        {user.role === 'admin' && <Route path="/users" element={<UserManagementPage allUsers={allUsers} currentUser={user} onUpdateUserRole={handleUpdateUserRole} onDeleteUser={handleDeleteUser} />} />}
                         <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
                 </main>
