@@ -113,7 +113,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
     medicalConditions: '',
   });
 
-  const [formData, setFormData] = useState(getInitialFormData());
+  const [formData, setFormData] = useState<any>(getInitialFormData());
   const [assignedGrade, setAssignedGrade] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -139,9 +139,14 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
     const { name, value, type } = e.target;
     
     setFormData(prev => {
-        let finalValue: string | number = value;
+        let finalValue: any = value;
         if (type === 'number') {
-            finalValue = value === '' ? 0 : parseInt(value, 10);
+            const parsed = parseInt(value, 10);
+            if (isNaN(parsed)) {
+                finalValue = name === 'basicSalary' ? undefined : 0;
+            } else {
+                finalValue = parsed;
+            }
         }
         const newState = { ...prev, [name]: finalValue };
         
@@ -184,13 +189,38 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const finalData = { ...formData };
+
+    const requiredFields: { key: keyof Staff; label: string }[] = [
+        { key: 'firstName', label: 'First Name' },
+        { key: 'lastName', label: 'Last Name' },
+        { key: 'employeeId', label: 'Employee ID' },
+        { key: 'dateOfJoining', label: 'Date of Joining' },
+    ];
+
+    const missingFields = requiredFields.filter(field => {
+        const value = formData[field.key];
+        return !value || String(value).trim() === '';
+    });
+
+    if (missingFields.length > 0) {
+        const missingFieldLabels = missingFields.map(field => field.label);
+        alert(`Please fill in all required fields:\n\n- ${missingFieldLabels.join('\n- ')}`);
+        return;
+    }
+
+    const finalData: Omit<Staff, 'id'> = {
+        ...formData,
+        yearsOfExperience: Number(formData.yearsOfExperience) || 0,
+        basicSalary: formData.basicSalary ? Number(formData.basicSalary) : undefined,
+    };
+
     if (finalData.staffType === 'Non-Teaching') {
         finalData.subjectsTaught = [];
     }
+    
     onSubmit(finalData, assignedGrade ? (assignedGrade as Grade) : null);
   };
-
+  
   const gradeOptions = useMemo(() => {
     return GRADES_LIST.map(grade => {
       const classDef = gradeDefinitions[grade];
@@ -259,15 +289,15 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
               </div>
               <div>
                 <label htmlFor="contactNumber" className="block text-sm font-bold text-slate-800">Contact Number</label>
-                <input type="tel" name="contactNumber" id="contactNumber" value={formData.contactNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="tel" name="contactNumber" id="contactNumber" value={formData.contactNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
               </div>
               <div>
                 <label htmlFor="emailAddress" className="block text-sm font-bold text-slate-800">Email Address</label>
-                <input type="email" name="emailAddress" id="emailAddress" value={formData.emailAddress} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="email" name="emailAddress" id="emailAddress" value={formData.emailAddress} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required/>
               </div>
                <div className="lg:col-span-1 md:col-span-2">
                 <label htmlFor="aadhaarNumber" className="block text-sm font-bold text-slate-800">Aadhaar Number</label>
-                <input type="text" name="aadhaarNumber" id="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="text" name="aadhaarNumber" id="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
               </div>
               <div className="lg:col-span-3 md:col-span-2">
                 <label htmlFor="currentAddress" className="block text-sm font-bold text-slate-800">Current Address</label>
@@ -305,7 +335,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                 </div>
                 <div>
                     <label htmlFor="yearsOfExperience" className="block text-sm font-bold text-slate-800">Total Years of Experience</label>
-                    <input type="number" name="yearsOfExperience" id="yearsOfExperience" value={formData.yearsOfExperience} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    <input type="number" name="yearsOfExperience" id="yearsOfExperience" value={formData.yearsOfExperience ?? ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
                 </div>
                 <div className="lg:col-span-3 md:col-span-2">
                     <label htmlFor="previousExperience" className="block text-sm font-bold text-slate-800">Previous Experience Details</label>
@@ -397,15 +427,15 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
             <AccordionSection title="5. Emergency Contact & Medical">
               <div>
                 <label htmlFor="emergencyContactName" className="block text-sm font-bold text-slate-800">Emergency Contact Name</label>
-                <input type="text" name="emergencyContactName" id="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="text" name="emergencyContactName" id="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
               </div>
               <div>
                 <label htmlFor="emergencyContactRelationship" className="block text-sm font-bold text-slate-800">Relationship</label>
-                <input type="text" name="emergencyContactRelationship" id="emergencyContactRelationship" value={formData.emergencyContactRelationship} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="text" name="emergencyContactRelationship" id="emergencyContactRelationship" value={formData.emergencyContactRelationship} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
               </div>
               <div>
                 <label htmlFor="emergencyContactNumber" className="block text-sm font-bold text-slate-800">Emergency Contact Number</label>
-                <input type="tel" name="emergencyContactNumber" id="emergencyContactNumber" value={formData.emergencyContactNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                <input type="tel" name="emergencyContactNumber" id="emergencyContactNumber" value={formData.emergencyContactNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
               </div>
               <div>
                  <label htmlFor="bloodGroup" className="block text-sm font-bold text-slate-800">Blood Group</label>
