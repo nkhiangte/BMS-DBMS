@@ -215,37 +215,18 @@ const App: React.FC = () => {
         }
 
         try {
-            // Convert base64 data URL to a Blob for multipart/form-data upload.
-            const imageResponse = await fetch(photoDataUrl);
-            const imageBlob = await imageResponse.blob();
+            const fileName = `photos/${Date.now()}.jpg`;
+            const storageRef = storage.ref(fileName);
 
-            const formData = new FormData();
-            formData.append('upload', imageBlob, `photo_${Date.now()}.jpg`);
+            // Upload the base64 string directly. The SDK handles the conversion.
+            const uploadTaskSnapshot = await storageRef.putString(photoDataUrl, 'data_url');
             
-            // This endpoint is for anonymous uploads to postimages.org.
-            // It may fail due to CORS policies or API changes by the third-party service.
-            const apiResponse = await fetch('https://postimages.org/api/1/upload', {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (!apiResponse.ok) {
-                // Try to get more info from the response body if possible
-                const errorText = await apiResponse.text();
-                throw new Error(`Failed to upload. Server responded with ${apiResponse.status}: ${errorText}`);
-            }
-
-            const result = await apiResponse.json();
-
-            if (result.status === 'success' && result.data?.url) {
-                // postimages.org provides various links, we'll use the direct link.
-                return result.data.url;
-            } else {
-                throw new Error(result.error?.message || 'Unknown error from postimages.org API.');
-            }
+            // Get the download URL after the upload is complete.
+            const downloadUrl = await uploadTaskSnapshot.ref.getDownloadURL();
+            
+            return downloadUrl;
         } catch (error) {
-            console.error('Error uploading photo to postimages.org:', error);
-            // The "Failed to fetch" error often indicates a CORS or network issue.
+            console.error('Error uploading photo to Firebase Storage:', error);
             alert(`There was an error uploading the photo. Please try again. Error: ${error instanceof Error ? error.message : String(error)}`);
             return ''; // Return empty string on failure
         }
