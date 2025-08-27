@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 
 interface ConfirmationModalProps {
@@ -7,9 +8,10 @@ interface ConfirmationModalProps {
   onConfirm: () => void;
   title: string;
   children: React.ReactNode;
+  confirmDisabled?: boolean;
 }
 
-const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, onClose, onConfirm, title, children }) => {
+const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, onClose, onConfirm, title, children, confirmDisabled = false }) => {
   if (!isOpen) return null;
 
   return (
@@ -35,8 +37,9 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, onClose, 
         <div className="bg-slate-50 px-6 py-4 flex flex-row-reverse gap-3 rounded-b-xl">
           <button
             type="button"
-            className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+            className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:bg-red-400 disabled:cursor-not-allowed"
             onClick={onConfirm}
+            disabled={confirmDisabled}
           >
             Confirm
           </button>
