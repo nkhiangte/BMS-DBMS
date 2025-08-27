@@ -463,3 +463,18 @@ export enum AttendanceStatus {
 export interface StaffAttendanceRecord {
     [staffId: string]: AttendanceStatus;
 }
+
+// --- NEW: Student Attendance Types ---
+export enum StudentAttendanceStatus {
+    PRESENT = "Present",
+    ABSENT = "Absent",
+    LEAVE = "On Leave",
+}
+
+export interface StudentAttendanceRecord {
+    [studentId: string]: StudentAttendanceStatus;
+}
+
+export interface DailyStudentAttendance {
+    [grade: string]: StudentAttendanceRecord;
+}

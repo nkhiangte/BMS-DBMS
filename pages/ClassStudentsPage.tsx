@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, Staff, EmploymentStatus, User } from '../types';
-import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon } from '../components/Icons';
+import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon, ClipboardDocumentCheckIcon } from '../components/Icons';
 import { formatStudentId, calculateDues } from '../utils';
 import EditSubjectsModal from '../components/EditSubjectsModal';
 
@@ -144,17 +144,24 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                 )}
             </div>
           </div>
-           {user.role === 'admin' && (
-            <div className="flex items-center gap-3">
-                 <button
-                    onClick={() => onOpenImportModal(decodedGrade)}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition hover:-translate-y-0.5"
+           <div className="flex items-center gap-3">
+                <Link
+                    to={`/classes/${encodeURIComponent(decodedGrade)}/attendance`}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 transition hover:-translate-y-0.5"
                 >
-                    <ArrowUpOnSquareIcon className="w-5 h-5" />
-                    Import to this Class
-                </button>
+                    <ClipboardDocumentCheckIcon className="w-5 h-5" />
+                    Daily Attendance
+                </Link>
+                {user.role === 'admin' && (
+                    <button
+                        onClick={() => onOpenImportModal(decodedGrade)}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 transition hover:-translate-y-0.5"
+                    >
+                        <ArrowUpOnSquareIcon className="w-5 h-5" />
+                        Import to this Class
+                    </button>
+                )}
             </div>
-          )}
         </div>
         
         <div className="overflow-x-auto">

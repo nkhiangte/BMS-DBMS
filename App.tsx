@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus } from './types';
+import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord } from './types';
 import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST } from './constants';
 import { getNextGrade, createDefaultFeePayments, calculateStudentResult } from './utils';
 
@@ -37,6 +37,7 @@ import InventoryPage from './pages/InventoryPage';
 import InventoryFormModal from './components/InventoryFormModal';
 import ImportStudentsModal from './components/ImportStudentsModal';
 import TransferStudentModal from './components/TransferStudentModal';
+import StudentAttendancePage from './pages/StudentAttendancePage';
 
 // Auth Pages
 import LoginPage from './pages/LoginPage';
@@ -114,6 +115,8 @@ const App: React.FC = () => {
     const [hostelRooms, setHostelRooms] = useState<HostelRoom[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [staffAttendance, setStaffAttendance] = useState<StaffAttendanceRecord | null>(null);
+    const [studentAttendance, setStudentAttendance] = useState<DailyStudentAttendance | null>(null);
+
 
     // --- MODAL & UI STATE ---
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -170,7 +173,7 @@ const App: React.FC = () => {
     // --- DATA FETCHING FROM FIRESTORE ---
     useEffect(() => {
         if (!user || user.role === 'pending' || !isFirebaseConfigured) {
-            setStudents([]); setStaff([]); setTcRecords([]); setServiceCertificateRecords([]); setGradeDefinitions(GRADE_DEFINITIONS); setInventory([]); setHostelStaff([]); setHostelInventory([]); setHostelStockLogs([]); setAllUsers([]); setAcademicYear(null); setHostelResidents([]); setHostelRooms([]); setStaffAttendance(null);
+            setStudents([]); setStaff([]); setTcRecords([]); setServiceCertificateRecords([]); setGradeDefinitions(GRADE_DEFINITIONS); setInventory([]); setHostelStaff([]); setHostelInventory([]); setHostelStockLogs([]); setAllUsers([]); setAcademicYear(null); setHostelResidents([]); setHostelRooms([]); setStaffAttendance(null); setStudentAttendance(null);
             return;
         };
 
@@ -238,6 +241,16 @@ const App: React.FC = () => {
             error => {
                 console.error(`[Firestore Listener Error] Failed to fetch staff attendance:`, error);
                 alert(`Could not fetch staff attendance data.`);
+            }
+        ));
+
+        unsubscribers.push(db.collection('studentAttendance').doc(today).onSnapshot(
+            doc => {
+                setStudentAttendance(doc.exists ? (doc.data() as DailyStudentAttendance) : {});
+            },
+            error => {
+                console.error(`[Firestore Listener Error] Failed to fetch student attendance:`, error);
+                alert(`Could not fetch student attendance data.`);
             }
         ));
 
@@ -559,6 +572,12 @@ const App: React.FC = () => {
         const attendanceRef = db.collection('staffAttendance').doc(today);
         await attendanceRef.set({ [staffId]: status }, { merge: true });
     };
+    
+    const handleUpdateStudentAttendance = async (grade: Grade, records: StudentAttendanceRecord) => {
+        const today = new Date().toISOString().split('T')[0];
+        const attendanceRef = db.collection('studentAttendance').doc(today);
+        await attendanceRef.set({ [grade]: records }, { merge: true });
+    };
 
 
     // --- AUTHENTICATION FUNCTIONS ---
@@ -664,6 +683,7 @@ const App: React.FC = () => {
                         <Route path="/reports/search" element={<ReportSearchPage students={students} academicYear={academicYear} />} />
                         <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} user={user} />} />
                         <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} onOpenTransferModal={(s) => setTransferringStudent(s)} onDelete={(s) => setDeletingStudent(s)} user={user} />} />
+                        <Route path="/classes/:grade/attendance" element={<StudentAttendancePage students={students} allAttendance={studentAttendance} onUpdateAttendance={handleUpdateStudentAttendance} user={user} />} />
                         <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
                         <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear} user={user} />} />
                         <Route path="/transfers/records" element={<AllTcRecordsPage tcRecords={tcRecords} />} />
