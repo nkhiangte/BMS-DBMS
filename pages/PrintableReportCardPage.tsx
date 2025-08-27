@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, SubjectMark, GradeDefinition, SubjectDefinition } from '../types';
 import { BackIcon, UserIcon, HomeIcon, PrinterIcon } from '../components/Icons';
-import { formatStudentId } from '../utils';
+import { formatStudentId, formatDateForDisplay } from '../utils';
 
 const PhotoWithFallback: React.FC<{src?: string, alt: string}> = ({ src, alt }) => {
     const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -190,7 +190,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                        <DetailItem label="Student ID" value={formatStudentId(student, academicYear)} />
                        <DetailItem label="Grade" value={student.grade} />
                        <DetailItem label="Roll No." value={String(student.rollNo)} />
-                       <DetailItem label="Date of Birth" value={student.dateOfBirth} />
+                       <DetailItem label="Date of Birth" value={formatDateForDisplay(student.dateOfBirth)} />
                        <DetailItem label="Father's Name" value={student.fatherName} />
                     </div>
                 </div>

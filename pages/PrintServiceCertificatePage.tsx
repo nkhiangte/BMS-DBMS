@@ -4,6 +4,7 @@ import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ServiceCertificateRecord } from '../types';
 import { BackIcon, HomeIcon, PrinterIcon } from '../components/Icons';
+import { formatDateForDisplay } from '../utils';
 
 interface PrintServiceCertificatePageProps {
   serviceCertificateRecords: ServiceCertificateRecord[];
@@ -106,9 +107,9 @@ const PrintServiceCertificatePage: React.FC<PrintServiceCertificatePageProps> = 
             <main className="space-y-3 text-md leading-relaxed">
                 <DetailRow num={1} label="Name of Staff" value={staffDetails.name} />
                 <DetailRow num={2} label="Designation" value={staffDetails.designation} />
-                <DetailRow num={3} label="Date of Birth" value={staffDetails.dateOfBirth} />
-                <DetailRow num={4} label="Date of Joining" value={staffDetails.dateOfJoining} />
-                <DetailRow num={5} label="Date of Leaving (Last Working Day)" value={certData.lastWorkingDay} />
+                <DetailRow num={3} label="Date of Birth" value={formatDateForDisplay(staffDetails.dateOfBirth)} />
+                <DetailRow num={4} label="Date of Joining" value={formatDateForDisplay(staffDetails.dateOfJoining)} />
+                <DetailRow num={5} label="Date of Leaving (Last Working Day)" value={formatDateForDisplay(certData.lastWorkingDay)} />
                 <DetailRow num={6} label="Reason for Leaving" value={certData.reasonForLeaving} />
                 <DetailRow num={7} label="General Conduct" value={certData.generalConduct} />
                 <DetailRow num={8} label="Any other remarks" value={certData.remarks || 'None'} />
@@ -117,7 +118,7 @@ const PrintServiceCertificatePage: React.FC<PrintServiceCertificatePageProps> = 
             <footer className="mt-20 text-sm">
                 <div className="flex justify-between items-end">
                     <div className="text-left">
-                        <p>Date: {certData.issueDate}</p>
+                        <p>Date: {formatDateForDisplay(certData.issueDate)}</p>
                         <p className="mt-2">Place: Champhai, Mizoram</p>
                     </div>
                     <div className="text-center">

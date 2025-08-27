@@ -1,18 +1,39 @@
 
-import React, { useState, useEffect, FormEvent } from 'react';
-// FIX: Added missing type imports from '../types' to align with Staff interface.
-import { Staff, Grade, GradeDefinition, Gender, MaritalStatus, Designation, Qualification, BloodGroup, Department, EmployeeType, EmploymentStatus } from '../types';
+import React, { useState, useEffect, FormEvent, useRef } from 'react';
+import { Staff, Grade, GradeDefinition, Gender, MaritalStatus, Department, Designation, EmployeeType, Qualification, BloodGroup, EmploymentStatus, StaffType } from '../types';
+import { 
+    GENDER_LIST, 
+    MARITAL_STATUS_LIST, 
+    DEPARTMENT_LIST, 
+    DESIGNATION_LIST, 
+    EMPLOYEE_TYPE_LIST, 
+    QUALIFICATION_LIST, 
+    BLOOD_GROUP_LIST,
+    EMPLOYMENT_STATUS_LIST,
+    STAFF_TYPE_LIST,
+} from '../constants';
+import { ChevronDownIcon, ChevronUpIcon, UserIcon } from './Icons';
+import { formatDateForDisplay, formatDateForStorage } from '../utils';
 
-interface StaffFormModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => Promise<void>; // async save
-  staffMember: Staff | null;
-  allStaff: Staff[];
-  gradeDefinitions: Record<Grade, GradeDefinition>;
-}
+const AccordionSection: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
 
-// FIX: Copied from StudentFormModal.tsx to handle image resizing locally.
+    return (
+        <div className="border rounded-lg overflow-hidden">
+            <button
+                type="button"
+                className="w-full flex justify-between items-center p-3 bg-slate-50 hover:bg-slate-100 focus:outline-none"
+                onClick={() => setIsOpen(!isOpen)}
+                aria-expanded={isOpen}
+            >
+                <h3 className="font-semibold text-slate-800">{title}</h3>
+                {isOpen ? <ChevronUpIcon className="w-5 h-5 text-slate-700" /> : <ChevronDownIcon className="w-5 h-5 text-slate-700" />}
+            </button>
+            {isOpen && <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>}
+        </div>
+    );
+};
+
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -56,442 +77,391 @@ const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: n
 };
 
 
-const StaffFormModal: React.FC<StaffFormModalProps> = ({
-  isOpen,
-  onClose,
-  onSubmit,
-  staffMember,
-  gradeDefinitions,
-}) => {
-  // ---------- Initial Data ----------
-  // FIX: Corrected and completed initial form data to match the 'Staff' interface from types.ts.
-  const getInitialFormData = (): Omit<Staff, 'id'> => ({
-    staffType: 'Teaching',
-    employeeId: '',
-    firstName: '',
-    lastName: '',
-    gender: Gender.MALE,
-    dateOfBirth: '',
-    nationality: 'Indian',
-    maritalStatus: MaritalStatus.SINGLE,
-    photographUrl: '',
-    bloodGroup: BloodGroup.O_POSITIVE,
-    aadhaarNumber: '',
-    contactNumber: '',
-    emailAddress: '',
-    permanentAddress: '',
-    currentAddress: '',
-    educationalQualification: Qualification.GRADUATE,
-    specialization: '',
-    yearsOfExperience: 0,
-    previousExperience: '',
-    dateOfJoining: '',
-    department: Department.LANGUAGES,
-    designation: Designation.TEACHER,
-    employeeType: EmployeeType.FULL_TIME,
-    status: EmploymentStatus.ACTIVE,
-    subjectsTaught: [],
-    teacherLicenseNumber: '',
-    salaryGrade: '',
-    basicSalary: null,
-    bankAccountNumber: '',
-    bankName: '',
-    panNumber: '',
-    emergencyContactName: '',
-    emergencyContactRelationship: '',
-    emergencyContactNumber: '',
-    medicalConditions: '',
-  });
+interface StaffFormModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => void;
+  staffMember: Staff | null;
+  allStaff: Staff[];
+  gradeDefinitions: Record<Grade, GradeDefinition>;
+}
 
-  // ---------- State ----------
-  const [formData, setFormData] = useState<Omit<Staff, 'id'>>(getInitialFormData());
-  const [assignedGrade, setAssignedGrade] = useState<Grade | ''>('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // ---------- Prefill when editing ----------
-  useEffect(() => {
-    if (staffMember) {
-      // FIX: Ensure all fields from the Staff type are present when setting form data.
-      setFormData({
-        ...getInitialFormData(),
-        ...staffMember,
-      });
-      // FIX: Property 'assignedGrade' does not exist on type 'Staff'. Look up assigned grade from gradeDefinitions.
-      const assignedGradeKey = Object.keys(gradeDefinitions).find(
-        (g) => gradeDefinitions[g as Grade]?.classTeacherId === staffMember.id
-      ) as Grade | null;
-      setAssignedGrade(assignedGradeKey || '');
-    } else {
-      setFormData(getInitialFormData());
-      setAssignedGrade('');
-    }
-  }, [staffMember, gradeDefinitions]);
-
-  if (!isOpen) return null;
-
-  // ---------- Handlers ----------
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = e.target;
-
-    setFormData((prev) => {
-      let finalValue: any = value;
-
-      // FIX: Handle number inputs correctly to avoid setting null on required number fields.
-      if (type === 'number') {
-        const parsed = parseInt(value, 10);
-        if (name === 'basicSalary') {
-            finalValue = isNaN(parsed) ? undefined : parsed;
-        } else { // for yearsOfExperience
-            finalValue = isNaN(parsed) ? 0 : parsed;
-        }
-      }
-
-      const newState = { ...prev, [name]: finalValue };
-
-      if (name === 'staffType') {
-        newState.designation = value === 'Teaching' ? Designation.TEACHER : Designation.CLERK;
-      }
-
-      return newState;
+const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubmit, staffMember, allStaff, gradeDefinitions }) => {
+    const getInitialFormData = (): Omit<Staff, 'id'> => ({
+        staffType: 'Teaching',
+        employeeId: '',
+        firstName: '',
+        lastName: '',
+        gender: Gender.MALE,
+        dateOfBirth: '',
+        nationality: 'Indian',
+        maritalStatus: MaritalStatus.SINGLE,
+        photographUrl: '',
+        bloodGroup: BloodGroup.O_POSITIVE,
+        aadhaarNumber: '',
+        contactNumber: '',
+        emailAddress: '',
+        permanentAddress: '',
+        currentAddress: '',
+        educationalQualification: Qualification.GRADUATE,
+        specialization: '',
+        yearsOfExperience: 0,
+        previousExperience: '',
+        dateOfJoining: '',
+        department: Department.LANGUAGES,
+        designation: Designation.TEACHER,
+        employeeType: EmployeeType.FULL_TIME,
+        status: EmploymentStatus.ACTIVE,
+        subjectsTaught: [],
+        teacherLicenseNumber: '',
+        salaryGrade: '',
+        basicSalary: undefined,
+        bankAccountNumber: '',
+        bankName: '',
+        panNumber: '',
+        emergencyContactName: '',
+        emergencyContactRelationship: '',
+        emergencyContactNumber: '',
+        medicalConditions: '',
     });
-  };
 
-  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.length) {
-      try {
-        const file = e.target.files[0];
-        // FIX: Replaced call to non-existent 'compressAndUploadImage' with local 'resizeImage'.
-        const resizedDataUrl = await resizeImage(file, 512, 512, 0.8);
-        setFormData((prev) => ({ ...prev, photographUrl: resizedDataUrl }));
-      } catch (error) {
-        console.error('Image processing failed:', error);
-        alert('Failed to process photo. Please try a different image.');
-      }
-    }
-  };
+    const [formData, setFormData] = useState(getInitialFormData());
+    const [assignedGrade, setAssignedGrade] = useState<Grade | ''>('');
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+    useEffect(() => {
+        if (isOpen) {
+            if (staffMember) {
+                setFormData({
+                    ...getInitialFormData(),
+                    ...staffMember,
+                    yearsOfExperience: staffMember.yearsOfExperience ?? 0,
+                    basicSalary: staffMember.basicSalary ?? undefined,
+                    dateOfBirth: formatDateForDisplay(staffMember.dateOfBirth),
+                    dateOfJoining: formatDateForDisplay(staffMember.dateOfJoining),
+                });
+                const assignedGradeKey = Object.keys(gradeDefinitions).find(
+                    g => gradeDefinitions[g as Grade]?.classTeacherId === staffMember.id
+                ) as Grade | undefined;
+                setAssignedGrade(assignedGradeKey || '');
+            } else {
+                setFormData(getInitialFormData());
+                setAssignedGrade('');
+            }
+        }
+    }, [staffMember, isOpen, gradeDefinitions]);
+    
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        
+        if (name === 'subjectsTaught') {
+            const subjects = value.split(',').map(s => s.trim()).filter(Boolean);
+            setFormData(prev => ({ ...prev, subjectsTaught: subjects }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
+    };
+    
+    const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            try {
+                const compressedDataUrl = await resizeImage(file, 512, 512, 0.8);
+                setFormData(prev => ({ ...prev, photographUrl: compressedDataUrl }));
+            } catch (error) {
+                console.error("Error compressing image:", error);
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setFormData(prev => ({ ...prev, photographUrl: reader.result as string }));
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+    };
 
-    const finalData = { ...formData };
+    const handleRemovePhoto = () => {
+        setFormData(prev => ({ ...prev, photographUrl: '' }));
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
 
-    // Teaching/Non-Teaching cleanup
-    if (finalData.staffType === 'Non-Teaching') {
-      finalData.subjectsTaught = [];
-    }
+    const handleSubmit = (e: FormEvent) => {
+        e.preventDefault();
+        
+        const dataWithFormattedDates = {
+            ...formData,
+            dateOfBirth: formatDateForStorage(formData.dateOfBirth),
+            dateOfJoining: formatDateForStorage(formData.dateOfJoining),
+        };
 
-    setIsSubmitting(true);
-    try {
-      await onSubmit(finalData, assignedGrade ? (assignedGrade as Grade) : null);
-      onClose(); // ✅ only close on success
-    } catch (err) {
-      console.error('Failed to save staff:', err);
-      alert('Error saving staff. Please check inputs and try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+        const cleanData: { [key: string]: any } = { ...dataWithFormattedDates };
+        
+        const numericFields: (keyof Staff)[] = ['yearsOfExperience', 'basicSalary'];
 
-  // ---------- Render ----------
+        for(const field of numericFields) {
+            const value = cleanData[field];
+            if (value === '' || value === null || value === undefined || isNaN(Number(value))) {
+                delete cleanData[field];
+            } else {
+                cleanData[field] = Number(value);
+            }
+        }
+        
+        const optionalTextFields: (keyof Staff)[] = [
+            'teacherLicenseNumber', 'salaryGrade', 'bankAccountNumber', 'bankName', 'panNumber', 'medicalConditions'
+        ];
+        
+        for (const field of optionalTextFields) {
+            if (cleanData[field] === '' || cleanData[field] === null || cleanData[field] === undefined) {
+                delete cleanData[field];
+            }
+        }
+
+        if (cleanData.staffType === 'Non-Teaching') {
+            cleanData.subjectsTaught = [];
+            delete cleanData.teacherLicenseNumber;
+        } else {
+            if(typeof cleanData.subjectsTaught === 'string') {
+                 cleanData.subjectsTaught = (cleanData.subjectsTaught as string).split(',').map(s => s.trim()).filter(Boolean);
+            }
+        }
+        
+        onSubmit(cleanData as Omit<Staff, 'id'>, assignedGrade || null);
+    };
+
+    const gradeOptions = Object.keys(gradeDefinitions).map(gradeKey => {
+        const gradeDef = gradeDefinitions[gradeKey as Grade];
+        const assignedTeacher = gradeDef.classTeacherId ? allStaff.find(s => s.id === gradeDef.classTeacherId) : null;
+        
+        let label = gradeKey;
+        if (assignedTeacher && (!staffMember || assignedTeacher.id !== staffMember.id)) {
+            label += ` (Assigned to ${assignedTeacher.firstName})`;
+        }
+        
+        const isDisabled = assignedTeacher && (!staffMember || assignedTeacher.id !== staffMember.id);
+        
+        return { value: gradeKey, label, disabled: isDisabled };
+    });
+
+    if (!isOpen) return null;
+
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="p-6 border-b">
-          <h2 className="text-2xl font-bold">
-            {staffMember ? 'Edit Staff Member' : 'Add New Staff'}
-          </h2>
-        </div>
-
-        {/* Form */}
-        <form id="staff-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* FIX: Replaced 'fullName' with 'firstName' and 'lastName' fields. */}
-            <div>
-              <label className="block text-sm font-medium mb-1">First Name</label>
-              <input
-                type="text"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-                required
-              />
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col" onClick={e => e.stopPropagation()}>
+        <form onSubmit={handleSubmit} className="flex flex-col h-full">
+            <div className="p-6 border-b">
+                <h2 className="text-2xl font-bold text-slate-800">{staffMember ? 'Edit Staff Details' : 'Add New Staff Member'}</h2>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Last Name</label>
-              <input
-                type="text"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-                required
-              />
+            <div className="p-6 space-y-4 overflow-y-auto max-h-[75vh]">
+                <AccordionSection title="Personal Details" defaultOpen={true}>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">First Name</label>
+                        <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Last Name (Optional)</label>
+                        <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Gender</label>
+                        <select name="gender" value={formData.gender} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {GENDER_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Date of Birth</label>
+                        <input type="text" placeholder="DD/MM/YYYY" pattern="\\d{2}/\\d{2}/\\d{4}" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Marital Status</label>
+                        <select name="maritalStatus" value={formData.maritalStatus} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {MARITAL_STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Blood Group</label>
+                        <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                             {BLOOD_GROUP_LIST.map(b => <option key={b} value={b}>{b}</option>)}
+                        </select>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-bold text-slate-800">Aadhaar Number</label>
+                        <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Nationality</label>
+                        <input type="text" name="nationality" value={formData.nationality} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-800">Photograph</label>
+                        <div className="mt-2 flex items-center gap-4">
+                            <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border">
+                                {formData.photographUrl ? <img src={formData.photographUrl} alt="Staff preview" className="w-full h-full object-cover" /> : <UserIcon className="w-16 h-16 text-slate-500" />}
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <input type="file" ref={fileInputRef} onChange={handlePhotoChange} accept="image/*" className="hidden" id="photo-upload-staff" />
+                                <button type="button" onClick={() => fileInputRef.current?.click()} className="btn btn-secondary">Upload Photo</button>
+                                {formData.photographUrl && <button type="button" onClick={handleRemovePhoto} className="px-4 py-2 bg-red-50 border border-red-200 text-red-700 font-semibold rounded-lg shadow-sm hover:bg-red-100 text-sm">Remove</button>}
+                            </div>
+                        </div>
+                    </div>
+                </AccordionSection>
+                <AccordionSection title="Contact Information">
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Contact Number</label>
+                        <input type="tel" name="contactNumber" value={formData.contactNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Email</label>
+                        <input type="email" name="emailAddress" value={formData.emailAddress} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-800">Current Address</label>
+                        <textarea name="currentAddress" value={formData.currentAddress} onChange={handleChange} rows={2} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                     <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-800">Permanent Address</label>
+                        <textarea name="permanentAddress" value={formData.permanentAddress} onChange={handleChange} rows={2} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                </AccordionSection>
+                 <AccordionSection title="Professional Details">
+                     <div>
+                        <label className="block text-sm font-bold text-slate-800">Employee ID</label>
+                        <input type="text" name="employeeId" value={formData.employeeId} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" placeholder="e.g., BMS-T-001" required />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-bold text-slate-800">Date of Joining</label>
+                        <input type="text" placeholder="DD/MM/YYYY" pattern="\\d{2}/\\d{2}/\\d{4}" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-bold text-slate-800">Staff Type</label>
+                        <select name="staffType" value={formData.staffType} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {STAFF_TYPE_LIST.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-bold text-slate-800">Employment Status</label>
+                        <select name="status" value={formData.status} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {EMPLOYMENT_STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Department</label>
+                        <select name="department" value={formData.department} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {DEPARTMENT_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Designation</label>
+                        <select name="designation" value={formData.designation} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {DESIGNATION_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-bold text-slate-800">Employee Type</label>
+                        <select name="employeeType" value={formData.employeeType} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {EMPLOYEE_TYPE_LIST.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                    </div>
+                    {formData.staffType === 'Teaching' && (
+                        <div>
+                            <label className="block text-sm font-bold text-slate-800">Assign as Class Teacher</label>
+                            <select value={assignedGrade} onChange={e => setAssignedGrade(e.target.value as Grade)} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                                <option value="">-- Not a Class Teacher --</option>
+                                {gradeOptions.map(opt => (
+                                    <option key={opt.value} value={opt.value} disabled={opt.disabled}>{opt.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </AccordionSection>
+                <AccordionSection title="Qualifications & Experience">
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Highest Qualification</label>
+                        <select name="educationalQualification" value={formData.educationalQualification} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {QUALIFICATION_LIST.map(q => <option key={q} value={q}>{q}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Specialization/Major</label>
+                        <input type="text" name="specialization" value={formData.specialization} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Years of Experience</label>
+                        <input type="number" name="yearsOfExperience" value={formData.yearsOfExperience} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    {formData.staffType === 'Teaching' && (
+                        <>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-800">Subjects Taught</label>
+                                <input type="text" name="subjectsTaught" value={Array.isArray(formData.subjectsTaught) ? formData.subjectsTaught.join(', ') : ''} onChange={handleChange} placeholder="e.g. English, Maths" className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold text-slate-800">Teacher License No. (Optional)</label>
+                                <input type="text" name="teacherLicenseNumber" value={formData.teacherLicenseNumber || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                            </div>
+                        </>
+                    )}
+                     <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-800">Previous Experience (Optional)</label>
+                        <textarea name="previousExperience" value={formData.previousExperience} onChange={handleChange} rows={3} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                </AccordionSection>
+                 <AccordionSection title="Payroll Details (Optional)">
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Basic Salary</label>
+                        <input type="number" name="basicSalary" value={formData.basicSalary ?? ''} onChange={handleChange} placeholder="e.g. 30000" className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Salary Grade</label>
+                        <input type="text" name="salaryGrade" value={formData.salaryGrade || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">PAN Number</label>
+                        <input type="text" name="panNumber" value={formData.panNumber || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Bank Name</label>
+                        <input type="text" name="bankName" value={formData.bankName || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                     <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-800">Bank Account Number</label>
+                        <input type="text" name="bankAccountNumber" value={formData.bankAccountNumber || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                </AccordionSection>
+                <AccordionSection title="Emergency Contact">
+                     <div>
+                        <label className="block text-sm font-bold text-slate-800">Contact Name</label>
+                        <input type="text" name="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Relationship</label>
+                        <input type="text" name="emergencyContactRelationship" value={formData.emergencyContactRelationship} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-800">Contact Number</label>
+                        <input type="tel" name="emergencyContactNumber" value={formData.emergencyContactNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-800">Medical Conditions (Optional)</label>
+                        <textarea name="medicalConditions" value={formData.medicalConditions || ''} onChange={handleChange} rows={2} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                </AccordionSection>
             </div>
-
-            {/* Gender */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Gender</label>
-              <select
-                name="gender"
-                value={formData.gender}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              >
-                {Object.values(Gender).map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
+            <div className="bg-slate-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl border-t">
+                <button type="button" onClick={onClose} className="btn btn-secondary">
+                Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                {staffMember ? 'Save Changes' : 'Add Staff'}
+                </button>
             </div>
-
-            {/* Marital Status */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Marital Status</label>
-              <select
-                name="maritalStatus"
-                value={formData.maritalStatus}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              >
-                {Object.values(MaritalStatus).map((ms) => (
-                  <option key={ms} value={ms}>
-                    {ms}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Date of Birth */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Date of Birth</label>
-              <input
-                type="date"
-                name="dateOfBirth"
-                value={formData.dateOfBirth}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              />
-            </div>
-
-            {/* Date of Joining */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Date of Joining</label>
-              <input
-                type="date"
-                name="dateOfJoining"
-                value={formData.dateOfJoining}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              />
-            </div>
-
-            {/* Nationality */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Nationality</label>
-              <input
-                type="text"
-                name="nationality"
-                value={formData.nationality}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              />
-            </div>
-
-            {/* Staff Type */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Staff Type</label>
-              <select
-                name="staffType"
-                value={formData.staffType}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              >
-                <option value="Teaching">Teaching</option>
-                <option value="Non-Teaching">Non-Teaching</option>
-              </select>
-            </div>
-
-            {/* Designation */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Designation</label>
-              <select
-                name="designation"
-                value={formData.designation}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              >
-                {Object.values(Designation).map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Specialization */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Specialization</label>
-              <input
-                type="text"
-                name="specialization"
-                value={formData.specialization}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              />
-            </div>
-
-            {/* FIX: Renamed 'qualifications' to 'educationalQualification' and made it a select dropdown. */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Highest Qualification</label>
-              <select
-                name="educationalQualification"
-                value={formData.educationalQualification}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              >
-                {Object.values(Qualification).map((q) => (
-                    <option key={q} value={q}>{q}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Contact Number */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Contact Number</label>
-              <input
-                type="text"
-                name="contactNumber"
-                value={formData.contactNumber}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              />
-            </div>
-
-            {/* FIX: Renamed 'email' to 'emailAddress'. */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
-              <input
-                type="email"
-                name="emailAddress"
-                value={formData.emailAddress}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              />
-            </div>
-
-            {/* Years of Experience */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Years of Experience</label>
-              <input
-                type="number"
-                name="yearsOfExperience"
-                value={formData.yearsOfExperience ?? ''}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              />
-            </div>
-
-            {/* Basic Salary */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Basic Salary</label>
-              <input
-                type="number"
-                name="basicSalary"
-                value={formData.basicSalary ?? ''}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-              />
-            </div>
-
-            {/* FIX: Removed obsolete fields: allowances, deductions, netSalary. */}
-
-            {/* Assigned Grade */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Assigned Grade</label>
-              <select
-                value={assignedGrade}
-                onChange={(e) => setAssignedGrade(e.target.value as Grade)}
-                className="w-full border rounded-lg p-2"
-              >
-                <option value="">None</option>
-                {Object.keys(gradeDefinitions).map((grade) => (
-                  <option key={grade} value={grade}>
-                    {grade}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* FIX: Replaced 'address' with 'currentAddress' and 'permanentAddress'. */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Current Address</label>
-              <textarea
-                name="currentAddress"
-                value={formData.currentAddress}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-                rows={3}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Permanent Address</label>
-              <textarea
-                name="permanentAddress"
-                value={formData.permanentAddress}
-                onChange={handleChange}
-                className="w-full border rounded-lg p-2"
-                rows={3}
-              />
-            </div>
-
-            {/* Photograph */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Photograph</label>
-              <input type="file" accept="image/*" onChange={handlePhotoChange} />
-              {formData.photographUrl && (
-                <img
-                  src={formData.photographUrl}
-                  alt="Staff"
-                  className="mt-2 w-24 h-24 object-cover rounded"
-                />
-              )}
-            </div>
-          </div>
         </form>
-
-        {/* Footer */}
-        <div className="p-6 border-t flex justify-end space-x-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg border bg-gray-100 hover:bg-gray-200"
-            disabled={isSubmitting}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            form="staff-form"
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Saving...' : 'Save'}
-          </button>
-        </div>
       </div>
     </div>
   );
 };
 
+// FIX: Added missing default export for the component.
 export default StaffFormModal;

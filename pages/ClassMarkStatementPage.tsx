@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, StudentStatus, SubjectMark } from '../types';
 import { BackIcon, HomeIcon, PrinterIcon, EditIcon, CheckIcon, XIcon } from '../components/Icons';
 import { TERMINAL_EXAMS } from '../constants';
-import { formatStudentId } from '../utils';
+import { formatStudentId, formatDateForDisplay } from '../utils';
 
 // Helper functions for result calculation
 const getGrade = (p: number, res: string) => {
@@ -315,7 +315,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                 </td>
                                 <td className="border border-slate-300 p-1">{student.rollNo}</td>
                                 <td className="border border-slate-300 p-1 text-left">{student.fatherName}</td>
-                                <td className="border border-slate-300 p-1">{student.dateOfBirth}</td>
+                                <td className="border border-slate-300 p-1">{formatDateForDisplay(student.dateOfBirth)}</td>
                                 {gradeDef.subjects.map((subject, subjectIndex) => {
                                     const result = marks.find(r => r.subject === subject.name);
                                     return hasActivityMarks ? (

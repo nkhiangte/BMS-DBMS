@@ -4,7 +4,7 @@ import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, User } from '../types';
 import { BackIcon, EditIcon, UserIcon, AcademicCapIcon, DocumentReportIcon, HomeIcon, CurrencyDollarIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons';
-import { formatStudentId, calculateDues } from '../utils';
+import { formatStudentId, calculateDues, formatDateForDisplay } from '../utils';
 
 interface StudentDetailPageProps {
   students: Student[];
@@ -139,7 +139,7 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit,
           <DetailSection title="Personal Information">
               <DetailItem label="Student ID" value={formattedStudentId} />
               <DetailItem label="Permanent Education Number (PEN)" value={student.pen} />
-              <DetailItem label="Date of Birth" value={student.dateOfBirth} />
+              <DetailItem label="Date of Birth" value={formatDateForDisplay(student.dateOfBirth)} />
               <DetailItem label="Gender" value={student.gender} />
               <DetailItem label="Aadhaar Number" value={student.aadhaarNumber} />
               <DetailItem label="Contact Number" value={student.contact} />

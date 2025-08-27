@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Staff, Grade, GradeDefinition, EmploymentStatus } from '../types';
 import { BackIcon, EditIcon, UserIcon, HomeIcon, MailIcon, PhoneIcon, BriefcaseIcon, AcademicCapIcon, CurrencyDollarIcon, BookOpenIcon } from '../components/Icons';
+import { formatDateForDisplay } from '../utils';
 
 interface StaffDetailPageProps {
   staff: Staff[];
@@ -122,7 +123,7 @@ const StaffDetailPage: React.FC<StaffDetailPageProps> = ({ staff, onEdit, gradeD
       <div>
           <DetailSection title="Personal Details">
               <DetailItem label="Employee ID" value={staffMember.employeeId} />
-              <DetailItem label="Date of Birth" value={staffMember.dateOfBirth} />
+              <DetailItem label="Date of Birth" value={formatDateForDisplay(staffMember.dateOfBirth)} />
               <DetailItem label="Gender" value={staffMember.gender} />
               <DetailItem label="Marital Status" value={staffMember.maritalStatus} />
               <DetailItem label="Nationality" value={staffMember.nationality} />
@@ -145,7 +146,7 @@ const StaffDetailPage: React.FC<StaffDetailPageProps> = ({ staff, onEdit, gradeD
           </DetailSection>
 
           <DetailSection title="Professional Details">
-              <DetailItem label="Date of Joining" value={staffMember.dateOfJoining} />
+              <DetailItem label="Date of Joining" value={formatDateForDisplay(staffMember.dateOfJoining)} />
               <DetailItem label="Employee Type" value={staffMember.employeeType} />
               {assignedClass && <DetailItem label="Class Teacher Of" value={assignedClass} />}
               {staffMember.staffType === 'Teaching' && (

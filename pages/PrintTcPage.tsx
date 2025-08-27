@@ -4,6 +4,7 @@ import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { TcRecord } from '../types';
 import { BackIcon, HomeIcon, PrinterIcon } from '../components/Icons';
+import { formatDateForDisplay } from '../utils';
 
 interface PrintTcPageProps {
   tcRecords: TcRecord[];
@@ -107,14 +108,14 @@ const PrintTcPage: React.FC<PrintTcPageProps> = ({ tcRecords }) => {
                 <DetailRow num={1} label="Name of Student" value={studentDetails.name} />
                 <DetailRow num={2} label="Father's Name" value={studentDetails.fatherName} />
                 <DetailRow num={3} label="Mother's Name" value={studentDetails.motherName} />
-                <DetailRow num={4} label="Date of Birth (according to Admission Register)" value={studentDetails.dateOfBirth} />
+                <DetailRow num={4} label="Date of Birth (according to Admission Register)" value={formatDateForDisplay(studentDetails.dateOfBirth)} />
                 <DetailRow num={5} label="Date of Birth in Words" value={tcData.dateOfBirthInWords} />
                 <DetailRow num={6} label="Religion & Category" value={`${studentDetails.religion}, ${studentDetails.category}`} />
                 <DetailRow num={7} label="Whether dues to the school have been cleared" value={tcData.schoolDues} />
                 <DetailRow num={8} label="Whether qualified for promotion to a higher class" value={tcData.qualifiedForPromotion} />
-                <DetailRow num={9} label="Date of last attendance at this school" value={tcData.lastAttendanceDate} />
-                <DetailRow num={10} label="Date of application for certificate" value={tcData.applicationDate} />
-                <DetailRow num={11} label="Date of issue of this certificate" value={tcData.issueDate} />
+                <DetailRow num={9} label="Date of last attendance at this school" value={formatDateForDisplay(tcData.lastAttendanceDate)} />
+                <DetailRow num={10} label="Date of application for certificate" value={formatDateForDisplay(tcData.applicationDate)} />
+                <DetailRow num={11} label="Date of issue of this certificate" value={formatDateForDisplay(tcData.issueDate)} />
                 <DetailRow num={12} label="Reason for leaving the school" value={tcData.reasonForLeaving} />
                 <DetailRow num={13} label="General Conduct" value={tcData.generalConduct} />
                 <DetailRow num={14} label="Any other remarks" value={tcData.remarks || 'None'} />
@@ -123,7 +124,7 @@ const PrintTcPage: React.FC<PrintTcPageProps> = ({ tcRecords }) => {
             <footer className="mt-20 text-sm">
                 <div className="flex justify-between items-end">
                     <div className="text-left">
-                        <p>Date: {tcData.issueDate}</p>
+                        <p>Date: {formatDateForDisplay(tcData.issueDate)}</p>
                         <p className="mt-2">Place: Cityville</p>
                     </div>
                     <div className="text-center">

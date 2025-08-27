@@ -1,6 +1,7 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { InventoryItem, InventoryCategory, InventoryStatus } from '../types';
 import { INVENTORY_CATEGORY_LIST, INVENTORY_STATUS_LIST } from '../constants';
+import { formatDateForDisplay, formatDateForStorage } from '../utils';
 
 interface InventoryFormModalProps {
   isOpen: boolean;
@@ -17,7 +18,7 @@ const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, onClose
     quantity: 1,
     status: InventoryStatus.GOOD,
     location: '',
-    purchaseDate: new Date().toISOString().split('T')[0],
+    purchaseDate: formatDateForDisplay(new Date().toISOString().split('T')[0]),
     lastMaintenanceDate: '',
     notes: '',
   });
@@ -31,6 +32,8 @@ const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, onClose
             ...getInitialFormData(),
             ...item,
             quantity: item.quantity || 1,
+            purchaseDate: formatDateForDisplay(item.purchaseDate),
+            lastMaintenanceDate: item.lastMaintenanceDate ? formatDateForDisplay(item.lastMaintenanceDate) : '',
         });
       } else {
         setFormData(getInitialFormData());
@@ -55,6 +58,8 @@ const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, onClose
         quantity: parseInt(String(formData.quantity), 10) || 0,
         category: formData.category as InventoryCategory,
         status: formData.status as InventoryStatus,
+        purchaseDate: formatDateForStorage(formData.purchaseDate),
+        lastMaintenanceDate: formData.lastMaintenanceDate ? formatDateForStorage(formData.lastMaintenanceDate) : undefined,
     };
     onSubmit(submissionData);
   };
@@ -100,11 +105,11 @@ const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, onClose
                 </div>
                 <div>
                     <label htmlFor="purchaseDate" className="block text-sm font-bold text-slate-800">Purchase Date</label>
-                    <input type="date" name="purchaseDate" id="purchaseDate" value={formData.purchaseDate} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm" required />
+                    <input type="text" name="purchaseDate" id="purchaseDate" placeholder="DD/MM/YYYY" pattern="\\d{2}/\\d{2}/\\d{4}" value={formData.purchaseDate} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm" required />
                 </div>
                 <div>
                     <label htmlFor="lastMaintenanceDate" className="block text-sm font-bold text-slate-800">Last Maintenance (Optional)</label>
-                    <input type="date" name="lastMaintenanceDate" id="lastMaintenanceDate" value={formData.lastMaintenanceDate} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
+                    <input type="text" name="lastMaintenanceDate" id="lastMaintenanceDate" placeholder="DD/MM/YYYY" pattern="\\d{2}/\\d{2}/\\d{4}" value={formData.lastMaintenanceDate} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
                 </div>
                 <div className="md:col-span-2">
                     <label htmlFor="notes" className="block text-sm font-bold text-slate-800">Notes (Optional)</label>
