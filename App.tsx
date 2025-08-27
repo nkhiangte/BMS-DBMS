@@ -326,16 +326,29 @@ const App: React.FC = () => {
     };
     
     const handleFormSubmit = useCallback(async (studentData: Omit<Student, 'id'>) => {
-        const dataToSave = { ...studentData };
-        if(dataToSave.photographUrl) {
-            dataToSave.photographUrl = await uploadPhoto(dataToSave.photographUrl);
+        try {
+            const dataToSave: { [key: string]: any } = { ...studentData };
+    
+            if (dataToSave.photographUrl && dataToSave.photographUrl.startsWith('data:image')) {
+                dataToSave.photographUrl = await uploadPhoto(dataToSave.photographUrl);
+            }
+    
+            Object.keys(dataToSave).forEach(key => {
+                if (dataToSave[key] === null) {
+                    delete dataToSave[key];
+                }
+            });
+    
+            if (editingStudent) {
+                await db.collection('students').doc(editingStudent.id).update(dataToSave);
+            } else {
+                await db.collection('students').add(dataToSave);
+            }
+            closeModal();
+        } catch (error) {
+            console.error("Error saving student data:", error);
+            alert(`Failed to save student data. Please check the console for details. Error: ${error instanceof Error ? error.message : String(error)}`);
         }
-        if (editingStudent) {
-            await db.collection('students').doc(editingStudent.id).set(dataToSave);
-        } else {
-            await db.collection('students').add(dataToSave);
-        }
-        closeModal();
     }, [editingStudent, closeModal]);
 
     const handleDeleteConfirm = useCallback(async () => {
@@ -347,14 +360,21 @@ const App: React.FC = () => {
 
     const handleStaffFormSubmit = useCallback(async (staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => {
         try {
-            const dataToSave = { ...staffData };
-            if (dataToSave.photographUrl) {
+            const dataToSave: { [key: string]: any } = { ...staffData };
+            
+            if (dataToSave.photographUrl && dataToSave.photographUrl.startsWith('data:image')) {
                 dataToSave.photographUrl = await uploadPhoto(dataToSave.photographUrl);
             }
+            
+            Object.keys(dataToSave).forEach(key => {
+                if (dataToSave[key] === null) {
+                    delete dataToSave[key];
+                }
+            });
     
             let staffId = editingStaff?.id;
             if (editingStaff) {
-                await db.collection('staff').doc(editingStaff.id).set(dataToSave);
+                await db.collection('staff').doc(editingStaff.id).update(dataToSave);
             } else {
                 const newDoc = await db.collection('staff').add(dataToSave);
                 staffId = newDoc.id;
@@ -381,7 +401,7 @@ const App: React.FC = () => {
     const handleDeleteStaffConfirm = useCallback(async () => {
         if (deletingStaff) {
             await db.collection('staff').doc(deletingStaff.id).delete();
-            const assignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === deletingStaff.id) as Grade | undefined;
+            const assignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === deletingStaff.id) as Grade | null;
             if (assignedGradeKey) {
                 const newDefs = JSON.parse(JSON.stringify(gradeDefinitions));
                 delete newDefs[assignedGradeKey].classTeacherId;
