@@ -1,9 +1,11 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, Staff, EmploymentStatus, User } from '../types';
-import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon, ClipboardDocumentCheckIcon, PlusIcon, MessageIcon, WhatsappIcon } from '../components/Icons';
+import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon, ClipboardDocumentCheckIcon, PlusIcon, MessageIcon, WhatsappIcon, UserIcon, DocumentReportIcon } from '../components/Icons';
 import { formatStudentId, calculateDues, formatPhoneNumberForWhatsApp } from '../utils';
 import EditSubjectsModal from '../components/EditSubjectsModal';
+import { TERMINAL_EXAMS } from '../constants';
 
 interface ClassStudentsPageProps {
   students: Student[];
@@ -18,6 +20,31 @@ interface ClassStudentsPageProps {
   assignedGrade: Grade | null;
   onAddStudentToClass: (grade: Grade) => void;
 }
+
+const PhotoThumbnail: React.FC<{ student: Student }> = ({ student }) => {
+    const [hasError, setHasError] = useState(false);
+
+    useEffect(() => {
+        setHasError(false);
+    }, [student.photographUrl]);
+
+    if (!student.photographUrl || hasError) {
+        return (
+            <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center">
+                <UserIcon className="h-6 w-6 text-slate-500" />
+            </div>
+        );
+    }
+
+    return (
+        <img
+            src={student.photographUrl}
+            alt={student.name}
+            className="h-10 w-10 rounded-full object-cover"
+            onError={() => setHasError(true)}
+        />
+    );
+};
 
 const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal, onOpenTransferModal, onDelete, user, assignedGrade, onAddStudentToClass }) => {
   const { grade } = useParams<{ grade: string }>();
@@ -177,13 +204,33 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
             </div>
         </div>
         
+        {isClassTeacher && (
+            <div className="my-6 p-4 bg-slate-50 rounded-lg border">
+                <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                    <DocumentReportIcon className="w-5 h-5 text-indigo-600"/>
+                    Class Reports
+                </h3>
+                <div className="flex flex-wrap gap-3">
+                    {TERMINAL_EXAMS.map(exam => (
+                        <Link 
+                            key={exam.id} 
+                            to={`/reports/class-statement/${encodeURIComponent(decodedGrade)}/${exam.id}`}
+                            className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-sm font-semibold rounded-md shadow-sm hover:bg-slate-100 transition"
+                        >
+                            {exam.name}
+                        </Link>
+                    ))}
+                </div>
+            </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Roll No</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Student ID</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Student</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Contact</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Dues Status</th>
                 {isClassTeacher && <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>}
@@ -197,7 +244,12 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-800">{student.rollNo}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-mono">{formatStudentId(student, academicYear)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <Link to={`/student/${student.id}`} className="text-sky-700 hover:underline">{student.name}</Link>
+                        <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0">
+                                <PhotoThumbnail student={student} />
+                            </div>
+                            <Link to={`/student/${student.id}`} className="text-sky-700 hover:underline">{student.name}</Link>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
                         <div className="flex items-center justify-between">

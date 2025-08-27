@@ -1,8 +1,7 @@
 
-
 import React, { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, Grade, SubjectMark, GradeDefinition, SubjectDefinition } from '../types';
+import { Student, Grade, SubjectMark, GradeDefinition, SubjectDefinition, User } from '../types';
 import { BackIcon, UserIcon, HomeIcon, PrinterIcon } from '../components/Icons';
 import { formatStudentId, formatDateForDisplay } from '../utils';
 
@@ -54,13 +53,44 @@ interface PrintableReportCardPageProps {
   students: Student[];
   gradeDefinitions: Record<Grade, GradeDefinition>;
   academicYear: string;
+  user: User;
+  assignedGrade: Grade | null;
 }
 
-const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ students, gradeDefinitions, academicYear }) => {
+const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ students, gradeDefinitions, academicYear, user, assignedGrade }) => {
     const { studentId } = useParams<{ studentId: string; examId: string }>();
     const navigate = useNavigate();
 
     const student = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
+
+    if (!student) {
+        return (
+            <div className="text-center bg-white p-10 rounded-xl shadow-lg">
+                <h2 className="text-2xl font-bold text-red-600">Student Not Found</h2>
+                <p className="text-slate-500 mt-2">The requested student could not be found in the database.</p>
+                <button onClick={() => navigate('/')} className="mt-6 flex items-center mx-auto justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 transition">
+                    <BackIcon className="w-5 h-5" />
+                    Return to Dashboard
+                </button>
+            </div>
+        );
+    }
+    
+    const isAllowed = user.role === 'admin' || (student && student.grade === assignedGrade);
+
+    if (!isAllowed) {
+        return (
+            <div className="text-center bg-white p-10 rounded-xl shadow-lg">
+                <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
+                <p className="text-slate-500 mt-2">You do not have permission to view this student's report card.</p>
+                 <button onClick={() => navigate('/')} className="mt-6 flex items-center mx-auto justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 transition">
+                    <BackIcon className="w-5 h-5" />
+                    Return to Dashboard
+                </button>
+            </div>
+        );
+    }
+
     const gradeDef = useMemo(() => student ? gradeDefinitions[student.grade] : undefined, [student, gradeDefinitions]);
 
     const allExamsData = useMemo(() => {
@@ -128,7 +158,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
         return { t1, t2, t3, max };
     }, [gradeDef, allExamsData]);
 
-    if (!student || !gradeDef || !summaryData) {
+    if (!gradeDef || !summaryData) {
         return (
             <div className="text-center bg-white p-10 rounded-xl shadow-lg">
                 <h2 className="text-2xl font-bold text-red-600">Report Card Data Not Found</h2>

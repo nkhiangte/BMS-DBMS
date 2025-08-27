@@ -1,6 +1,7 @@
+
 import React, { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, Grade, GradeDefinition, StudentStatus, SubjectMark } from '../types';
+import { Student, Grade, GradeDefinition, StudentStatus, SubjectMark, User } from '../types';
 import { BackIcon, HomeIcon, PrinterIcon } from '../components/Icons';
 import { TERMINAL_EXAMS } from '../constants';
 import { formatStudentId, calculateStudentResult } from '../utils';
@@ -25,15 +26,19 @@ interface ClassMarkStatementPageProps {
     gradeDefinitions: Record<Grade, GradeDefinition>;
     academicYear: string;
     onUpdateClassMarks: () => void;
+    user: User;
+    assignedGrade: Grade | null;
 }
 
-const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ students, gradeDefinitions, academicYear }) => {
+const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ students, gradeDefinitions, academicYear, onUpdateClassMarks, user, assignedGrade }) => {
     const { grade: encodedGrade, examId } = useParams<{ grade: string; examId: string }>();
     const navigate = useNavigate();
 
     const grade = useMemo(() => encodedGrade ? decodeURIComponent(encodedGrade) as Grade : undefined, [encodedGrade]);
     const examDetails = useMemo(() => TERMINAL_EXAMS.find(e => e.id === examId), [examId]);
     const gradeDef = useMemo(() => grade ? gradeDefinitions[grade] : undefined, [grade, gradeDefinitions]);
+    
+    const isAllowed = user.role === 'admin' || grade === assignedGrade;
     
     const classStudents = useMemo(() => {
         if (!grade) return [];
@@ -84,6 +89,18 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
             <div className="text-center bg-white p-10 rounded-xl shadow-lg">
                 <h2 className="text-2xl font-bold text-red-600">Data Not Found</h2>
                 <p className="text-slate-500 mt-2">Could not load mark statement. The grade or exam ID is invalid.</p>
+            </div>
+        );
+    }
+
+    if (!isAllowed) {
+        return (
+            <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+                <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
+                <p className="text-slate-700 mt-2">You do not have permission to view the mark statement for this class.</p>
+                <button onClick={() => navigate('/')} className="mt-6 flex items-center mx-auto justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 transition">
+                    Return to Dashboard
+                </button>
             </div>
         );
     }
