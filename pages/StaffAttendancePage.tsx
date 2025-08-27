@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Staff, StaffAttendanceRecord, AttendanceStatus } from '../types';
 import { BackIcon, HomeIcon, CalendarDaysIcon, CheckIcon, XIcon, SpinnerIcon, CheckCircleIcon, InboxArrowDownIcon } from '../components/Icons';
@@ -39,7 +39,14 @@ const StaffAttendancePage: React.FC<StaffAttendancePageProps> = ({ user, staff, 
     const today = new Date();
     const formattedDate = today.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     
-    const currentUserStaffProfile = staff.find(s => s.emailAddress.toLowerCase() === user.email?.toLowerCase());
+    const currentUserStaffProfile = useMemo(() => staff.find(s => s.emailAddress.toLowerCase() === user.email?.toLowerCase()), [staff, user.email]);
+
+    const staffToDisplay = useMemo(() => {
+        if (user.role === 'admin') {
+            return staff;
+        }
+        return currentUserStaffProfile ? [currentUserStaffProfile] : [];
+    }, [user, staff, currentUserStaffProfile]);
 
     const handleMarkSelfAttendance = () => {
         if (!currentUserStaffProfile) {
@@ -65,22 +72,12 @@ const StaffAttendancePage: React.FC<StaffAttendancePageProps> = ({ user, staff, 
             },
             (error) => {
                 let errorMessage = 'Could not get your location.';
-                if(error.code === 1) errorMessage = 'Geolocation permission denied.';
-                if(error.code === 2) errorMessage = 'Location information is unavailable.';
+                if(error.code === 1) errorMessage = 'Location access denied. Please allow location access in your browser settings.';
                 setNotification({ message: errorMessage, type: 'error' });
                 setIsLoadingLocation(false);
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
-    };
-    
-    const getStatusStyles = (status?: AttendanceStatus) => {
-        switch(status) {
-            case AttendanceStatus.PRESENT: return 'bg-emerald-100 text-emerald-800';
-            case AttendanceStatus.ABSENT: return 'bg-rose-100 text-rose-800';
-            case AttendanceStatus.LEAVE: return 'bg-amber-100 text-amber-800';
-            default: return 'bg-slate-100 text-slate-800';
-        }
     };
     
     const handleExport = async () => {
@@ -108,11 +105,36 @@ const StaffAttendancePage: React.FC<StaffAttendancePageProps> = ({ user, staff, 
         }
     };
 
+    const StatusButton: React.FC<{ staffId: string, status: AttendanceStatus, label: string }> = ({ staffId, status, label }) => {
+        const currentStatus = attendance?.[staffId];
+        const isActive = currentStatus === status;
+        
+        const colors = {
+            [AttendanceStatus.PRESENT]: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+            [AttendanceStatus.ABSENT]: 'bg-rose-100 text-rose-800 border-rose-300',
+            [AttendanceStatus.LEAVE]: 'bg-slate-100 text-slate-800 border-slate-300',
+        };
+        const activeColors = {
+            [AttendanceStatus.PRESENT]: 'bg-emerald-500 text-white',
+            [AttendanceStatus.ABSENT]: 'bg-rose-500 text-white',
+            [AttendanceStatus.LEAVE]: 'bg-slate-500 text-white',
+        }
+
+        return (
+            <button
+                onClick={() => onMarkAttendance(staffId, status)}
+                className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-colors ${isActive ? activeColors[status] : `hover:bg-slate-200 ${colors[status]}`}`}
+            >
+                {label}
+            </button>
+        );
+    };
+
     return (
         <>
             {notification && <Toast message={notification.message} type={notification.type} onDismiss={() => setNotification(null)} />}
             <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
-                <div className="mb-6 flex justify-between items-center">
+                 <div className="mb-6 flex justify-between items-center">
                     <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-800">
                         <BackIcon className="w-5 h-5" /> Back
                     </button>
@@ -121,106 +143,88 @@ const StaffAttendancePage: React.FC<StaffAttendancePageProps> = ({ user, staff, 
                     </Link>
                 </div>
 
-                <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between mb-6">
+                <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between mb-4">
                     <div>
                         <h1 className="text-3xl font-bold text-slate-800">Staff Attendance</h1>
                         <p className="text-slate-600 mt-1">{formattedDate}</p>
                     </div>
                     {currentUserStaffProfile && (
-                        <button 
-                            onClick={handleMarkSelfAttendance} 
+                        <button
+                            onClick={handleMarkSelfAttendance}
                             disabled={isLoadingLocation || !!attendance?.[currentUserStaffProfile.id]}
                             className="btn btn-primary text-base px-6 py-3 disabled:bg-slate-400 disabled:cursor-not-allowed"
                         >
-                            {isLoadingLocation ? <SpinnerIcon className="w-5 h-5" /> : <CheckIcon className="w-5 h-5" />}
-                            <span>{isLoadingLocation ? 'Getting Location...' : (attendance?.[currentUserStaffProfile.id] ? 'You are Marked' : 'Mark My Attendance')}</span>
+                            {isLoadingLocation ? <SpinnerIcon className="w-5 h-5"/> : <CalendarDaysIcon className="w-5 h-5" />}
+                            <span>{attendance?.[currentUserStaffProfile.id] ? "Attendance Marked" : "Mark My Attendance"}</span>
                         </button>
                     )}
                 </div>
-
-                 <div className="my-8 p-4 bg-slate-50 border rounded-lg">
-                    <h3 className="font-bold text-slate-800">Monthly Attendance Export</h3>
-                    <p className="text-sm text-slate-600 mb-2">Download a CSV report of attendance for a specific month.</p>
-                    <div className="flex items-center gap-3">
-                        <input 
-                            type="month" 
-                            value={exportMonth}
-                            onChange={(e) => setExportMonth(e.target.value)}
-                            className="form-input px-3 py-2 border-slate-300 rounded-md shadow-sm"
-                        />
-                        <button 
-                            onClick={handleExport}
-                            disabled={isExporting}
-                            className="btn btn-secondary disabled:opacity-70 disabled:cursor-wait"
-                        >
-                            {isExporting ? <SpinnerIcon className="w-5 h-5" /> : <InboxArrowDownIcon className="w-5 h-5" />}
-                            <span>{isExporting ? 'Exporting...' : 'Export CSV'}</span>
-                        </button>
+                
+                 {user.role === 'admin' && (
+                    <div className="my-6 p-4 bg-slate-50 border rounded-lg">
+                        <h3 className="font-bold text-slate-800">Monthly Attendance Export</h3>
+                        <p className="text-sm text-slate-600 mb-2">Download a CSV report for all staff for a specific month.</p>
+                        <div className="flex items-center gap-3">
+                            <input 
+                                type="month" 
+                                value={exportMonth}
+                                onChange={(e) => setExportMonth(e.target.value)}
+                                className="form-input px-3 py-2 border-slate-300 rounded-md shadow-sm"
+                            />
+                            <button 
+                                onClick={handleExport}
+                                disabled={isExporting}
+                                className="btn btn-secondary disabled:opacity-70 disabled:cursor-wait"
+                            >
+                                {isExporting ? <SpinnerIcon className="w-5 h-5" /> : <InboxArrowDownIcon className="w-5 h-5" />}
+                                <span>{isExporting ? 'Exporting...' : 'Export CSV'}</span>
+                            </button>
+                        </div>
                     </div>
-                </div>
-
+                )}
+                
                 <div className="overflow-x-auto border rounded-lg">
-                    <table className="min-w-full divide-y divide-slate-200">
+                     <table className="min-w-full divide-y divide-slate-200">
                         <thead className="bg-slate-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Staff Member</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Staff Name</th>
+                                <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Designation</th>
+                                <th className="px-6 py-3 text-center text-xs font-bold text-slate-800 uppercase">Status Today</th>
                                 {user.role === 'admin' && <th className="px-6 py-3 text-center text-xs font-bold text-slate-800 uppercase">Actions</th>}
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-200">
-                            {staff.map(member => {
-                                const currentStatus = attendance?.[member.id];
-                                return (
-                                    <tr key={member.id}>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-3">
-                                                <img className="w-10 h-10 rounded-full object-cover" src={member.photographUrl || `https://i.pravatar.cc/150?u=${member.id}`} alt={member.firstName} />
-                                                <div>
-                                                    <p className="text-sm font-medium text-slate-800">{member.firstName} {member.lastName}</p>
-                                                    <p className="text-xs text-slate-600">{member.designation}</p>
-                                                </div>
+                            {staffToDisplay.map(member => (
+                                <tr key={member.id}>
+                                    <td className="px-6 py-4 text-sm font-medium text-slate-900">{member.firstName} {member.lastName}</td>
+                                    <td className="px-6 py-4 text-sm text-slate-700">{member.designation}</td>
+                                    <td className="px-6 py-4 text-center text-sm font-semibold">
+                                        <span className={`px-2 py-1 rounded-full text-xs ${
+                                            attendance?.[member.id] === AttendanceStatus.PRESENT ? 'bg-emerald-100 text-emerald-800' :
+                                            attendance?.[member.id] === AttendanceStatus.ABSENT ? 'bg-rose-100 text-rose-800' :
+                                            attendance?.[member.id] === AttendanceStatus.LEAVE ? 'bg-slate-200 text-slate-800' :
+                                            'bg-slate-100 text-slate-600'
+                                        }`}>
+                                            {attendance?.[member.id] || 'Not Marked'}
+                                        </span>
+                                    </td>
+                                    {user.role === 'admin' && (
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <StatusButton staffId={member.id} status={AttendanceStatus.PRESENT} label="P"/>
+                                                <StatusButton staffId={member.id} status={AttendanceStatus.ABSENT} label="A"/>
+                                                <StatusButton staffId={member.id} status={AttendanceStatus.LEAVE} label="L"/>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2.5 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusStyles(currentStatus)}`}>
-                                                {currentStatus || 'Unmarked'}
-                                            </span>
-                                        </td>
-                                        {user.role === 'admin' && (
-                                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <button 
-                                                        onClick={() => onMarkAttendance(member.id, AttendanceStatus.PRESENT)}
-                                                        className="px-3 py-1 text-xs font-bold text-emerald-700 bg-emerald-100 rounded-full hover:bg-emerald-200 disabled:opacity-50"
-                                                        disabled={currentStatus === AttendanceStatus.PRESENT}
-                                                    >
-                                                        Present
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => onMarkAttendance(member.id, AttendanceStatus.ABSENT)}
-                                                        className="px-3 py-1 text-xs font-bold text-rose-700 bg-rose-100 rounded-full hover:bg-rose-200 disabled:opacity-50"
-                                                         disabled={currentStatus === AttendanceStatus.ABSENT}
-                                                    >
-                                                        Absent
-                                                    </button>
-                                                     <button 
-                                                        onClick={() => onMarkAttendance(member.id, AttendanceStatus.LEAVE)}
-                                                        className="px-3 py-1 text-xs font-bold text-amber-700 bg-amber-100 rounded-full hover:bg-amber-200 disabled:opacity-50"
-                                                         disabled={currentStatus === AttendanceStatus.LEAVE}
-                                                    >
-                                                        Leave
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        )}
-                                    </tr>
-                                )
-                            })}
+                                    )}
+                                </tr>
+                            ))}
                         </tbody>
-                    </table>
+                     </table>
+                     {staffToDisplay.length === 0 && (
+                        <p className="text-center py-8 text-slate-600">Your staff profile could not be found.</p>
+                     )}
                 </div>
-
             </div>
         </>
     );
