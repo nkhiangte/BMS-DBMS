@@ -1,8 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, Staff, EmploymentStatus, User } from '../types';
-import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon, ClipboardDocumentCheckIcon, PlusIcon } from '../components/Icons';
-import { formatStudentId, calculateDues } from '../utils';
+import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon, ClipboardDocumentCheckIcon, PlusIcon, MessageIcon, WhatsappIcon } from '../components/Icons';
+import { formatStudentId, calculateDues, formatPhoneNumberForWhatsApp } from '../utils';
 import EditSubjectsModal from '../components/EditSubjectsModal';
 
 interface ClassStudentsPageProps {
@@ -184,7 +184,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Roll No</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Student ID</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Father's Name</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Contact</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Dues Status</th>
                 {isClassTeacher && <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>}
               </tr>
@@ -199,7 +199,21 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <Link to={`/student/${student.id}`} className="text-sky-700 hover:underline">{student.name}</Link>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.fatherName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                        <div className="flex items-center justify-between">
+                            <span>{student.contact}</span>
+                            {student.contact && (
+                                <div className="flex items-center gap-1">
+                                    <a href={`https://wa.me/${formatPhoneNumberForWhatsApp(student.contact)}`} target="_blank" rel="noopener noreferrer" className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-full" title="Send WhatsApp">
+                                        <WhatsappIcon className="w-5 h-5" />
+                                    </a>
+                                    <a href={`sms:${student.contact}`} className="p-1.5 text-sky-600 hover:bg-sky-100 rounded-full" title="Send SMS">
+                                        <MessageIcon className="w-5 h-5" />
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {dues.length === 0 ? (
                             <span className="flex items-center gap-1.5 text-emerald-600 font-semibold"><CheckCircleIcon className="w-5 h-5"/> Cleared</span>

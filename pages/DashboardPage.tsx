@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { UsersIcon, PlusIcon, DocumentReportIcon, BookOpenIcon, TransferIcon, BriefcaseIcon, CurrencyDollarIcon, AcademicCapIcon, ArchiveBoxIcon, BuildingOfficeIcon, UserGroupIcon, CalendarDaysIcon } from '../components/Icons';
+import { UsersIcon, PlusIcon, DocumentReportIcon, BookOpenIcon, TransferIcon, BriefcaseIcon, CurrencyDollarIcon, AcademicCapIcon, ArchiveBoxIcon, BuildingOfficeIcon, UserGroupIcon, CalendarDaysIcon, MegaphoneIcon } from '../components/Icons';
 import AcademicYearForm from '../components/AcademicYearForm';
 import { User, Grade } from '../types';
 
@@ -139,6 +139,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
                         icon={<DocumentReportIcon className="w-7 h-7" />}
                         color="amber"
                         action={<Link to="/reports/search">Generate Report</Link>}
+                    />
+                     <DashboardCard
+                        title="Communication"
+                        description="Send bulk SMS or WhatsApp to parents."
+                        icon={<MegaphoneIcon className="w-7 h-7" />}
+                        color="teal"
+                        action={<Link to="/communication">Send Messages</Link>}
                     />
                     <DashboardCard
                         title="User Management"

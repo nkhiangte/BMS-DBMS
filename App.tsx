@@ -66,6 +66,7 @@ import HostelStaffFormModal from './components/HostelStaffFormModal';
 import HostelResidentFormModal from './components/HostelResidentFormModal';
 import AcademicYearForm from './components/AcademicYearForm';
 import { UserManagementPage } from './pages/UserManagementPage';
+import CommunicationPage from './pages/CommunicationPage';
 
 // IMPORTANT: Replace with your own imgbb API key.
 // You can get a free key from https://api.imgbb.com/
@@ -778,6 +779,7 @@ const App: React.FC = () => {
                         <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={() => { setEditingInventoryItem(null); setIsInventoryFormModalOpen(true); }} onEdit={(i) => { setEditingInventoryItem(i); setIsInventoryFormModalOpen(true); }} onDelete={(i) => setDeletingInventoryItem(i)} user={user} />} />
                         <Route path="/change-password" element={<ChangePasswordPage onChangePassword={handleChangePassword} />} />
                         <Route path="/users" element={<UserManagementPage allUsers={allUsers} currentUser={user} onUpdateUserRole={handleUpdateUserRole} onDeleteUser={handleDeleteUser} />} />
+                        <Route path="/communication" element={<CommunicationPage students={students.filter(s => s.status === 'Active')} user={user} />} />
 
                         {/* Staff Docs */}
                         <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} user={user} />} />

@@ -254,3 +254,18 @@ export const exportAttendanceToCsv = ({
     link.click();
     document.body.removeChild(link);
 };
+
+export const formatPhoneNumberForWhatsApp = (phone: string): string => {
+    // Remove all non-digit characters
+    const digitsOnly = phone.replace(/\D/g, '');
+    // If it already starts with 91 and has 12 digits, assume it's correct.
+    if (digitsOnly.startsWith('91') && digitsOnly.length === 12) {
+        return digitsOnly;
+    }
+    // If it has 10 digits, prepend 91.
+    if (digitsOnly.length === 10) {
+        return `91${digitsOnly}`;
+    }
+    // Otherwise, return the cleaned number, assuming it might be an international number with a different country code.
+    return digitsOnly;
+};
