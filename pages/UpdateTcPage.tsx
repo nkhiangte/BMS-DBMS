@@ -97,11 +97,11 @@ const UpdateTcPage: React.FC<UpdateTcPageProps> = ({ tcRecords, onUpdate, user }
     <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
       <div className="mb-6 flex justify-between items-center">
         <button
-          onClick={() => navigate('/transfers')}
+          onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-800 transition-colors"
         >
           <BackIcon className="w-5 h-5" />
-          Back to Transfers
+          Back
         </button>
         <Link
           to="/"

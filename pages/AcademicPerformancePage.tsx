@@ -112,11 +112,11 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
     <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
         <div className="mb-6 flex justify-between items-center">
              <button
-                onClick={() => navigate(`/student/${student.id}`)}
+                onClick={() => navigate(-1)}
                 className="flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-800 transition-colors"
             >
                 <BackIcon className="w-5 h-5" />
-                Back to Profile
+                Back
             </button>
              <Link
                 to="/"
@@ -140,7 +140,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
                               onClick={handleCancel}
                               className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition"
                           >
-                              <XIcon className="h-5 w-5" />
+                              <XIcon className="h-5 h-5" />
                               Cancel
                           </button>
                           <button

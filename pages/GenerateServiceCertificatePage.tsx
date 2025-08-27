@@ -135,7 +135,7 @@ const GenerateServiceCertificatePage: React.FC<GenerateServiceCertificatePagePro
     setFoundStaff(null);
     setSearchError('');
     setFormData(initialFormState);
-  }
+  };
 
   if (isSaveSuccess) {
     return (
@@ -150,13 +150,13 @@ const GenerateServiceCertificatePage: React.FC<GenerateServiceCertificatePagePro
             <div className="mt-8 flex gap-4">
                 <button
                     onClick={handleGenerateAnother}
-                    className="px-6 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50"
+                    className="px-6 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition"
                 >
                     Generate Another
                 </button>
                 <button
                     onClick={() => navigate('/staff/certificates')}
-                    className="px-6 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700"
+                    className="px-6 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition"
                 >
                     Return to Records
                 </button>
@@ -169,25 +169,24 @@ const GenerateServiceCertificatePage: React.FC<GenerateServiceCertificatePagePro
     <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
       <div className="mb-6 flex justify-between items-center">
         <button
-          onClick={() => navigate('/staff/certificates')}
+          onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-800 transition-colors"
         >
           <BackIcon className="w-5 h-5" />
-          Back to Certificate Records
+          Back
         </button>
         <Link
           to="/"
-          className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-800"
+          className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition-colors"
           title="Go to Home/Dashboard"
         >
           <HomeIcon className="w-5 h-5" />
           <span>Home</span>
         </Link>
       </div>
-      <h1 className="text-3xl font-bold text-slate-800 mb-2">Generate Service Certificate</h1>
-      <p className="text-slate-700 mb-8">Enter a staff's Employee ID to fetch their details and generate a certificate.</p>
-
-      {/* Staff Selector */}
+      <h1 className="text-3xl font-bold text-slate-800 mb-2">Service Certificate Registration</h1>
+      <p className="text-slate-700 mb-8">Enter an employee's ID to fetch their details and generate a new certificate.</p>
+      
       <fieldset disabled={user.role !== 'admin'}>
         <div className="mb-8 max-w-lg">
           <label htmlFor="staff-id-input" className="block text-sm font-bold text-slate-800 mb-2">Enter Employee ID</label>
@@ -200,9 +199,9 @@ const GenerateServiceCertificatePage: React.FC<GenerateServiceCertificatePagePro
                       value={staffIdInput}
                       onChange={e => setStaffIdInput(e.target.value.toUpperCase())}
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleStaffSearch(); }}}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg"
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
                   />
-                  {searchError && <p className="text-red-500 text-sm mt-1">{searchError}</p>}
+                  {searchError && <p className={`${searchError.startsWith('Warning') ? 'text-amber-600' : 'text-red-500'} text-sm mt-1`}>{searchError}</p>}
               </div>
               <button
                   type="button"
@@ -222,39 +221,38 @@ const GenerateServiceCertificatePage: React.FC<GenerateServiceCertificatePagePro
                 <fieldset className="border p-4 rounded-lg">
                     <legend className="text-lg font-bold text-slate-800 px-2">Staff Details</legend>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                        <ReadonlyField label="Ref. No" value={formData.refNo} />
                         <ReadonlyField label="Employee ID" value={foundStaff.employeeId} />
-                        <ReadonlyField label="Name" value={`${foundStaff.firstName} ${foundStaff.lastName}`} />
+                         <div>
+                            <label className="block text-sm font-bold text-slate-800">Name</label>
+                            <div className="mt-1 block w-full px-3 py-2 bg-slate-100 border border-slate-300 rounded-md shadow-sm sm:text-sm text-slate-800 min-h-[42px] flex items-center">
+                                <Link to={`/staff/${foundStaff.id}`} className="hover:underline text-sky-700 font-semibold" target="_blank" rel="noopener noreferrer">
+                                    {foundStaff.firstName} {foundStaff.lastName}
+                                </Link>
+                            </div>
+                        </div>
                         <ReadonlyField label="Designation" value={foundStaff.designation} />
                         <ReadonlyField label="Date of Joining" value={foundStaff.dateOfJoining} />
                         <ReadonlyField label="Date of Birth" value={foundStaff.dateOfBirth} />
                     </div>
                 </fieldset>
-
-                 <fieldset className="border p-4 rounded-lg">
+                
+                <fieldset className="border p-4 rounded-lg">
                     <legend className="text-lg font-bold text-slate-800 px-2">Certificate Information</legend>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
-                        <ReadonlyField label="Ref. No" value={formData.refNo} />
                         <FormField label="Last Working Day" name="lastWorkingDay" value={formData.lastWorkingDay} onChange={handleChange} type="date" />
                         <FormField label="Date of Issue" name="issueDate" value={formData.issueDate} onChange={handleChange} type="date" />
-                         <div className="md:col-span-2">
-                            <FormField 
-                                label="Reason for Leaving" 
-                                name="reasonForLeaving" 
-                                value={formData.reasonForLeaving}
-                                onChange={handleChange}
-                            />
-                         </div>
+                         <FormField 
+                            label="Reason for Leaving" 
+                            name="reasonForLeaving" 
+                            value={formData.reasonForLeaving}
+                            onChange={handleChange}
+                         />
                          <FormField 
                             label="General Conduct" 
                             name="generalConduct" 
                             value={formData.generalConduct}
                             onChange={handleChange}
-                            type="select"
-                            options={[
-                                { value: "Good", label: "Good" },
-                                { value: "Satisfactory", label: "Satisfactory" },
-                                { value: "Needs Improvement", label: "Needs Improvement" }
-                            ]}
                          />
                          <div className="md:col-span-3">
                             <FormField label="Any Other Remarks" name="remarks" value={formData.remarks} onChange={handleChange} type="textarea" required={false} />
@@ -277,11 +275,11 @@ const GenerateServiceCertificatePage: React.FC<GenerateServiceCertificatePagePro
                       className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 flex items-center gap-2"
                   >
                       <DocumentPlusIcon className="w-5 h-5" />
-                      Generate & Save Certificate
+                      Generate & Save
                   </button>
               </div>
             )}
-            </fieldset>
+          </fieldset>
         </form>
       )}
 
@@ -291,7 +289,7 @@ const GenerateServiceCertificatePage: React.FC<GenerateServiceCertificatePagePro
         onConfirm={handleConfirmSave}
         title="Confirm Certificate Generation"
       >
-        <p>This will generate a service certificate for <span className="font-bold">{foundStaff?.firstName} {foundStaff?.lastName}</span> and update their employment status to 'Resigned'. Are you sure you want to proceed?</p>
+        <p>This will generate a service certificate for <span className="font-bold">{foundStaff?.firstName} {foundStaff?.lastName}</span> and mark their status as 'Resigned'. This action cannot be easily undone. Are you sure?</p>
       </ConfirmationModal>
     </div>
   );

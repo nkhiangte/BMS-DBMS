@@ -154,8 +154,8 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
     return (
       <div className="printable-area">
         <div className="mb-6 flex justify-between items-center print:hidden">
-            <button onClick={() => navigate(`/report-card/${student.id}`)} className="flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-800 transition-colors">
-                <BackIcon className="w-5 h-5" /> Back to Reports List
+            <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-800 transition-colors">
+                <BackIcon className="w-5 h-5" /> Back
             </button>
             <div className="flex items-center gap-4">
                  <Link to="/" className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition-colors" title="Go to Home/Dashboard">
