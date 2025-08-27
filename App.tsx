@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
@@ -62,6 +63,7 @@ import HostelHealthPage from './pages/HostelHealthPage';
 import HostelCommunicationPage from './pages/HostelCommunicationPage';
 import HostelSettingsPage from './pages/HostelSettingsPage';
 import HostelStaffFormModal from './components/HostelStaffFormModal';
+import HostelResidentFormModal from './components/HostelResidentFormModal';
 import AcademicYearForm from './components/AcademicYearForm';
 import { UserManagementPage } from './pages/UserManagementPage';
 
@@ -124,6 +126,8 @@ const App: React.FC = () => {
     const [isHostelStaffFormModalOpen, setIsHostelStaffFormModalOpen] = useState(false);
     const [editingHostelStaff, setEditingHostelStaff] = useState<HostelStaff | null>(null);
     const [deletingHostelStaff, setDeletingHostelStaff] = useState<HostelStaff | null>(null);
+    const [isHostelResidentFormModalOpen, setIsHostelResidentFormModalOpen] = useState(false);
+    const [editingHostelResident, setEditingHostelResident] = useState<HostelResident | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [importTargetGrade, setImportTargetGrade] = useState<Grade | null>(null);
@@ -184,21 +188,14 @@ const App: React.FC = () => {
         const unsubscribers = collectionsToSync.map(([path, setter]) => {
             let query: firebase.firestore.Query = db.collection(path);
 
-            // Define specific ordering for collections to ensure data consistency and prevent errors
-            const orderByConfig: { [key: string]: { field: string, dir?: 'asc' | 'desc' } } = {
-                'students': { field: 'name' },
-                'staff': { field: 'firstName' },
-                'inventory': { field: 'name' },
-                'hostelStaff': { field: 'name' },
-                'hostelInventory': { field: 'name' },
-                'hostelStockLogs': { field: 'date', dir: 'desc' },
-            };
-
-            if (orderByConfig[path]) {
-                query = query.orderBy(orderByConfig[path].field, orderByConfig[path].dir || 'asc');
-            }
-            if (path === 'hostelRooms') {
-                query = query.orderBy('block').orderBy('roomNumber');
+            // To prevent Firestore index errors, server-side sorting is applied conservatively.
+            // Most sorting is handled client-side for robustness.
+            if (path === 'students') {
+                query = query.orderBy('name');
+            } else if (path === 'staff') {
+                query = query.orderBy('firstName');
+            } else if (path === 'hostelStockLogs') {
+                query = query.orderBy('date', 'desc').limit(200);
             }
 
             return query.onSnapshot(snapshot => {
@@ -209,20 +206,38 @@ const App: React.FC = () => {
             });
         });
 
-        unsubscribers.push(db.collection('settings').doc('academic').onSnapshot(doc => setAcademicYear(doc.data()?.year || null)));
-        unsubscribers.push(db.collection('settings').doc('gradeDefinitions').onSnapshot(doc => {
-            const data = doc.data();
-            if (data && Object.keys(data).length > 0) {
-                setGradeDefinitions(data as Record<Grade, GradeDefinition>);
-            } else {
-                setGradeDefinitions(GRADE_DEFINITIONS);
+        unsubscribers.push(db.collection('settings').doc('academic').onSnapshot(
+            doc => setAcademicYear(doc.data()?.year || null),
+            error => {
+                console.error(`[Firestore Listener Error] Failed to fetch settings 'academic':`, error);
+                alert(`Could not fetch academic year settings.`);
             }
-        }));
+        ));
+        unsubscribers.push(db.collection('settings').doc('gradeDefinitions').onSnapshot(
+            doc => {
+                const data = doc.data();
+                if (data && Object.keys(data).length > 0) {
+                    setGradeDefinitions(data as Record<Grade, GradeDefinition>);
+                } else {
+                    setGradeDefinitions(GRADE_DEFINITIONS);
+                }
+            },
+            error => {
+                console.error(`[Firestore Listener Error] Failed to fetch settings 'gradeDefinitions':`, error);
+                alert(`Could not fetch grade definition settings.`);
+            }
+        ));
 
         if (user.role === 'admin') {
-            unsubscribers.push(db.collection('users').onSnapshot(snapshot => {
-                setAllUsers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })) as User[]);
-            }));
+            unsubscribers.push(db.collection('users').onSnapshot(
+                snapshot => {
+                    setAllUsers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })) as User[]);
+                },
+                error => {
+                    console.error(`[Firestore Listener Error] Failed to fetch collection 'users':`, error);
+                    alert(`Could not fetch user list.`);
+                }
+            ));
         }
 
         return () => unsubscribers.forEach(unsub => unsub());
@@ -234,6 +249,7 @@ const App: React.FC = () => {
         setIsStaffFormModalOpen(false); setEditingStaff(null); setDeletingStaff(null);
         setIsInventoryFormModalOpen(false); setEditingInventoryItem(null); setDeletingInventoryItem(null);
         setIsHostelStaffFormModalOpen(false); setEditingHostelStaff(null); setDeletingHostelStaff(null);
+        setIsHostelResidentFormModalOpen(false); setEditingHostelResident(null);
         setIsImportModalOpen(false); setImportTargetGrade(null); setTransferringStudent(null);
     }, []);
 
@@ -458,6 +474,20 @@ const App: React.FC = () => {
         }
     }, [deletingHostelStaff, closeModal]);
 
+    const handleHostelResidentFormSubmit = useCallback(async (residentData: Omit<HostelResident, 'id'>) => {
+        try {
+            if (editingHostelResident) {
+                await db.collection('hostelResidents').doc(editingHostelResident.id).set(residentData);
+            } else {
+                await db.collection('hostelResidents').add(residentData);
+            }
+            closeModal();
+        } catch (error) {
+            console.error("Error saving hostel resident:", error);
+            alert(`Failed to save hostel resident. Error: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }, [editingHostelResident, closeModal]);
+
     const handleInventoryFormSubmit = useCallback(async (itemData: Omit<InventoryItem, 'id'>) => {
         try {
             if (editingInventoryItem) {
@@ -634,7 +664,7 @@ const App: React.FC = () => {
                         
                         {/* Hostel */}
                         <Route path="/hostel" element={<HostelDashboardPage />} />
-                        <Route path="/hostel/students" element={<HostelStudentListPage residents={hostelResidents} rooms={hostelRooms} students={students} />} />
+                        <Route path="/hostel/students" element={<HostelStudentListPage residents={hostelResidents} rooms={hostelRooms} students={students} onAdd={() => { setEditingHostelResident(null); setIsHostelResidentFormModalOpen(true); }} user={user} />} />
                         <Route path="/hostel/rooms" element={<HostelRoomListPage rooms={hostelRooms} residents={hostelResidents} students={students} />} />
                         <Route path="/hostel/fees" element={<HostelFeePage />} />
                         <Route path="/hostel/attendance" element={<HostelAttendancePage />} />
@@ -657,6 +687,7 @@ const App: React.FC = () => {
                 {deletingInventoryItem && <ConfirmationModal isOpen={!!deletingInventoryItem} onClose={closeModal} onConfirm={handleDeleteInventoryItemConfirm} title="Delete Inventory Item"><p>Are you sure you want to delete <span className="font-bold">{deletingInventoryItem.name}</span>? This action cannot be undone.</p></ConfirmationModal>}
                 {isHostelStaffFormModalOpen && <HostelStaffFormModal isOpen={isHostelStaffFormModalOpen} onClose={closeModal} onSubmit={handleHostelStaffFormSubmit} staffMember={editingHostelStaff} />}
                 {deletingHostelStaff && <ConfirmationModal isOpen={!!deletingHostelStaff} onClose={closeModal} onConfirm={handleDeleteHostelStaffConfirm} title="Delete Hostel Staff"><p>Are you sure you want to delete <span className="font-bold">{deletingHostelStaff.name}</span>? This action cannot be undone.</p></ConfirmationModal>}
+                {isHostelResidentFormModalOpen && <HostelResidentFormModal isOpen={isHostelResidentFormModalOpen} onClose={closeModal} onSubmit={handleHostelResidentFormSubmit} resident={editingHostelResident} allStudents={students} allRooms={hostelRooms} allResidents={hostelResidents} />}
                 {isImportModalOpen && <ImportStudentsModal isOpen={isImportModalOpen} onClose={closeModal} onImport={handleImportStudents} grade={importTargetGrade} allStudents={students} allGrades={GRADES_LIST} isImporting={isImporting} />}
                 {transferringStudent && <TransferStudentModal isOpen={!!transferringStudent} onClose={closeModal} onConfirm={() => {}} student={transferringStudent} allStudents={students} allGrades={GRADES_LIST} />}
             </div>

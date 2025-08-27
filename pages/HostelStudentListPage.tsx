@@ -1,16 +1,19 @@
 
+
 import React, { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { HostelResident, HostelRoom, Student } from '../types';
-import { BackIcon, HomeIcon, UsersIcon } from '../components/Icons';
+import { HostelResident, HostelRoom, Student, User } from '../types';
+import { BackIcon, HomeIcon, UsersIcon, PlusIcon } from '../components/Icons';
 
 interface HostelStudentListPageProps {
     residents: HostelResident[];
     rooms: HostelRoom[];
     students: Student[];
+    onAdd: () => void;
+    user: User;
 }
 
-const HostelStudentListPage: React.FC<HostelStudentListPageProps> = ({ residents, rooms, students }) => {
+const HostelStudentListPage: React.FC<HostelStudentListPageProps> = ({ residents, rooms, students, onAdd, user }) => {
     const navigate = useNavigate();
 
     const residentDetails = useMemo(() => {
@@ -38,12 +41,20 @@ const HostelStudentListPage: React.FC<HostelStudentListPageProps> = ({ residents
                 </Link>
             </div>
 
-            <div className="mb-6 flex items-center gap-4">
-                <UsersIcon className="w-10 h-10 text-sky-600" />
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-800">Student Hostel Records</h1>
-                    <p className="text-slate-600 mt-1">List of all registered students in the hostel.</p>
+            <div className="mb-6 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <div className="flex items-center gap-4">
+                    <UsersIcon className="w-10 h-10 text-sky-600" />
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-800">Student Hostel Records</h1>
+                        <p className="text-slate-600 mt-1">List of all registered students in the hostel.</p>
+                    </div>
                 </div>
+                {user.role === 'admin' && (
+                    <button onClick={onAdd} className="btn btn-primary">
+                        <PlusIcon className="w-5 h-5" />
+                        Add Inmate
+                    </button>
+                )}
             </div>
 
             {residentDetails.length === 0 ? (

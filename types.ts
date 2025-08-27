@@ -388,17 +388,37 @@ export enum PaymentStatus {
 
 export interface HostelStaff {
     id: string;
+    // Personal Details
     name: string;
     gender: Gender;
-    role: HostelStaffRole;
+    dateOfBirth: string; // YYYY-MM-DD
     photographUrl: string;
+    bloodGroup?: BloodGroup;
+    aadhaarNumber?: string;
+
+    // Contact
     contactNumber: string;
+    permanentAddress?: string;
+    
+    // Professional Details
+    role: HostelStaffRole;
     dateOfJoining: string; // YYYY-MM-DD
     dutyShift?: string; // e.g., "Morning (6 AM - 2 PM)"
     assignedBlock?: HostelBlock;
+    
+    // Qualifications & Expertise
+    qualification?: Qualification;
+    expertise?: string;
+
+    // Payroll
     salary: number;
     paymentStatus: PaymentStatus;
+    
+    // Other
     attendancePercent: number;
+    emergencyContactName?: string;
+    emergencyContactRelationship?: string;
+    emergencyContactNumber?: string;
 }
 
 // --- NEW: Hostel Inventory ---
