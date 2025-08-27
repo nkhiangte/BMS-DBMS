@@ -1,8 +1,9 @@
 
+
 import React, { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, StudentStatus, SubjectMark, User } from '../types';
-import { BackIcon, HomeIcon, PrinterIcon } from '../components/Icons';
+import { BackIcon, HomeIcon, PrinterIcon, EditIcon } from '../components/Icons';
 import { TERMINAL_EXAMS } from '../constants';
 import { formatStudentId, calculateStudentResult } from '../utils';
 
@@ -151,6 +152,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                     </th>
                                 ))}
                                 <th colSpan={4} className="border border-slate-300 p-1">Grand Total</th>
+                                {isAllowed && <th rowSpan={2} className="border border-slate-300 p-1 align-middle text-center print:hidden">Actions</th>}
                             </tr>
                             <tr>
                                 {gradeDef.subjects.map(subject => (
@@ -192,6 +194,17 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                     <td className="border border-slate-300 p-1 text-center font-bold">{percentage.toFixed(2)}%</td>
                                     <td className={`border border-slate-300 p-1 text-center font-bold ${result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}`}>{result}</td>
                                     <td className="border border-slate-300 p-1 text-center font-bold">{division}</td>
+                                    {isAllowed && (
+                                        <td className="border border-slate-300 p-1 text-center print:hidden">
+                                            <Link
+                                                to={`/student/${student.id}/academics`}
+                                                className="inline-block p-1.5 text-sky-600 hover:bg-sky-100 rounded-full transition-colors"
+                                                title={`Enter/Edit marks for ${student.name}`}
+                                            >
+                                                <EditIcon className="w-5 h-5" />
+                                            </Link>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
