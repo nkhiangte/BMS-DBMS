@@ -128,7 +128,7 @@ const ManageStaffPage: React.FC<ManageStaffPageProps> = ({ staff, gradeDefinitio
 
   const confinedTeachers = useMemo(() => 
       teachingStaff.filter(s => {
-          const assignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === s.id) as Grade | undefined;
+          const assignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === s.id) as Grade | null;
           return assignedGradeKey && confinedGrades.includes(assignedGradeKey);
       })
   , [teachingStaff, gradeDefinitions]);
@@ -160,7 +160,7 @@ const ManageStaffPage: React.FC<ManageStaffPageProps> = ({ staff, gradeDefinitio
     ];
 
     const escapeCsvField = (field: any): string => {
-        if (field === null || field === undefined) return '';
+        if (field === null || field === null) return '';
         const stringField = String(field);
         if (/[",\n\r]/.test(stringField)) {
             return `"${stringField.replace(/"/g, '""')}"`;
