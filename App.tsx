@@ -484,10 +484,10 @@ const App: React.FC = () => {
         });
         try {
             await batch.commit();
-            alert(`${updates.length} students' marks have been imported successfully!`);
+            alert(`${updates.length} students' marks have been updated successfully!`);
         } catch (error) {
-            console.error("Error importing marks in batch:", error);
-            alert(`Failed to import marks. Error: ${error instanceof Error ? error.message : String(error)}`);
+            console.error("Error updating marks in batch:", error);
+            alert(`Failed to update marks. Error: ${error instanceof Error ? error.message : String(error)}`);
         }
     }, []);
 

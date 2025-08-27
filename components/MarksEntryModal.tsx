@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Student, GradeDefinition, Exam, SubjectMark, Grade } from '../types';
 import { SpinnerIcon, CheckIcon, XIcon } from './Icons';
@@ -23,6 +24,37 @@ type MarksState = {
         }
     }
 };
+
+// A robust comparison function for SubjectMark arrays
+const areResultsEqual = (res1: SubjectMark[], res2: SubjectMark[]): boolean => {
+    if (res1.length !== res2.length) return false;
+    
+    const sorted1 = [...res1].sort((a,b) => a.subject.localeCompare(b.subject));
+    const sorted2 = [...res2].sort((a,b) => a.subject.localeCompare(b.subject));
+
+    for (let i = 0; i < sorted1.length; i++) {
+        const r1 = sorted1[i];
+        const r2 = sorted2[i];
+
+        if (r1.subject !== r2.subject) return false;
+
+        // Normalize undefined/null to null for comparison
+        const marks1 = r1.marks ?? null;
+        const marks2 = r2.marks ?? null;
+        if (marks1 !== marks2) return false;
+        
+        const examMarks1 = r1.examMarks ?? null;
+        const examMarks2 = r2.examMarks ?? null;
+        if (examMarks1 !== examMarks2) return false;
+
+        const activityMarks1 = r1.activityMarks ?? null;
+        const activityMarks2 = r2.activityMarks ?? null;
+        if (activityMarks1 !== activityMarks2) return false;
+    }
+    
+    return true;
+};
+
 
 const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSave, students, gradeDef, examId, examName, grade }) => {
     const [marksData, setMarksData] = useState<MarksState>({});
@@ -113,9 +145,7 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                 }
             });
             
-            const sortResults = (r: SubjectMark[]) => r.sort((a,b) => a.subject.localeCompare(b.subject));
-
-            if (JSON.stringify(sortResults(originalExam.results)) !== JSON.stringify(sortResults(newResults))) {
+            if (!areResultsEqual(originalExam.results, newResults)) {
                 originalExam.results = newResults;
                 updates.push({ studentId: student.id, performance: originalPerformance });
             }
