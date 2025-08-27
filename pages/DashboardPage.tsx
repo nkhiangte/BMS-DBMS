@@ -134,11 +134,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
                         action={<Link to="/classes">Browse Classes</Link>}
                     />
                     <DashboardCard
-                        title="Progress Reports"
-                        description="Generate and view student report cards."
-                        icon={<DocumentReportIcon className="w-7 h-7" />}
+                        title="Academic Performance"
+                        description="Enter and update student examination marks."
+                        icon={<AcademicCapIcon className="w-7 h-7" />}
                         color="amber"
-                        action={<Link to="/reports/search">Generate Report</Link>}
+                        action={<Link to="/reports/search">Enter Marks</Link>}
                     />
                      <DashboardCard
                         title="Communication"
