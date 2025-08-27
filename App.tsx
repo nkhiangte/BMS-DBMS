@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
+import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus } from './types';
 import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST } from './constants';
 import { getNextGrade, createDefaultFeePayments, calculateStudentResult } from './utils';
 
@@ -48,6 +48,7 @@ import ChangePasswordPage from './pages/ChangePasswordPage';
 import StaffDocumentsPage from './pages/StaffDocumentsPage';
 import GenerateServiceCertificatePage from './pages/GenerateServiceCertificatePage';
 import PrintServiceCertificatePage from './pages/PrintServiceCertificatePage';
+import StaffAttendancePage from './pages/StaffAttendancePage';
 
 // Hostel Management Pages
 import HostelDashboardPage from './pages/HostelDashboardPage';
@@ -112,6 +113,7 @@ const App: React.FC = () => {
     const [hostelResidents, setHostelResidents] = useState<HostelResident[]>([]);
     const [hostelRooms, setHostelRooms] = useState<HostelRoom[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
+    const [staffAttendance, setStaffAttendance] = useState<StaffAttendanceRecord | null>(null);
 
     // --- MODAL & UI STATE ---
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -168,7 +170,7 @@ const App: React.FC = () => {
     // --- DATA FETCHING FROM FIRESTORE ---
     useEffect(() => {
         if (!user || user.role === 'pending' || !isFirebaseConfigured) {
-            setStudents([]); setStaff([]); setTcRecords([]); setServiceCertificateRecords([]); setGradeDefinitions(GRADE_DEFINITIONS); setInventory([]); setHostelStaff([]); setHostelInventory([]); setHostelStockLogs([]); setAllUsers([]); setAcademicYear(null); setHostelResidents([]); setHostelRooms([]);
+            setStudents([]); setStaff([]); setTcRecords([]); setServiceCertificateRecords([]); setGradeDefinitions(GRADE_DEFINITIONS); setInventory([]); setHostelStaff([]); setHostelInventory([]); setHostelStockLogs([]); setAllUsers([]); setAcademicYear(null); setHostelResidents([]); setHostelRooms([]); setStaffAttendance(null);
             return;
         };
 
@@ -227,6 +229,18 @@ const App: React.FC = () => {
                 alert(`Could not fetch grade definition settings.`);
             }
         ));
+        
+        const today = new Date().toISOString().split('T')[0];
+        unsubscribers.push(db.collection('staffAttendance').doc(today).onSnapshot(
+            doc => {
+                setStaffAttendance(doc.exists ? (doc.data() as StaffAttendanceRecord) : null);
+            },
+            error => {
+                console.error(`[Firestore Listener Error] Failed to fetch staff attendance:`, error);
+                alert(`Could not fetch staff attendance data.`);
+            }
+        ));
+
 
         if (user.role === 'admin') {
             unsubscribers.push(db.collection('users').onSnapshot(
@@ -539,6 +553,12 @@ const App: React.FC = () => {
             alert(`Failed to update stock. Error: ${error}`);
         }
     }, []);
+    
+    const handleMarkStaffAttendance = async (staffId: string, status: AttendanceStatus) => {
+        const today = new Date().toISOString().split('T')[0];
+        const attendanceRef = db.collection('staffAttendance').doc(today);
+        await attendanceRef.set({ [staffId]: status }, { merge: true });
+    };
 
 
     // --- AUTHENTICATION FUNCTIONS ---
@@ -661,6 +681,7 @@ const App: React.FC = () => {
                         {/* Staff Docs */}
                         <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} user={user} />} />
                         <Route path="/staff/certificates/generate" element={<GenerateServiceCertificatePage staff={staff} onSave={handleSaveServiceCertificate} user={user} />} />
+                        <Route path="/staff/attendance" element={<StaffAttendancePage user={user} staff={staff.filter(s => s.status === EmploymentStatus.ACTIVE)} attendance={staffAttendance} onMarkAttendance={handleMarkStaffAttendance} />} />
                         
                         {/* Hostel */}
                         <Route path="/hostel" element={<HostelDashboardPage />} />

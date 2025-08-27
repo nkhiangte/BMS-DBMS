@@ -452,3 +452,14 @@ export interface StockLog {
     date: string; // ISO string
     notes?: string;
 }
+
+// --- NEW: Staff Attendance Types ---
+export enum AttendanceStatus {
+    PRESENT = "Present",
+    ABSENT = "Absent",
+    LEAVE = "On Leave",
+}
+
+export interface StaffAttendanceRecord {
+    [staffId: string]: AttendanceStatus;
+}

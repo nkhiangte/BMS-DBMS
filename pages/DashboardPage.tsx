@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { UsersIcon, PlusIcon, DocumentReportIcon, BookOpenIcon, TransferIcon, BriefcaseIcon, CurrencyDollarIcon, AcademicCapIcon, ArchiveBoxIcon, BuildingOfficeIcon, UserGroupIcon } from '../components/Icons';
+import { UsersIcon, PlusIcon, DocumentReportIcon, BookOpenIcon, TransferIcon, BriefcaseIcon, CurrencyDollarIcon, AcademicCapIcon, ArchiveBoxIcon, BuildingOfficeIcon, UserGroupIcon, CalendarDaysIcon } from '../components/Icons';
 import AcademicYearForm from '../components/AcademicYearForm';
 import { User } from '../types';
 
@@ -111,6 +111,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
                 action={<Link to="/reports/search">Generate Report</Link>}
             />
             
+            <DashboardCard
+                title="Staff Attendance"
+                description="Mark and view daily staff attendance."
+                icon={<CalendarDaysIcon className="w-7 h-7" />}
+                color="teal"
+                action={<Link to="/staff/attendance">Mark Attendance</Link>}
+            />
+
             {isAdmin && (
                 <>
                     <DashboardCard
