@@ -2,7 +2,7 @@ import React, { useState, useEffect, FormEvent, useRef } from 'react';
 import { Grade, Student, Gender, StudentStatus, Category, BloodGroup } from '../types';
 import { GRADES_LIST, GENDER_LIST, CATEGORY_LIST, BLOOD_GROUP_LIST } from '../constants';
 import { ChevronDownIcon, ChevronUpIcon, UserIcon } from './Icons';
-import { formatDateForDisplay, formatDateForStorage } from '../utils';
+import { formatDateForDisplay, formatDateForStorage, formatStudentId } from '../utils';
 
 interface StudentFormModalProps {
   isOpen: boolean;
@@ -10,6 +10,7 @@ interface StudentFormModalProps {
   onSubmit: (student: Omit<Student, 'id'>) => void;
   student: Student | null;
   newStudentTargetGrade?: Grade | null;
+  academicYear: string;
 }
 
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
@@ -74,11 +75,12 @@ const AccordionSection: React.FC<{ title: string; children: React.ReactNode; def
     );
 };
 
-const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, onSubmit, student, newStudentTargetGrade }) => {
+const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, onSubmit, student, newStudentTargetGrade, academicYear }) => {
     const getInitialFormData = (): Omit<Student, 'id'> => ({
         rollNo: 0,
         name: '',
         grade: newStudentTargetGrade || GRADES_LIST[0],
+        studentId: '',
         contact: '',
         photographUrl: '',
         dateOfBirth: '',
@@ -105,22 +107,37 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
         status: StudentStatus.ACTIVE,
     });
     
-    const [formData, setFormData] = useState(getInitialFormData());
+    const [formData, setFormData] = useState<Partial<Student>>(getInitialFormData());
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (isOpen) {
             if (student) {
+                const currentStudentId = student.studentId || formatStudentId(student, academicYear);
                 setFormData({
                     ...getInitialFormData(),
                     ...student,
+                    studentId: currentStudentId,
                     dateOfBirth: formatDateForDisplay(student.dateOfBirth),
                 });
             } else {
-                setFormData(getInitialFormData());
+                const newStudentData = getInitialFormData();
+                const tempStudentForId = { ...newStudentData, id: 'temp' } as Student;
+                newStudentData.studentId = formatStudentId(tempStudentForId, academicYear);
+                setFormData(newStudentData);
             }
         }
-    }, [student, isOpen, newStudentTargetGrade]);
+    }, [student, isOpen, newStudentTargetGrade, academicYear]);
+    
+    useEffect(() => {
+        if (isOpen && !student) { // Only for new students
+            const tempStudentForId = { ...formData, id: 'temp' } as Student;
+            const newStudentId = formatStudentId(tempStudentForId, academicYear);
+            if (newStudentId !== formData.studentId) {
+                setFormData(prev => ({ ...prev, studentId: newStudentId }));
+            }
+        }
+    }, [formData.grade, formData.rollNo, isOpen, student, academicYear, formData]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
@@ -156,7 +173,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
         const dataToSubmit = {
             ...formData,
             dateOfBirth: formatDateForStorage(formData.dateOfBirth),
-        };
+        } as Omit<Student, 'id'>;
         onSubmit(dataToSubmit);
     };
 
@@ -216,6 +233,11 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                             <div>
                                 <label className="block text-sm font-bold text-slate-800">Roll Number</label>
                                 <input type="number" name="rollNo" value={formData.rollNo} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold text-slate-800">Student ID</label>
+                                <input type="text" name="studentId" value={formData.studentId || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                                <p className="text-xs text-slate-500 mt-1">Can be edited. Defaults are based on year, class, and roll no.</p>
                             </div>
                              <div>
                                 <label className="block text-sm font-bold text-slate-800">Aadhaar Number</label>

@@ -1,9 +1,10 @@
 
+
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord } from './types';
 import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST } from './constants';
-import { getNextGrade, createDefaultFeePayments, calculateStudentResult } from './utils';
+import { getNextGrade, createDefaultFeePayments, calculateStudentResult, formatStudentId } from './utils';
 
 import { auth, db, firebaseConfig } from './firebaseConfig';
 import firebase from 'firebase/compat/app';
@@ -358,6 +359,11 @@ const App: React.FC = () => {
                 dataToSave.photographUrl = await uploadPhoto(dataToSave.photographUrl);
             }
     
+            // If studentId is not provided (e.g., old records), generate it now
+            if (!dataToSave.studentId && academicYear) {
+                dataToSave.studentId = formatStudentId(studentData as Student, academicYear);
+            }
+
             // Clean the data: Firestore cannot store 'undefined' values.
             Object.keys(dataToSave).forEach(key => {
                 if (dataToSave[key] === undefined) {
@@ -376,7 +382,7 @@ const App: React.FC = () => {
             console.error("Error saving student data:", error);
             alert(`Failed to save student data. Please check the console for details. Error: ${error instanceof Error ? error.message : String(error)}`);
         }
-    }, [editingStudent, closeModal]);
+    }, [editingStudent, closeModal, academicYear]);
 
     const handleDeleteConfirm = useCallback(async () => {
         if (deletingStudent) {
@@ -804,7 +810,7 @@ const App: React.FC = () => {
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                 </main>
-                {isFormModalOpen && <StudentFormModal isOpen={isFormModalOpen} onClose={closeModal} onSubmit={handleFormSubmit} student={editingStudent} newStudentTargetGrade={newStudentTargetGrade} />}
+                {isFormModalOpen && <StudentFormModal isOpen={isFormModalOpen} onClose={closeModal} onSubmit={handleFormSubmit} student={editingStudent} newStudentTargetGrade={newStudentTargetGrade} academicYear={academicYear!} />}
                 {deletingStudent && <ConfirmationModal isOpen={!!deletingStudent} onClose={closeModal} onConfirm={handleDeleteConfirm} title="Delete Student"><p>Are you sure you want to delete <span className="font-bold">{deletingStudent.name}</span>? This action cannot be undone.</p></ConfirmationModal>}
                 {isStaffFormModalOpen && <StaffFormModal isOpen={isStaffFormModalOpen} onClose={closeModal} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions} />}
                 {deletingStaff && <ConfirmationModal isOpen={!!deletingStaff} onClose={closeModal} onConfirm={handleDeleteStaffConfirm} title="Delete Staff Member"><p>Are you sure you want to delete <span className="font-bold">{deletingStaff.firstName} {deletingStaff.lastName}</span>? This action cannot be undone.</p></ConfirmationModal>}

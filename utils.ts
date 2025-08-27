@@ -20,7 +20,12 @@ const getGradeCode = (grade: Grade): string => {
 };
 
 export const formatStudentId = (student: Student, academicYear: string): string => {
-    // Extract the last two digits of the start year from "2025-2026" -> "25"
+    // Prioritize the stored studentId if it exists and is not empty.
+    if (student.studentId) {
+        return student.studentId;
+    }
+    
+    // Fallback to old generation logic for backward compatibility
     const startYear = academicYear.substring(0, 4);
     const yearSuffix = startYear.slice(-2);
     

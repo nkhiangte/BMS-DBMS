@@ -202,6 +202,7 @@ export interface FeePayments {
 
 export interface Student {
   id: string;
+  studentId?: string;
   rollNo: number;
   name: string;
   grade: Grade;
