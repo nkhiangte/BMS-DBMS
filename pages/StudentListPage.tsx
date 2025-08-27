@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Student, User } from '../types';
+import { Student, User, Grade } from '../types';
 import { GRADES_LIST } from '../constants';
 import StudentTable from '../components/StudentTable';
 import { PlusIcon, SearchIcon, HomeIcon, BackIcon } from '../components/Icons';
@@ -13,9 +13,10 @@ interface StudentListPageProps {
   onEdit: (student: Student) => void;
   academicYear: string;
   user: User;
+  assignedGrade: Grade | null;
 }
 
-const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEdit, academicYear, user }) => {
+const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEdit, academicYear, user, assignedGrade }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [gradeFilter, setGradeFilter] = useState<string>('');
   const navigate = useNavigate();
@@ -98,6 +99,7 @@ const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEd
         onEdit={onEdit}
         academicYear={academicYear}
         user={user}
+        assignedGrade={assignedGrade}
       />
     </div>
   );

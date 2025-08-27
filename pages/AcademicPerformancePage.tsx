@@ -14,9 +14,10 @@ interface AcademicPerformancePageProps {
   gradeDefinitions: Record<Grade, GradeDefinition>;
   academicYear: string;
   user: User;
+  assignedGrade: Grade | null;
 }
 
-const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ students, onUpdateAcademic, gradeDefinitions, academicYear, user }) => {
+const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ students, onUpdateAcademic, gradeDefinitions, academicYear, user, assignedGrade }) => {
   const { studentId } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
 
@@ -24,6 +25,8 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
   
   const [isEditing, setIsEditing] = useState(false);
   const [performanceData, setPerformanceData] = useState<Exam[]>([]);
+  
+  const canEdit = user.role === 'admin' || (student && student.grade === assignedGrade);
 
   const originalPerformanceData = useMemo(() => {
     if (!student) return [];
@@ -50,6 +53,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
       return {
         ...examTemplate,
         results,
+        teacherRemarks: existingExam?.teacherRemarks || '',
       };
     });
   }, [student, gradeDefinitions]);
@@ -73,15 +77,16 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
       const cleanedPerformanceData = performanceData.map(exam => ({
         ...exam,
         results: exam.results.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null),
+        teacherRemarks: exam.teacherRemarks?.trim() || undefined,
       }));
       onUpdateAcademic(student.id, cleanedPerformanceData);
     }
     setIsEditing(false);
   };
 
-  const handleUpdateExamResults = (examId: string, newResults: SubjectMark[]) => {
+  const handleUpdateExamData = (examId: string, field: 'results' | 'teacherRemarks', value: any) => {
     setPerformanceData(prev => 
-      prev.map(exam => exam.id === examId ? { ...exam, results: newResults } : exam)
+      prev.map(exam => exam.id === examId ? { ...exam, [field]: value } : exam)
     );
   };
 
@@ -128,7 +133,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
                 <p className="text-slate-700 text-lg mt-1">{student.name} ({formatStudentId(student, academicYear)})</p>
             </div>
             <div className="flex gap-3">
-                {user.role === 'admin' && (
+                {canEdit && (
                   isEditing ? (
                       <>
                           <button
@@ -161,14 +166,31 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
 
         <div>
             {performanceData.map(exam => (
-                <AcademicRecordTable
-                    key={exam.id}
-                    examName={exam.name}
-                    results={exam.results}
-                    isEditing={isEditing && user.role === 'admin'}
-                    onUpdate={(newResults) => handleUpdateExamResults(exam.id, newResults)}
-                    subjectDefinitions={gradeDef.subjects}
-                />
+                <div key={exam.id} className="mb-8">
+                    <AcademicRecordTable
+                        examName={exam.name}
+                        results={exam.results}
+                        isEditing={isEditing && canEdit}
+                        onUpdate={(newResults) => handleUpdateExamData(exam.id, 'results', newResults)}
+                        subjectDefinitions={gradeDef.subjects}
+                    />
+                    <div className="mt-4">
+                        <label className="block text-sm font-bold text-slate-800 mb-1">Teacher's Remarks for {exam.name}</label>
+                        {isEditing && canEdit ? (
+                            <textarea
+                                value={exam.teacherRemarks || ''}
+                                onChange={e => handleUpdateExamData(exam.id, 'teacherRemarks', e.target.value)}
+                                rows={2}
+                                className="w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                                placeholder="Enter feedback or comments..."
+                            />
+                        ) : (
+                            <p className="text-slate-700 p-3 bg-slate-50 rounded-md border min-h-[4rem]">
+                                {exam.teacherRemarks || <span className="italic text-slate-500">No remarks added.</span>}
+                            </p>
+                        )}
+                    </div>
+                </div>
             ))}
         </div>
     </div>

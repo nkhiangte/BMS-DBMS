@@ -11,6 +11,7 @@ interface StudentAttendancePageProps {
   user: User;
   fetchStudentAttendanceForMonth: (grade: Grade, year: number, month: number) => Promise<{ [date: string]: StudentAttendanceRecord }>;
   academicYear: string;
+  assignedGrade: Grade | null;
 }
 
 const Toast: React.FC<{ message: string; onDismiss: () => void; }> = ({ message, onDismiss }) => {
@@ -26,10 +27,12 @@ const Toast: React.FC<{ message: string; onDismiss: () => void; }> = ({ message,
     );
 };
 
-const StudentAttendancePage: React.FC<StudentAttendancePageProps> = ({ students, allAttendance, onUpdateAttendance, user, fetchStudentAttendanceForMonth, academicYear }) => {
+const StudentAttendancePage: React.FC<StudentAttendancePageProps> = ({ students, allAttendance, onUpdateAttendance, user, fetchStudentAttendanceForMonth, academicYear, assignedGrade }) => {
     const { grade: encodedGrade } = useParams<{ grade: string }>();
     const navigate = useNavigate();
     const grade = useMemo(() => encodedGrade ? decodeURIComponent(encodedGrade) as Grade : undefined, [encodedGrade]);
+    
+    const isClassTeacher = user.role === 'admin' || grade === assignedGrade;
 
     const classStudents = useMemo(() => {
         if (!grade) return [];
@@ -118,7 +121,8 @@ const StudentAttendancePage: React.FC<StudentAttendancePageProps> = ({ students,
         return (
             <button
                 onClick={() => handleStatusChange(studentId, status)}
-                className={`px-3 py-1.5 text-sm font-bold rounded-full border transition-colors ${isActive ? activeColors[status] : `hover:bg-slate-200 ${colors[status]}`}`}
+                disabled={!isClassTeacher}
+                className={`px-3 py-1.5 text-sm font-bold rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${isActive ? activeColors[status] : `hover:bg-slate-200 ${colors[status]}`}`}
             >
                 {label}
             </button>
@@ -147,10 +151,12 @@ const StudentAttendancePage: React.FC<StudentAttendancePageProps> = ({ students,
                         <h1 className="text-3xl font-bold text-slate-800">Daily Attendance - {grade}</h1>
                         <p className="text-slate-600 mt-1">{today}</p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                         <button onClick={() => handleMarkAll(StudentAttendanceStatus.PRESENT)} className="text-xs font-semibold text-emerald-700 bg-emerald-100 rounded-full px-3 py-1 hover:bg-emerald-200">Mark All Present</button>
-                         <button onClick={() => handleMarkAll(StudentAttendanceStatus.ABSENT)} className="text-xs font-semibold text-rose-700 bg-rose-100 rounded-full px-3 py-1 hover:bg-rose-200">Mark All Absent</button>
-                    </div>
+                    {isClassTeacher && (
+                        <div className="flex flex-wrap gap-2">
+                            <button onClick={() => handleMarkAll(StudentAttendanceStatus.PRESENT)} className="text-xs font-semibold text-emerald-700 bg-emerald-100 rounded-full px-3 py-1 hover:bg-emerald-200">Mark All Present</button>
+                            <button onClick={() => handleMarkAll(StudentAttendanceStatus.ABSENT)} className="text-xs font-semibold text-rose-700 bg-rose-100 rounded-full px-3 py-1 hover:bg-rose-200">Mark All Absent</button>
+                        </div>
+                    )}
                 </div>
                  <div className="my-6 p-4 bg-slate-50 border rounded-lg">
                     <h3 className="font-bold text-slate-800">Monthly Attendance Export</h3>
@@ -202,12 +208,14 @@ const StudentAttendancePage: React.FC<StudentAttendancePageProps> = ({ students,
                         <p className="text-center py-8 text-slate-600">No active students found in this class.</p>
                      )}
                 </div>
-                 <div className="mt-6 flex justify-end">
-                    <button onClick={handleSave} disabled={isSaving} className="btn btn-primary text-base px-6 py-3 disabled:bg-slate-400">
-                        {isSaving ? <SpinnerIcon className="w-5 h-5"/> : <CheckIcon className="w-5 h-5" />}
-                        <span>{isSaving ? 'Saving...' : 'Save Attendance'}</span>
-                    </button>
-                </div>
+                 {isClassTeacher && (
+                    <div className="mt-6 flex justify-end">
+                        <button onClick={handleSave} disabled={isSaving} className="btn btn-primary text-base px-6 py-3 disabled:bg-slate-400">
+                            {isSaving ? <SpinnerIcon className="w-5 h-5"/> : <CheckIcon className="w-5 h-5" />}
+                            <span>{isSaving ? 'Saving...' : 'Save Attendance'}</span>
+                        </button>
+                    </div>
+                 )}
             </div>
         </>
     );

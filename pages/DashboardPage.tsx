@@ -4,7 +4,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { UsersIcon, PlusIcon, DocumentReportIcon, BookOpenIcon, TransferIcon, BriefcaseIcon, CurrencyDollarIcon, AcademicCapIcon, ArchiveBoxIcon, BuildingOfficeIcon, UserGroupIcon, CalendarDaysIcon } from '../components/Icons';
 import AcademicYearForm from '../components/AcademicYearForm';
-import { User } from '../types';
+import { User, Grade } from '../types';
 
 interface DashboardPageProps {
   user: User;
@@ -13,6 +13,7 @@ interface DashboardPageProps {
   academicYear: string | null;
   onSetAcademicYear: (year: string) => void;
   allUsers: User[];
+  assignedGrade: Grade | null;
 }
 
 const DashboardCard: React.FC<{
@@ -58,7 +59,7 @@ const DashboardCard: React.FC<{
 };
 
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, studentCount, academicYear, onSetAcademicYear, allUsers }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, studentCount, academicYear, onSetAcademicYear, allUsers, assignedGrade }) => {
   if (!academicYear) {
     return <AcademicYearForm onSetAcademicYear={onSetAcademicYear} />;
   }
@@ -72,45 +73,41 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
             <h1 className="text-4xl font-bold text-slate-900">Welcome, {user.displayName || user.email}!</h1>
             <p className="text-slate-600 text-lg mt-1">
                 Academic Year: <span className="font-semibold text-sky-600">{academicYear}</span>
+                 {user.role === 'user' && assignedGrade && (
+                    <span className="ml-4">Class Teacher of: <span className="font-semibold text-indigo-600">{assignedGrade}</span></span>
+                )}
             </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <DashboardCard
-                title="Manage Students"
-                description="View, edit, or delete student records."
+            {/* Cards for All Users */}
+             <DashboardCard
+                title={isAdmin ? "Manage Students" : "View All Students"}
+                description={isAdmin ? "View, edit, or delete student records." : "Browse all active students in the school."}
                 icon={<UsersIcon className="w-7 h-7" />}
                 count={studentCount}
                 color="sky"
                 action={<Link to="/students">View Active Students</Link>}
             />
-
-            {isAdmin && (
-                <DashboardCard
-                    title="Register New Student"
-                    description="Add a new student to the database."
-                    icon={<PlusIcon className="w-7 h-7" />}
-                    color="emerald"
-                    action={<button onClick={onAddStudent}>Add New Student</button>}
+            {user.role === 'user' && assignedGrade && (
+                 <DashboardCard
+                    title="My Class"
+                    description={`Manage students and details for ${assignedGrade}.`}
+                    icon={<BookOpenIcon className="w-7 h-7" />}
+                    color="indigo"
+                    action={<Link to={`/classes/${encodeURIComponent(assignedGrade)}`}>Go to My Class</Link>}
                 />
             )}
-            
-            <DashboardCard
-                title="Manage Classes"
-                description="Browse students by their class."
-                icon={<BookOpenIcon className="w-7 h-7" />}
-                color="indigo"
-                action={<Link to="/classes">Browse Classes</Link>}
-            />
-            
-             <DashboardCard
-                title="Progress Reports"
-                description="Generate and view student report cards."
-                icon={<DocumentReportIcon className="w-7 h-7" />}
-                color="amber"
-                action={<Link to="/reports/search">Generate Report</Link>}
-            />
-            
+            {user.role === 'user' && assignedGrade && (
+                 <DashboardCard
+                    title="Mark Student Attendance"
+                    description={`Take daily attendance for ${assignedGrade}.`}
+                    icon={<CalendarDaysIcon className="w-7 h-7" />}
+                    color="amber"
+                    action={<Link to={`/classes/${encodeURIComponent(assignedGrade)}/attendance`}>Take Attendance</Link>}
+                />
+            )}
+
             <DashboardCard
                 title="Staff Attendance"
                 description="Mark and view daily staff attendance."
@@ -118,9 +115,31 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
                 color="teal"
                 action={<Link to="/staff/attendance">Mark Attendance</Link>}
             />
-
+            
+            {/* Admin-only cards */}
             {isAdmin && (
                 <>
+                    <DashboardCard
+                        title="Register New Student"
+                        description="Add a new student to the database."
+                        icon={<PlusIcon className="w-7 h-7" />}
+                        color="emerald"
+                        action={<button onClick={onAddStudent}>Add New Student</button>}
+                    />
+                    <DashboardCard
+                        title="Manage Classes"
+                        description="Browse students by their class."
+                        icon={<BookOpenIcon className="w-7 h-7" />}
+                        color="indigo"
+                        action={<Link to="/classes">Browse Classes</Link>}
+                    />
+                    <DashboardCard
+                        title="Progress Reports"
+                        description="Generate and view student report cards."
+                        icon={<DocumentReportIcon className="w-7 h-7" />}
+                        color="amber"
+                        action={<Link to="/reports/search">Generate Report</Link>}
+                    />
                     <DashboardCard
                         title="User Management"
                         description="Approve new user registrations."

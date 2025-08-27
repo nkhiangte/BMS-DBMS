@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, Staff, EmploymentStatus, User } from '../types';
-import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon, ClipboardDocumentCheckIcon } from '../components/Icons';
+import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon, ClipboardDocumentCheckIcon, PlusIcon } from '../components/Icons';
 import { formatStudentId, calculateDues } from '../utils';
 import EditSubjectsModal from '../components/EditSubjectsModal';
 
@@ -15,9 +15,11 @@ interface ClassStudentsPageProps {
   onOpenTransferModal: (student: Student) => void;
   onDelete: (student: Student) => void;
   user: User;
+  assignedGrade: Grade | null;
+  onAddStudentToClass: (grade: Grade) => void;
 }
 
-const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal, onOpenTransferModal, onDelete, user }) => {
+const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal, onOpenTransferModal, onDelete, user, assignedGrade, onAddStudentToClass }) => {
   const { grade } = useParams<{ grade: string }>();
   const navigate = useNavigate();
   const decodedGrade = grade ? decodeURIComponent(grade) as Grade : '' as Grade;
@@ -26,6 +28,8 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditingTeacher, setIsEditingTeacher] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+
+  const isClassTeacher = user.role === 'admin' || decodedGrade === assignedGrade;
   
   const currentTeacher = useMemo(() => {
       return staff.find(t => t.id === gradeDef?.classTeacherId);
@@ -144,7 +148,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                 )}
             </div>
           </div>
-           <div className="flex items-center gap-3">
+           <div className="flex items-center flex-wrap gap-3">
                 <Link
                     to={`/classes/${encodeURIComponent(decodedGrade)}/attendance`}
                     className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 transition hover:-translate-y-0.5"
@@ -152,14 +156,23 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                     <ClipboardDocumentCheckIcon className="w-5 h-5" />
                     Daily Attendance
                 </Link>
-                {user.role === 'admin' && (
+                {isClassTeacher && (
+                   <>
+                     <button
+                        onClick={() => onAddStudentToClass(decodedGrade)}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 transition hover:-translate-y-0.5"
+                    >
+                        <PlusIcon className="w-5 h-5" />
+                        Add Student to this Class
+                    </button>
                     <button
                         onClick={() => onOpenImportModal(decodedGrade)}
                         className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 transition hover:-translate-y-0.5"
                     >
                         <ArrowUpOnSquareIcon className="w-5 h-5" />
-                        Import to this Class
+                        Import Students
                     </button>
+                   </>
                 )}
             </div>
         </div>
@@ -173,7 +186,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Father's Name</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Dues Status</th>
-                {user.role === 'admin' && <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>}
+                {isClassTeacher && <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
@@ -194,7 +207,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                             <span className="flex items-center gap-1.5 text-amber-600 font-semibold"><XCircleIcon className="w-5 h-5"/> Pending</span>
                         )}
                       </td>
-                      {user.role === 'admin' && (
+                      {isClassTeacher && (
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end gap-2">
                              <button onClick={() => onOpenTransferModal(student)} className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full" title="Transfer Student to another class">

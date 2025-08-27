@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord } from './types';
 import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST } from './constants';
@@ -120,6 +120,7 @@ const App: React.FC = () => {
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
     const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
+    const [newStudentTargetGrade, setNewStudentTargetGrade] = useState<Grade | null>(null);
     const [isStaffFormModalOpen, setIsStaffFormModalOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
     const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
@@ -135,6 +136,16 @@ const App: React.FC = () => {
     const [isImporting, setIsImporting] = useState(false);
     const [importTargetGrade, setImportTargetGrade] = useState<Grade | null>(null);
     const [transferringStudent, setTransferringStudent] = useState<Student | null>(null);
+
+    // --- DERIVED STATE (for Role-Based Access) ---
+    const assignedGrade = useMemo(() => {
+        if (user?.role !== 'user' || !staff.length || !user.email) return null;
+        const currentUserStaffProfile = staff.find(s => s.emailAddress.toLowerCase() === user.email?.toLowerCase());
+        if (!currentUserStaffProfile) return null;
+        const gradeEntry = Object.entries(gradeDefinitions).find(([, def]) => def.classTeacherId === currentUserStaffProfile.id);
+        return gradeEntry ? gradeEntry[0] as Grade : null;
+    }, [user, staff, gradeDefinitions]);
+
 
     // --- FIREBASE INITIALIZATION CHECK ---
     const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
@@ -268,15 +279,27 @@ const App: React.FC = () => {
         return () => unsubscribers.forEach(unsub => unsub());
     }, [user, isFirebaseConfigured]);
 
-    // --- UTILITY & HELPER FUNCTIONS ---
+    // --- UI & MODAL HANDLERS ---
     const closeModal = useCallback(() => {
-        setIsFormModalOpen(false); setEditingStudent(null); setDeletingStudent(null);
+        setIsFormModalOpen(false); setEditingStudent(null); setDeletingStudent(null); setNewStudentTargetGrade(null);
         setIsStaffFormModalOpen(false); setEditingStaff(null); setDeletingStaff(null);
         setIsInventoryFormModalOpen(false); setEditingInventoryItem(null); setDeletingInventoryItem(null);
         setIsHostelStaffFormModalOpen(false); setEditingHostelStaff(null); setDeletingHostelStaff(null);
         setIsHostelResidentFormModalOpen(false); setEditingHostelResident(null);
         setIsImportModalOpen(false); setImportTargetGrade(null); setTransferringStudent(null);
     }, []);
+
+    const handleAddStudent = () => {
+        setNewStudentTargetGrade(null);
+        setEditingStudent(null);
+        setIsFormModalOpen(true);
+    };
+    
+    const handleAddStudentToClass = (grade: Grade) => {
+        setNewStudentTargetGrade(grade);
+        setEditingStudent(null);
+        setIsFormModalOpen(true);
+    };
 
     const uploadPhoto = async (photoDataUrl: string): Promise<string> => {
         if (!photoDataUrl || !photoDataUrl.startsWith('data:image')) {
@@ -333,13 +356,15 @@ const App: React.FC = () => {
                 dataToSave.photographUrl = await uploadPhoto(dataToSave.photographUrl);
             }
     
+            // Clean the data: Firestore cannot store 'undefined' values.
             Object.keys(dataToSave).forEach(key => {
-                if (dataToSave[key] === null) {
+                if (dataToSave[key] === undefined) {
                     delete dataToSave[key];
                 }
             });
     
             if (editingStudent) {
+                // Use update to avoid overwriting fields not in the form (e.g., academicPerformance)
                 await db.collection('students').doc(editingStudent.id).update(dataToSave);
             } else {
                 await db.collection('students').add(dataToSave);
@@ -366,14 +391,17 @@ const App: React.FC = () => {
                 dataToSave.photographUrl = await uploadPhoto(dataToSave.photographUrl);
             }
             
+            // Clean the data: Firestore cannot store 'undefined' values.
+            // This is a safeguard, as the form modal should also perform cleaning.
             Object.keys(dataToSave).forEach(key => {
-                if (dataToSave[key] === null) {
+                if (dataToSave[key] === undefined) {
                     delete dataToSave[key];
                 }
             });
     
             let staffId = editingStaff?.id;
             if (editingStaff) {
+                // Use update to avoid overwriting fields not in the form
                 await db.collection('staff').doc(editingStaff.id).update(dataToSave);
             } else {
                 const newDoc = await db.collection('staff').add(dataToSave);
@@ -729,14 +757,14 @@ const App: React.FC = () => {
                 <Header user={user} onLogout={handleLogout} />
                 <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
                     <Routes>
-                        <Route path="/" element={<DashboardPage user={user} onAddStudent={() => { setEditingStudent(null); setIsFormModalOpen(true); }} studentCount={students.filter(s => s.status === 'Active').length} academicYear={academicYear} onSetAcademicYear={handleSetAcademicYear} allUsers={allUsers}/>} />
-                        <Route path="/students" element={<StudentListPage students={students.filter(s => s.status === 'Active')} onAdd={() => { setEditingStudent(null); setIsFormModalOpen(true); }} onEdit={(s) => { setEditingStudent(s); setIsFormModalOpen(true); }} academicYear={academicYear} user={user} />} />
-                        <Route path="/student/:studentId" element={<StudentDetailPage students={students} onEdit={(s) => { setEditingStudent(s); setIsFormModalOpen(true); }} academicYear={academicYear} user={user} />} />
-                        <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={students} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear} user={user} />} />
+                        <Route path="/" element={<DashboardPage user={user} onAddStudent={handleAddStudent} studentCount={students.filter(s => s.status === 'Active').length} academicYear={academicYear} onSetAcademicYear={handleSetAcademicYear} allUsers={allUsers} assignedGrade={assignedGrade}/>} />
+                        <Route path="/students" element={<StudentListPage students={students.filter(s => s.status === 'Active')} onAdd={handleAddStudent} onEdit={(s) => { setEditingStudent(s); setIsFormModalOpen(true); }} academicYear={academicYear} user={user} assignedGrade={assignedGrade} />} />
+                        <Route path="/student/:studentId" element={<StudentDetailPage students={students} onEdit={(s) => { setEditingStudent(s); setIsFormModalOpen(true); }} academicYear={academicYear} user={user} assignedGrade={assignedGrade} />} />
+                        <Route path="/student/:studentId/academics" element={<AcademicPerformancePage students={students} onUpdateAcademic={handleAcademicUpdate} gradeDefinitions={gradeDefinitions} academicYear={academicYear} user={user} assignedGrade={assignedGrade} />} />
                         <Route path="/reports/search" element={<ReportSearchPage students={students} academicYear={academicYear} />} />
                         <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} user={user} />} />
-                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} onOpenTransferModal={(s) => setTransferringStudent(s)} onDelete={(s) => setDeletingStudent(s)} user={user} />} />
-                        <Route path="/classes/:grade/attendance" element={<StudentAttendancePage students={students} allAttendance={studentAttendance} onUpdateAttendance={handleUpdateStudentAttendance} user={user} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} academicYear={academicYear} />} />
+                        <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} onOpenTransferModal={(s) => setTransferringStudent(s)} onDelete={(s) => setDeletingStudent(s)} user={user} assignedGrade={assignedGrade} onAddStudentToClass={handleAddStudentToClass} />} />
+                        <Route path="/classes/:grade/attendance" element={<StudentAttendancePage students={students} allAttendance={studentAttendance} onUpdateAttendance={handleUpdateStudentAttendance} user={user} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} academicYear={academicYear} assignedGrade={assignedGrade} />} />
                         <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
                         <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear} user={user} />} />
                         <Route path="/transfers/records" element={<AllTcRecordsPage tcRecords={tcRecords} />} />
@@ -773,7 +801,7 @@ const App: React.FC = () => {
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                 </main>
-                {isFormModalOpen && <StudentFormModal isOpen={isFormModalOpen} onClose={closeModal} onSubmit={handleFormSubmit} student={editingStudent} />}
+                {isFormModalOpen && <StudentFormModal isOpen={isFormModalOpen} onClose={closeModal} onSubmit={handleFormSubmit} student={editingStudent} newStudentTargetGrade={newStudentTargetGrade} />}
                 {deletingStudent && <ConfirmationModal isOpen={!!deletingStudent} onClose={closeModal} onConfirm={handleDeleteConfirm} title="Delete Student"><p>Are you sure you want to delete <span className="font-bold">{deletingStudent.name}</span>? This action cannot be undone.</p></ConfirmationModal>}
                 {isStaffFormModalOpen && <StaffFormModal isOpen={isStaffFormModalOpen} onClose={closeModal} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions} />}
                 {deletingStaff && <ConfirmationModal isOpen={!!deletingStaff} onClose={closeModal} onConfirm={handleDeleteStaffConfirm} title="Delete Staff Member"><p>Are you sure you want to delete <span className="font-bold">{deletingStaff.firstName} {deletingStaff.lastName}</span>? This action cannot be undone.</p></ConfirmationModal>}

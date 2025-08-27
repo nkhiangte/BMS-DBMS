@@ -187,6 +187,7 @@ export interface Exam {
   id: string;
   name: string;
   results: SubjectMark[];
+  teacherRemarks?: string;
 }
 
 export interface FeePayments {

@@ -9,6 +9,7 @@ interface StudentFormModalProps {
   onClose: () => void;
   onSubmit: (student: Omit<Student, 'id'>) => void;
   student: Student | null;
+  newStudentTargetGrade?: Grade | null;
 }
 
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
@@ -73,11 +74,11 @@ const AccordionSection: React.FC<{ title: string; children: React.ReactNode; def
     );
 };
 
-const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, onSubmit, student }) => {
+const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, onSubmit, student, newStudentTargetGrade }) => {
     const getInitialFormData = (): Omit<Student, 'id'> => ({
         rollNo: 0,
         name: '',
-        grade: GRADES_LIST[0],
+        grade: newStudentTargetGrade || GRADES_LIST[0],
         contact: '',
         photographUrl: '',
         dateOfBirth: '',
@@ -119,7 +120,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                 setFormData(getInitialFormData());
             }
         }
-    }, [student, isOpen]);
+    }, [student, isOpen, newStudentTargetGrade]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
@@ -208,7 +209,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                         <AccordionSection title="Academic Details">
                             <div>
                                 <label className="block text-sm font-bold text-slate-800">Grade</label>
-                                <select name="grade" value={formData.grade} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required>
+                                <select name="grade" value={formData.grade} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm disabled:bg-slate-100" required disabled={!!newStudentTargetGrade}>
                                     {GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
                                 </select>
                             </div>

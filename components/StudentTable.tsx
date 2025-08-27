@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Student, User } from '../types';
+import { Student, User, Grade } from '../types';
 import { EditIcon } from './Icons';
 import { formatStudentId } from '../utils';
 
@@ -10,9 +10,10 @@ interface StudentTableProps {
   onEdit: (student: Student) => void;
   academicYear: string;
   user: User;
+  assignedGrade: Grade | null;
 }
 
-const StudentTable: React.FC<StudentTableProps> = ({ students, onEdit, academicYear, user }) => {
+const StudentTable: React.FC<StudentTableProps> = ({ students, onEdit, academicYear, user, assignedGrade }) => {
   if (students.length === 0) {
     return (
       <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-lg">
@@ -21,6 +22,8 @@ const StudentTable: React.FC<StudentTableProps> = ({ students, onEdit, academicY
       </div>
     );
   }
+
+  const canEdit = (student: Student) => user.role === 'admin' || student.grade === assignedGrade;
 
   return (
     <>
@@ -36,7 +39,7 @@ const StudentTable: React.FC<StudentTableProps> = ({ students, onEdit, academicY
                 <p className="text-sm text-slate-600">{student.grade}</p>
                 <p className="text-sm font-mono text-slate-800">{formatStudentId(student, academicYear)}</p>
               </div>
-              {user.role === 'admin' && (
+              {canEdit(student) && (
                 <button onClick={() => onEdit(student)} className="p-2 text-sky-600 hover:bg-sky-100 rounded-full flex-shrink-0" title="Edit">
                   <EditIcon className="w-5 h-5" />
                 </button>
@@ -60,7 +63,7 @@ const StudentTable: React.FC<StudentTableProps> = ({ students, onEdit, academicY
               <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Grade</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Parent's Name</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Contact</th>
-              {user.role === 'admin' && (
+              {(user.role === 'admin' || assignedGrade) && (
                 <th scope="col" className="relative px-6 py-3">
                   <span className="sr-only">Actions</span>
                 </th>
@@ -79,12 +82,14 @@ const StudentTable: React.FC<StudentTableProps> = ({ students, onEdit, academicY
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.grade}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.fatherName}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{student.contact}</td>
-                {user.role === 'admin' && (
+                {(user.role === 'admin' || assignedGrade) && (
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-4">
-                      <button onClick={() => onEdit(student)} className="text-sky-600 hover:text-sky-800 transition-colors" title="Edit">
-                        <EditIcon className="w-5 h-5" />
-                      </button>
+                      {canEdit(student) && (
+                        <button onClick={() => onEdit(student)} className="text-sky-600 hover:text-sky-800 transition-colors" title="Edit">
+                          <EditIcon className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 )}
