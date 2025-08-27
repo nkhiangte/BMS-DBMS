@@ -1,14 +1,16 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, DailyStudentAttendance, StudentAttendanceRecord, StudentAttendanceStatus, User, StudentStatus } from '../types';
-import { BackIcon, HomeIcon, CheckIcon, SpinnerIcon, CheckCircleIcon } from '../components/Icons';
+import { BackIcon, HomeIcon, CheckIcon, SpinnerIcon, CheckCircleIcon, InboxArrowDownIcon } from '../components/Icons';
+import { exportAttendanceToCsv } from '../utils';
 
 interface StudentAttendancePageProps {
   students: Student[];
   allAttendance: DailyStudentAttendance | null;
   onUpdateAttendance: (grade: Grade, records: StudentAttendanceRecord) => Promise<void>;
   user: User;
+  fetchStudentAttendanceForMonth: (grade: Grade, year: number, month: number) => Promise<{ [date: string]: StudentAttendanceRecord }>;
+  academicYear: string;
 }
 
 const Toast: React.FC<{ message: string; onDismiss: () => void; }> = ({ message, onDismiss }) => {
@@ -24,7 +26,7 @@ const Toast: React.FC<{ message: string; onDismiss: () => void; }> = ({ message,
     );
 };
 
-const StudentAttendancePage: React.FC<StudentAttendancePageProps> = ({ students, allAttendance, onUpdateAttendance, user }) => {
+const StudentAttendancePage: React.FC<StudentAttendancePageProps> = ({ students, allAttendance, onUpdateAttendance, user, fetchStudentAttendanceForMonth, academicYear }) => {
     const { grade: encodedGrade } = useParams<{ grade: string }>();
     const navigate = useNavigate();
     const grade = useMemo(() => encodedGrade ? decodeURIComponent(encodedGrade) as Grade : undefined, [encodedGrade]);
@@ -39,6 +41,8 @@ const StudentAttendancePage: React.FC<StudentAttendancePageProps> = ({ students,
     const [records, setRecords] = useState<StudentAttendanceRecord>({});
     const [isSaving, setIsSaving] = useState(false);
     const [showSuccessToast, setShowSuccessToast] = useState(false);
+    const [exportMonth, setExportMonth] = useState(new Date().toISOString().slice(0, 7));
+    const [isExporting, setIsExporting] = useState(false);
 
     useEffect(() => {
         const initialRecords = allAttendance?.[grade as string] || {};
@@ -67,6 +71,31 @@ const StudentAttendancePage: React.FC<StudentAttendancePageProps> = ({ students,
         await onUpdateAttendance(grade, records);
         setIsSaving(false);
         setShowSuccessToast(true);
+    };
+
+    const handleExport = async () => {
+        if (!exportMonth || !grade) {
+            alert("Please select a month to export.");
+            return;
+        }
+        setIsExporting(true);
+        try {
+            const [year, month] = exportMonth.split('-').map(Number);
+            const attendanceData = await fetchStudentAttendanceForMonth(grade, year, month);
+            exportAttendanceToCsv({
+                people: classStudents,
+                attendanceData,
+                month: exportMonth,
+                entityName: grade,
+                entityType: 'Student',
+                academicYear,
+            });
+        } catch (error) {
+            console.error("Failed to export student attendance:", error);
+            alert("An error occurred while exporting data. Please check the console.");
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -121,6 +150,26 @@ const StudentAttendancePage: React.FC<StudentAttendancePageProps> = ({ students,
                     <div className="flex flex-wrap gap-2">
                          <button onClick={() => handleMarkAll(StudentAttendanceStatus.PRESENT)} className="text-xs font-semibold text-emerald-700 bg-emerald-100 rounded-full px-3 py-1 hover:bg-emerald-200">Mark All Present</button>
                          <button onClick={() => handleMarkAll(StudentAttendanceStatus.ABSENT)} className="text-xs font-semibold text-rose-700 bg-rose-100 rounded-full px-3 py-1 hover:bg-rose-200">Mark All Absent</button>
+                    </div>
+                </div>
+                 <div className="my-6 p-4 bg-slate-50 border rounded-lg">
+                    <h3 className="font-bold text-slate-800">Monthly Attendance Export</h3>
+                    <p className="text-sm text-slate-600 mb-2">Download a CSV report for this class for a specific month.</p>
+                    <div className="flex items-center gap-3">
+                        <input 
+                            type="month" 
+                            value={exportMonth}
+                            onChange={(e) => setExportMonth(e.target.value)}
+                            className="form-input px-3 py-2 border-slate-300 rounded-md shadow-sm"
+                        />
+                        <button 
+                            onClick={handleExport}
+                            disabled={isExporting}
+                            className="btn btn-secondary disabled:opacity-70 disabled:cursor-wait"
+                        >
+                            {isExporting ? <SpinnerIcon className="w-5 h-5" /> : <InboxArrowDownIcon className="w-5 h-5" />}
+                            <span>{isExporting ? 'Exporting...' : 'Export CSV'}</span>
+                        </button>
                     </div>
                 </div>
 

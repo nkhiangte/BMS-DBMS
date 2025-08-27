@@ -1,5 +1,3 @@
-
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord } from './types';
@@ -579,6 +577,41 @@ const App: React.FC = () => {
         await attendanceRef.set({ [grade]: records }, { merge: true });
     };
 
+    const fetchStaffAttendanceForMonth = async (year: number, month: number): Promise<{ [date: string]: StaffAttendanceRecord }> => {
+        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+        const endDate = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
+        
+        const snapshot = await db.collection('staffAttendance')
+            .where(firebase.firestore.FieldPath.documentId(), '>=', startDate)
+            .where(firebase.firestore.FieldPath.documentId(), '<=', endDate)
+            .get();
+            
+        const data: { [date: string]: StaffAttendanceRecord } = {};
+        snapshot.forEach(doc => {
+            data[doc.id] = doc.data() as StaffAttendanceRecord;
+        });
+        return data;
+    };
+
+    const fetchStudentAttendanceForMonth = async (grade: Grade, year: number, month: number): Promise<{ [date: string]: StudentAttendanceRecord }> => {
+        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+        const endDate = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
+        
+        const snapshot = await db.collection('studentAttendance')
+            .where(firebase.firestore.FieldPath.documentId(), '>=', startDate)
+            .where(firebase.firestore.FieldPath.documentId(), '<=', endDate)
+            .get();
+            
+        const data: { [date: string]: StudentAttendanceRecord } = {};
+        snapshot.forEach(doc => {
+            const dailyData = doc.data() as DailyStudentAttendance;
+            if (dailyData[grade]) {
+                data[doc.id] = dailyData[grade];
+            }
+        });
+        return data;
+    };
+
 
     // --- AUTHENTICATION FUNCTIONS ---
     const handleLogin = async (email: string, pass: string) => {
@@ -683,7 +716,7 @@ const App: React.FC = () => {
                         <Route path="/reports/search" element={<ReportSearchPage students={students} academicYear={academicYear} />} />
                         <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} user={user} />} />
                         <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} onOpenTransferModal={(s) => setTransferringStudent(s)} onDelete={(s) => setDeletingStudent(s)} user={user} />} />
-                        <Route path="/classes/:grade/attendance" element={<StudentAttendancePage students={students} allAttendance={studentAttendance} onUpdateAttendance={handleUpdateStudentAttendance} user={user} />} />
+                        <Route path="/classes/:grade/attendance" element={<StudentAttendancePage students={students} allAttendance={studentAttendance} onUpdateAttendance={handleUpdateStudentAttendance} user={user} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} academicYear={academicYear} />} />
                         <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
                         <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear} user={user} />} />
                         <Route path="/transfers/records" element={<AllTcRecordsPage tcRecords={tcRecords} />} />
@@ -701,7 +734,7 @@ const App: React.FC = () => {
                         {/* Staff Docs */}
                         <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} user={user} />} />
                         <Route path="/staff/certificates/generate" element={<GenerateServiceCertificatePage staff={staff} onSave={handleSaveServiceCertificate} user={user} />} />
-                        <Route path="/staff/attendance" element={<StaffAttendancePage user={user} staff={staff.filter(s => s.status === EmploymentStatus.ACTIVE)} attendance={staffAttendance} onMarkAttendance={handleMarkStaffAttendance} />} />
+                        <Route path="/staff/attendance" element={<StaffAttendancePage user={user} staff={staff.filter(s => s.status === EmploymentStatus.ACTIVE)} attendance={staffAttendance} onMarkAttendance={handleMarkStaffAttendance} fetchStaffAttendanceForMonth={fetchStaffAttendanceForMonth} academicYear={academicYear} />} />
                         
                         {/* Hostel */}
                         <Route path="/hostel" element={<HostelDashboardPage />} />

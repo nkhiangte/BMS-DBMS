@@ -1,4 +1,4 @@
-import { Student, Grade, FeePayments, SubjectMark, GradeDefinition } from './types';
+import { Student, Staff, Grade, FeePayments, SubjectMark, GradeDefinition, StaffAttendanceRecord, StudentAttendanceRecord, AttendanceStatus, StudentAttendanceStatus } from './types';
 import { FEE_STRUCTURE, academicMonths, GRADES_LIST } from './constants';
 
 const getGradeCode = (grade: Grade): string => {
@@ -183,3 +183,74 @@ export function getDistanceFromLatLonInM(lat1: number, lon1: number, lat2: numbe
     const d = R * c; // in metres
     return d;
 }
+
+export const exportAttendanceToCsv = ({
+    people,
+    attendanceData,
+    month, // YYYY-MM
+    entityName,
+    entityType,
+    academicYear
+}: {
+    people: (Student | Staff)[];
+    attendanceData: { [date: string]: StaffAttendanceRecord | StudentAttendanceRecord };
+    month: string;
+    entityName: string;
+    entityType: 'Student' | 'Staff';
+    academicYear: string;
+}) => {
+    const [year, monthNum] = month.split('-').map(Number);
+    const daysInMonth = new Date(year, monthNum, 0).getDate();
+    const monthName = new Date(year, monthNum - 1, 1).toLocaleString('default', { month: 'long' });
+
+    const headers = [
+        `${entityType} ID`,
+        'Name',
+        ...Array.from({ length: daysInMonth }, (_, i) => `${i + 1}`),
+        'Present',
+        'Absent',
+        'Leave',
+    ];
+    
+    const rows = people.map(person => {
+        const rowData = [
+            entityType === 'Student' ? formatStudentId(person as Student, academicYear) : (person as Staff).employeeId,
+            entityType === 'Student' ? (person as Student).name : `${(person as Staff).firstName} ${(person as Staff).lastName}`,
+        ];
+
+        let presentCount = 0;
+        let absentCount = 0;
+        let leaveCount = 0;
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const dayRecord = attendanceData[dateStr];
+            const status = dayRecord ? dayRecord[person.id] : undefined;
+            
+            let statusChar = '';
+            if (status === AttendanceStatus.PRESENT || status === StudentAttendanceStatus.PRESENT) {
+                statusChar = 'P';
+                presentCount++;
+            } else if (status === AttendanceStatus.ABSENT || status === StudentAttendanceStatus.ABSENT) {
+                statusChar = 'A';
+                absentCount++;
+            } else if (status === AttendanceStatus.LEAVE || status === StudentAttendanceStatus.LEAVE) {
+                statusChar = 'L';
+                leaveCount++;
+            }
+            rowData.push(statusChar);
+        }
+
+        rowData.push(String(presentCount), String(absentCount), String(leaveCount));
+        return rowData.join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${entityType}_Attendance_${entityName.replace(' ', '_')}_${monthName}_${year}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};

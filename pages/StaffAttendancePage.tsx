@@ -1,15 +1,16 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Staff, StaffAttendanceRecord, AttendanceStatus } from '../types';
-import { BackIcon, HomeIcon, CalendarDaysIcon, CheckIcon, XIcon, SpinnerIcon, CheckCircleIcon } from '../components/Icons';
-import { getDistanceFromLatLonInM } from '../utils';
+import { BackIcon, HomeIcon, CalendarDaysIcon, CheckIcon, XIcon, SpinnerIcon, CheckCircleIcon, InboxArrowDownIcon } from '../components/Icons';
+import { getDistanceFromLatLonInM, exportAttendanceToCsv } from '../utils';
 
 interface StaffAttendancePageProps {
   user: User;
   staff: Staff[];
   attendance: StaffAttendanceRecord | null;
   onMarkAttendance: (staffId: string, status: AttendanceStatus) => void;
+  fetchStaffAttendanceForMonth: (year: number, month: number) => Promise<{ [date: string]: StaffAttendanceRecord }>;
+  academicYear: string;
 }
 
 const SCHOOL_COORDS = {
@@ -28,10 +29,12 @@ const Toast: React.FC<{ message: string; type: 'success' | 'error'; onDismiss: (
     );
 };
 
-const StaffAttendancePage: React.FC<StaffAttendancePageProps> = ({ user, staff, attendance, onMarkAttendance }) => {
+const StaffAttendancePage: React.FC<StaffAttendancePageProps> = ({ user, staff, attendance, onMarkAttendance, fetchStaffAttendanceForMonth, academicYear }) => {
     const navigate = useNavigate();
     const [isLoadingLocation, setIsLoadingLocation] = useState(false);
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [exportMonth, setExportMonth] = useState(new Date().toISOString().slice(0, 7));
+    const [isExporting, setIsExporting] = useState(false);
 
     const today = new Date();
     const formattedDate = today.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -80,6 +83,31 @@ const StaffAttendancePage: React.FC<StaffAttendancePageProps> = ({ user, staff, 
         }
     };
     
+    const handleExport = async () => {
+        if (!exportMonth) {
+            alert("Please select a month to export.");
+            return;
+        }
+        setIsExporting(true);
+        try {
+            const [year, month] = exportMonth.split('-').map(Number);
+            const attendanceData = await fetchStaffAttendanceForMonth(year, month);
+            exportAttendanceToCsv({
+                people: staff,
+                attendanceData,
+                month: exportMonth,
+                entityName: 'All_Staff',
+                entityType: 'Staff',
+                academicYear,
+            });
+        } catch (error) {
+            console.error("Failed to export staff attendance:", error);
+            alert("An error occurred while exporting data. Please check the console.");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <>
             {notification && <Toast message={notification.message} type={notification.type} onDismiss={() => setNotification(null)} />}
@@ -108,6 +136,27 @@ const StaffAttendancePage: React.FC<StaffAttendancePageProps> = ({ user, staff, 
                             <span>{isLoadingLocation ? 'Getting Location...' : (attendance?.[currentUserStaffProfile.id] ? 'You are Marked' : 'Mark My Attendance')}</span>
                         </button>
                     )}
+                </div>
+
+                 <div className="my-8 p-4 bg-slate-50 border rounded-lg">
+                    <h3 className="font-bold text-slate-800">Monthly Attendance Export</h3>
+                    <p className="text-sm text-slate-600 mb-2">Download a CSV report of attendance for a specific month.</p>
+                    <div className="flex items-center gap-3">
+                        <input 
+                            type="month" 
+                            value={exportMonth}
+                            onChange={(e) => setExportMonth(e.target.value)}
+                            className="form-input px-3 py-2 border-slate-300 rounded-md shadow-sm"
+                        />
+                        <button 
+                            onClick={handleExport}
+                            disabled={isExporting}
+                            className="btn btn-secondary disabled:opacity-70 disabled:cursor-wait"
+                        >
+                            {isExporting ? <SpinnerIcon className="w-5 h-5" /> : <InboxArrowDownIcon className="w-5 h-5" />}
+                            <span>{isExporting ? 'Exporting...' : 'Export CSV'}</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto border rounded-lg">
