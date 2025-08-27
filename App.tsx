@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus } from './types';
@@ -187,11 +181,33 @@ const App: React.FC = () => {
             ['hostelRooms', setHostelRooms],
         ];
         
-        const unsubscribers = collectionsToSync.map(([path, setter]) => 
-            db.collection(path).orderBy('name').onSnapshot(snapshot => {
+        const unsubscribers = collectionsToSync.map(([path, setter]) => {
+            let query: firebase.firestore.Query = db.collection(path);
+
+            // Define specific ordering for collections to ensure data consistency and prevent errors
+            const orderByConfig: { [key: string]: { field: string, dir?: 'asc' | 'desc' } } = {
+                'students': { field: 'name' },
+                'staff': { field: 'firstName' },
+                'inventory': { field: 'name' },
+                'hostelStaff': { field: 'name' },
+                'hostelInventory': { field: 'name' },
+                'hostelStockLogs': { field: 'date', dir: 'desc' },
+            };
+
+            if (orderByConfig[path]) {
+                query = query.orderBy(orderByConfig[path].field, orderByConfig[path].dir || 'asc');
+            }
+            if (path === 'hostelRooms') {
+                query = query.orderBy('block').orderBy('roomNumber');
+            }
+
+            return query.onSnapshot(snapshot => {
                 setter(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            })
-        );
+            }, error => {
+                console.error(`[Firestore Listener Error] Failed to fetch collection '${path}':`, error);
+                alert(`Could not fetch real-time data for ${path}. The list may not be up-to-date. Please check the console for details.`);
+            });
+        });
 
         unsubscribers.push(db.collection('settings').doc('academic').onSnapshot(doc => setAcademicYear(doc.data()?.year || null)));
         unsubscribers.push(db.collection('settings').doc('gradeDefinitions').onSnapshot(doc => {
