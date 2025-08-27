@@ -150,12 +150,20 @@ export const formatDateForStorage = (displayDate?: string): string => {
   if (!displayDate) {
     return '';
   }
+  // If it's already in YYYY-MM-DD, return it.
   if (/^\d{4}-\d{2}-\d{2}$/.test(displayDate)) {
     return displayDate;
   }
-  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(displayDate)) {
-    return ''; 
+  // Match D(D)/M(M)/YYYY
+  const match = displayDate.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!match) {
+    return ''; // Return empty if format is completely wrong
   }
-  const [day, month, year] = displayDate.split('/');
-  return `${year}-${month}-${day}`;
+  const [, day, month, year] = match;
+  
+  // Pad with leading zeros to ensure YYYY-MM-DD format
+  const paddedDay = day.padStart(2, '0');
+  const paddedMonth = month.padStart(2, '0');
+  
+  return `${year}-${paddedMonth}-${paddedDay}`;
 };
