@@ -8,6 +8,7 @@ import { TERMINAL_EXAMS } from '../constants';
 import { formatStudentId, calculateStudentResult } from '../utils';
 import * as XLSX from 'xlsx';
 import ConfirmationModal from '../components/ConfirmationModal';
+import MarksEntryModal from '../components/MarksEntryModal';
 
 
 // Helper functions for result calculation
@@ -41,6 +42,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
     const [isProcessingFile, setIsProcessingFile] = useState(false);
     const [isSavingImport, setIsSavingImport] = useState(false);
     const [importData, setImportData] = useState<{ updates: Array<{ studentId: string; performance: Exam[] }>; errors: string[] } | null>(null);
+    const [isMarksEntryModalOpen, setIsMarksEntryModalOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const grade = useMemo(() => encodedGrade ? decodeURIComponent(encodedGrade) as Grade : null, [encodedGrade]);
@@ -250,6 +252,10 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                     </Link>
                      {isAllowed && (
                         <div className="flex items-center gap-2">
+                             <button onClick={() => setIsMarksEntryModalOpen(true)} className="btn btn-secondary" disabled={isProcessingFile}>
+                                <EditIcon className="w-5 h-5" />
+                                <span>Main Marks Entry</span>
+                            </button>
                             <button onClick={() => fileInputRef.current?.click()} className="btn btn-secondary" disabled={isProcessingFile}>
                                 {isProcessingFile ? <SpinnerIcon className="w-5 h-5"/> : <InboxArrowDownIcon className="w-5 h-5" />}
                                 <span>{isProcessingFile ? 'Processing...' : 'Import Marks'}</span>
@@ -378,6 +384,16 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                     </div>
                 )}
             </ConfirmationModal>
+             <MarksEntryModal
+                isOpen={isMarksEntryModalOpen}
+                onClose={() => setIsMarksEntryModalOpen(false)}
+                onSave={onUpdateClassMarks}
+                students={classStudents}
+                gradeDef={gradeDef}
+                examId={examId!}
+                examName={examDetails.name}
+                grade={grade}
+            />
         </div>
     );
 };
