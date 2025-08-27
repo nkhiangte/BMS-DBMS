@@ -6,6 +6,7 @@ import { Student, User, Grade } from '../types';
 import { GRADES_LIST } from '../constants';
 import StudentTable from '../components/StudentTable';
 import { PlusIcon, SearchIcon, HomeIcon, BackIcon } from '../components/Icons';
+import { formatStudentId } from '../utils';
 
 interface StudentListPageProps {
   students: Student[];
@@ -18,16 +19,37 @@ interface StudentListPageProps {
 
 const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEdit, academicYear, user, assignedGrade }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchType, setSearchType] = useState<'name' | 'pen' | 'fatherName' | 'studentId'>('name');
   const [gradeFilter, setGradeFilter] = useState<string>('');
   const navigate = useNavigate();
 
   const filteredStudents = useMemo(() => {
     return students
-      .filter(student =>
-        student.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      .filter(student => {
+        if (!searchTerm) return true;
+        const term = searchTerm.toLowerCase();
+        switch (searchType) {
+          case 'pen':
+            return student.pen.toLowerCase().includes(term);
+          case 'fatherName':
+            return student.fatherName.toLowerCase().includes(term);
+          case 'studentId':
+            const studentId = formatStudentId(student, academicYear).toLowerCase();
+            return studentId.includes(term);
+          case 'name':
+          default:
+            return student.name.toLowerCase().includes(term);
+        }
+      })
       .filter(student => (gradeFilter ? student.grade === gradeFilter : true));
-  }, [students, searchTerm, gradeFilter]);
+  }, [students, searchTerm, searchType, gradeFilter, academicYear]);
+
+  const searchPlaceholders = {
+    name: 'Search by name...',
+    pen: 'Search by PEN...',
+    fatherName: "Search by father's name...",
+    studentId: 'Search by student ID (e.g., BMS250101)...',
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
@@ -54,6 +76,19 @@ const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEd
           Active Students
         </h2>
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          {/* Search Type Selector */}
+          <select
+            value={searchType}
+            onChange={e => setSearchType(e.target.value as any)}
+            className="w-full sm:w-auto px-4 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-sky-500 focus:border-sky-500 transition"
+            aria-label="Select search type"
+          >
+            <option value="name">Search by Name</option>
+            <option value="pen">Search by PEN</option>
+            <option value="fatherName">Search by Father's Name</option>
+            <option value="studentId">Search by Student ID</option>
+          </select>
+          
           {/* Search Bar */}
           <div className="relative w-full sm:w-auto">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -61,11 +96,11 @@ const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEd
             </div>
             <input
               type="text"
-              placeholder="Search by name..."
+              placeholder={searchPlaceholders[searchType]}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-sky-500 focus:border-sky-500 transition placeholder:text-slate-500"
-              aria-label="Search students by name"
+              aria-label="Search students"
             />
           </div>
 
