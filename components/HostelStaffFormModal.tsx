@@ -178,7 +178,7 @@ const HostelStaffFormModal: React.FC<HostelStaffFormModalProps> = ({ isOpen, onC
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-800">Date of Birth</label>
-                                <input type="text" placeholder="DD/MM/YYYY" pattern="\\d{1,2}/\\d{1,2}/\\d{4}" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                                <input type="text" placeholder="DD/MM/YYYY" pattern="\d{1,2}/\d{1,2}/\d{4}" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-800">Aadhaar No. (Optional)</label>
@@ -223,7 +223,7 @@ const HostelStaffFormModal: React.FC<HostelStaffFormModalProps> = ({ isOpen, onC
                             </div>
                              <div>
                                 <label className="block text-sm font-bold text-slate-800">Date of Joining</label>
-                                <input type="text" placeholder="DD/MM/YYYY" pattern="\\d{1,2}/\\d{1,2}/\\d{4}" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                                <input type="text" placeholder="DD/MM/YYYY" pattern="\d{1,2}/\d{1,2}/\d{4}" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-800">Assigned Block (Optional)</label>
