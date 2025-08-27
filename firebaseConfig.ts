@@ -1,4 +1,5 @@
 // src/firebaseConfig.ts
+// Fix: Use compat imports for v9 SDK with v8 syntax
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
@@ -44,4 +45,4 @@ db.enablePersistence()
 
 
 // Export for use in your app
-export { auth, db, firebaseConfig };
+export { auth, db, firebaseConfig, firebase };
