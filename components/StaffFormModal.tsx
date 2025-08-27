@@ -255,4 +255,211 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
             <div className="p-6 space-y-4 overflow-y-auto max-h-[75vh]">
                 <AccordionSection title="Personal Details" defaultOpen={true}>
                     <div>
-                        <label className="
+                        <label className="block text-sm font-bold text-slate-800">First Name</label>
+                        <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Last Name</label>
+                        <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Gender</label>
+                        <select name="gender" value={formData.gender} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {GENDER_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Date of Birth</label>
+                        <input type="text" placeholder="DD/MM/YYYY" pattern="\d{1,2}/\d{1,2}/\d{4}" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Marital Status</label>
+                        <select name="maritalStatus" value={formData.maritalStatus} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {MARITAL_STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Blood Group</label>
+                        <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                             {BLOOD_GROUP_LIST.map(b => <option key={b} value={b}>{b}</option>)}
+                        </select>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-bold text-slate-800">Aadhaar Number</label>
+                        <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Nationality</label>
+                        <input type="text" name="nationality" value={formData.nationality} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-800">Photograph</label>
+                        <div className="mt-2 flex items-center gap-4">
+                            <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border">
+                                {formData.photographUrl ? <img src={formData.photographUrl} alt="Staff preview" className="w-full h-full object-cover" /> : <UserIcon className="w-16 h-16 text-slate-500" />}
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <input type="file" ref={fileInputRef} onChange={handlePhotoChange} accept="image/*" className="hidden" id="photo-upload-staff" />
+                                <button type="button" onClick={() => fileInputRef.current?.click()} className="btn btn-secondary">Upload Photo</button>
+                                {formData.photographUrl && <button type="button" onClick={handleRemovePhoto} className="px-4 py-2 bg-red-50 border border-red-200 text-red-700 font-semibold rounded-lg shadow-sm hover:bg-red-100 text-sm">Remove</button>}
+                            </div>
+                        </div>
+                    </div>
+                </AccordionSection>
+                <AccordionSection title="Contact Information">
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Contact Number</label>
+                        <input type="tel" name="contactNumber" value={formData.contactNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Email</label>
+                        <input type="email" name="emailAddress" value={formData.emailAddress} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-800">Current Address</label>
+                        <textarea name="currentAddress" value={formData.currentAddress} onChange={handleChange} rows={2} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                     <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-800">Permanent Address</label>
+                        <textarea name="permanentAddress" value={formData.permanentAddress} onChange={handleChange} rows={2} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                </AccordionSection>
+                 <AccordionSection title="Professional Details">
+                     <div>
+                        <label className="block text-sm font-bold text-slate-800">Employee ID</label>
+                        <input type="text" name="employeeId" value={formData.employeeId} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" placeholder="e.g., BMS-T-001" required />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-bold text-slate-800">Date of Joining</label>
+                        <input type="text" placeholder="DD/MM/YYYY" pattern="\d{1,2}/\d{1,2}/\d{4}" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-bold text-slate-800">Staff Type</label>
+                        <select name="staffType" value={formData.staffType} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {STAFF_TYPE_LIST.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-bold text-slate-800">Employment Status</label>
+                        <select name="status" value={formData.status} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {EMPLOYMENT_STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Department</label>
+                        <select name="department" value={formData.department} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {DEPARTMENT_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Designation</label>
+                        <select name="designation" value={formData.designation} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {DESIGNATION_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-bold text-slate-800">Employee Type</label>
+                        <select name="employeeType" value={formData.employeeType} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {EMPLOYEE_TYPE_LIST.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                    </div>
+                    {formData.staffType === 'Teaching' && (
+                        <div>
+                            <label className="block text-sm font-bold text-slate-800">Assign as Class Teacher</label>
+                            <select value={assignedGrade} onChange={e => setAssignedGrade(e.target.value as Grade)} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                                <option value="">-- Not a Class Teacher --</option>
+                                {gradeOptions.map(opt => (
+                                    <option key={opt.value} value={opt.value} disabled={opt.disabled}>{opt.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </AccordionSection>
+                <AccordionSection title="Qualifications & Experience">
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Highest Qualification</label>
+                        <select name="educationalQualification" value={formData.educationalQualification} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm">
+                            {QUALIFICATION_LIST.map(q => <option key={q} value={q}>{q}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Specialization/Major</label>
+                        <input type="text" name="specialization" value={formData.specialization} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Years of Experience</label>
+                        <input type="number" name="yearsOfExperience" value={formData.yearsOfExperience} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    {formData.staffType === 'Teaching' && (
+                        <>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-800">Subjects Taught</label>
+                                <input type="text" name="subjectsTaught" value={Array.isArray(formData.subjectsTaught) ? formData.subjectsTaught.join(', ') : ''} onChange={handleChange} placeholder="e.g. English, Maths" className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold text-slate-800">Teacher License No. (Optional)</label>
+                                <input type="text" name="teacherLicenseNumber" value={formData.teacherLicenseNumber || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                            </div>
+                        </>
+                    )}
+                     <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-800">Previous Experience (Optional)</label>
+                        <textarea name="previousExperience" value={formData.previousExperience} onChange={handleChange} rows={3} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                </AccordionSection>
+                 <AccordionSection title="Payroll Details (Optional)">
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Basic Salary</label>
+                        <input type="number" name="basicSalary" value={formData.basicSalary ?? ''} onChange={handleChange} placeholder="e.g. 30000" className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Salary Grade</label>
+                        <input type="text" name="salaryGrade" value={formData.salaryGrade || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">PAN Number</label>
+                        <input type="text" name="panNumber" value={formData.panNumber || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Bank Name</label>
+                        <input type="text" name="bankName" value={formData.bankName || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                     <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-800">Bank Account Number</label>
+                        <input type="text" name="bankAccountNumber" value={formData.bankAccountNumber || ''} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                </AccordionSection>
+                <AccordionSection title="Emergency Contact">
+                     <div>
+                        <label className="block text-sm font-bold text-slate-800">Contact Name</label>
+                        <input type="text" name="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-800">Relationship</label>
+                        <input type="text" name="emergencyContactRelationship" value={formData.emergencyContactRelationship} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-800">Contact Number</label>
+                        <input type="tel" name="emergencyContactNumber" value={formData.emergencyContactNumber} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                    </div>
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-800">Medical Conditions (Optional)</label>
+                        <textarea name="medicalConditions" value={formData.medicalConditions || ''} onChange={handleChange} rows={2} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                    </div>
+                </AccordionSection>
+            </div>
+            <div className="bg-slate-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl border-t">
+                <button type="button" onClick={onClose} className="btn btn-secondary">
+                Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                {staffMember ? 'Save Changes' : 'Add Staff'}
+                </button>
+            </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default StaffFormModal;
