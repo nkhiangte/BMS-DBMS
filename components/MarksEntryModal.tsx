@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { Student, GradeDefinition, Exam, SubjectMark, Grade } from '../types';
 import { SpinnerIcon, CheckIcon, XIcon } from './Icons';
@@ -210,8 +208,12 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                             <tr>
                                 <th className="border p-2"></th>
                                 <th className="border p-2"></th>
-                                {gradeDef.subjects.flatMap(subject => 
-                                    subject.gradingSystem === 'OABC' ? [
+                                {gradeDef.subjects.flatMap(subject => {
+                                     // FIX: Make grade detection more robust.
+                                    const isEffectivelyGradeBased = subject.examFullMarks === 0 && subject.activityFullMarks === 0;
+                                    const isGradeBased = subject.gradingSystem === 'OABC' || isEffectivelyGradeBased;
+                                    
+                                    return isGradeBased ? [
                                         <th key={subject.name} className="border p-2 font-semibold text-slate-700">Grade</th>
                                     ] : subject.activityFullMarks > 0 ? [
                                         <th key={`${subject.name}-exam`} className="border p-2 font-semibold text-slate-700">Exam ({subject.examFullMarks})</th>,
@@ -219,7 +221,7 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                     ] : [
                                         <th key={subject.name} className="border p-2 font-semibold text-slate-700">Marks ({subject.examFullMarks})</th>
                                     ]
-                                )}
+                                })}
                             </tr>
                         </thead>
                         <tbody>
@@ -229,7 +231,12 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                     <td className="border p-2 font-medium">{student.name}</td>
                                     {gradeDef.subjects.flatMap((subject, subjectIndex) => {
                                         const marks = marksData[student.id]?.[subject.name] || {};
-                                        if (subject.gradingSystem === 'OABC') {
+                                        
+                                        // FIX: Make grade detection more robust.
+                                        const isEffectivelyGradeBased = subject.examFullMarks === 0 && subject.activityFullMarks === 0;
+                                        const isGradeBased = subject.gradingSystem === 'OABC' || isEffectivelyGradeBased;
+
+                                        if (isGradeBased) {
                                             return [
                                                 <td key={subject.name} className="border p-1">
                                                     <select

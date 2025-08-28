@@ -81,7 +81,10 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
               subjectDefinitions.map((subjectDef) => {
                 const result = results.find(r => r.subject === subjectDef.name) || { subject: subjectDef.name };
                 const useSplitMarks = hasActivitiesForThisGrade && subjectDef.activityFullMarks > 0;
-                const isGradeBased = subjectDef.gradingSystem === 'OABC';
+                
+                // FIX: Make grade detection more robust. If a subject has 0 for all marks, it's grade-based.
+                const isEffectivelyGradeBased = subjectDef.examFullMarks === 0 && subjectDef.activityFullMarks === 0;
+                const isGradeBased = subjectDef.gradingSystem === 'OABC' || isEffectivelyGradeBased;
                 
                 return (
                   <tr key={subjectDef.name}>
