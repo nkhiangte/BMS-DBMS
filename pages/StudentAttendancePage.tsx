@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, DailyStudentAttendance, StudentAttendanceRecord, StudentAttendanceStatus, User, StudentStatus } from '../types';
-import { BackIcon, HomeIcon, CheckIcon, SpinnerIcon, CheckCircleIcon, InboxArrowDownIcon } from '../components/Icons';
+import { BackIcon, HomeIcon, CheckIcon, SpinnerIcon, CheckCircleIcon, InboxArrowDownIcon, ChevronDownIcon, ChevronUpIcon } from '../components/Icons';
 import { exportAttendanceToCsv } from '../utils';
 
 interface StudentAttendancePageProps {
@@ -78,6 +78,11 @@ const StudentAttendancePage: React.FC<StudentAttendancePageProps> = ({ students,
     const [exportMonth, setExportMonth] = useState(new Date().toISOString().slice(0, 7));
     const [isExporting, setIsExporting] = useState(false);
 
+    // State for recent absentees
+    const [isRecentAbsenteesVisible, setIsRecentAbsenteesVisible] = useState(false);
+    const [recentAbsentees, setRecentAbsentees] = useState<Record<string, { date: Date, absentees: Student[] }>>({});
+    const [isLoadingRecent, setIsLoadingRecent] = useState(true);
+
     const isToday = selectedDate === todayStr;
 
     useEffect(() => {
@@ -116,6 +121,75 @@ const StudentAttendancePage: React.FC<StudentAttendancePageProps> = ({ students,
 
         fetchDataForDate(selectedDate);
     }, [selectedDate, allAttendance, classStudents, grade, fetchStudentAttendanceForMonth, todayStr]);
+
+    useEffect(() => {
+        const getPreviousWorkingDays = (count: number): Date[] => {
+            const dates: Date[] = [];
+            let currentDate = new Date();
+            
+            while (dates.length < count) {
+                currentDate.setDate(currentDate.getDate() - 1);
+                const dayOfWeek = currentDate.getDay();
+                if (dayOfWeek !== 0) { // 0 is Sunday
+                    dates.push(new Date(currentDate));
+                }
+            }
+            return dates;
+        };
+
+        const fetchRecentAbsentees = async () => {
+            if (!grade || classStudents.length === 0) {
+                setIsLoadingRecent(false);
+                return;
+            }
+
+            setIsLoadingRecent(true);
+            const prev5WorkingDaysDates = getPreviousWorkingDays(5);
+            const prev5WorkingDaysStrings = prev5WorkingDaysDates.map(toYYYYMMDD);
+            
+            const monthsToFetch = [...new Set(prev5WorkingDaysStrings.map(d => d.substring(0, 7)))];
+            
+            const allMonthlyData: { [date: string]: StudentAttendanceRecord } = {};
+
+            for (const monthStr of monthsToFetch) {
+                const [year, month] = monthStr.split('-').map(Number);
+                try {
+                    const monthlyData = await fetchStudentAttendanceForMonth(grade, year, month);
+                    Object.assign(allMonthlyData, monthlyData);
+                } catch (error) {
+                    console.error(`Failed to fetch attendance for ${monthStr}`, error);
+                }
+            }
+
+            const absenteesByDate: Record<string, { date: Date, absentees: Student[] }> = {};
+            const studentMap = new Map(classStudents.map(s => [s.id, s]));
+
+            prev5WorkingDaysDates.forEach(dateObj => {
+                const dateStr = toYYYYMMDD(dateObj);
+                const dailyRecord = allMonthlyData[dateStr];
+                
+                if (dailyRecord) {
+                    const absentStudentIds = Object.keys(dailyRecord).filter(
+                        studentId => dailyRecord[studentId] === StudentAttendanceStatus.ABSENT
+                    );
+                    absenteesByDate[dateStr] = {
+                        date: dateObj,
+                        absentees: absentStudentIds
+                            .map(id => studentMap.get(id))
+                            .filter((s): s is Student => !!s)
+                            .sort((a,b) => a.rollNo - b.rollNo)
+                    };
+                } else {
+                     absenteesByDate[dateStr] = { date: dateObj, absentees: [] };
+                }
+            });
+            
+            setRecentAbsentees(absenteesByDate);
+            setIsLoadingRecent(false);
+        };
+
+        fetchRecentAbsentees();
+    }, [grade, classStudents, fetchStudentAttendanceForMonth]);
 
 
     const handleStatusChange = (studentId: string, status: StudentAttendanceStatus) => {
@@ -300,6 +374,39 @@ const StudentAttendancePage: React.FC<StudentAttendancePageProps> = ({ students,
                         </div>
                         
                         <AbsenteesList students={classStudents} records={records} />
+
+                        <div className="mt-6">
+                            <button
+                                onClick={() => setIsRecentAbsenteesVisible(prev => !prev)}
+                                className="w-full flex justify-between items-center p-3 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-slate-800 transition-colors"
+                            >
+                                <span>Absentees From Previous 5 Working Days</span>
+                                {isRecentAbsenteesVisible ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />}
+                            </button>
+                            {isRecentAbsenteesVisible && (
+                                <div className="mt-2 p-4 border rounded-b-lg animate-fade-in">
+                                    {isLoadingRecent ? (
+                                        <p className="text-slate-600">Loading recent absentee data...</p>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {Object.values(recentAbsentees).sort((a,b) => b.date.getTime() - a.date.getTime()).map(({ date, absentees }) => (
+                                                <div key={date.toISOString()}>
+                                                    <h4 className="font-semibold text-slate-700">{date.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h4>
+                                                    {absentees.length > 0 ? (
+                                                        <ul className="list-disc list-inside text-slate-600 pl-4 columns-1 sm:columns-2 md:columns-3">
+                                                            {absentees.map(s => <li key={s.id}>{s.name} (Roll {s.rollNo})</li>)}
+                                                        </ul>
+                                                    ) : (
+                                                        <p className="text-sm text-emerald-700 pl-4 italic">All students were present.</p>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
 
                          {isClassTeacher && isToday && (
                             <div className="mt-6 flex justify-end">

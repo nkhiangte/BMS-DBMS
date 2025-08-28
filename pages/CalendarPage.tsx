@@ -18,10 +18,14 @@ const CalendarPage: React.FC<CalendarPageProps> = ({ events, user, onAdd, onEdit
     const navigate = useNavigate();
     const [currentDate, setCurrentDate] = useState(new Date());
 
-    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
-    const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+    
+    const getFirstDayOfMonth = (year: number, month: number) => {
+        const day = new Date(year, month, 1).getDay(); // Sunday is 0, Monday is 1
+        return (day + 6) % 7; // Monday is 0, Sunday is 6
+    };
 
     const changeMonth = (offset: number) => {
         setCurrentDate(prev => {
