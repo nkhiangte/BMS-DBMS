@@ -111,10 +111,15 @@ export const calculateStudentResult = (
         if (full > 0) {
             let failed = false;
             if (gradeCategory === 'III-VIII') {
-                if (hasActivityMarks && examMarks < 20) {
-                    failed = true;
-                } else if (!hasActivityMarks && singleMark < 33) { // Fallback for old system
-                     failed = true;
+                if (hasActivityMarks) {
+                    // Fail if exam marks are below 20 OR total is below 33
+                    if (examMarks < 20 || obtained < 33) {
+                        failed = true;
+                    }
+                } else { // Fallback for old system without activities
+                    if (singleMark < 33) {
+                         failed = true;
+                    }
                 }
             } else {
                 if (obtained < 33) {
@@ -291,14 +296,14 @@ export const calculateRanks = (
 ): Map<string, number | 'NA'> => {
   const ranks = new Map<string, number | 'NA'>();
 
-  // Filter for students who passed and sort them by marks
+  // Filter for students who passed (including simple pass) and sort them by marks
   const passedAndRankableStudents = studentScores
-    .filter(s => s.result === 'PASS')
+    .filter(s => s.result === 'PASS' || s.result === 'SIMPLE PASS')
     .sort((a, b) => b.totalMarks - a.totalMarks);
 
-  // Set rank to 'NA' for everyone who didn't pass
+  // Set rank to 'NA' for everyone who failed
   studentScores.forEach(s => {
-    if (s.result !== 'PASS') {
+    if (s.result === 'FAIL') {
       ranks.set(s.studentId, 'NA');
     }
   });
