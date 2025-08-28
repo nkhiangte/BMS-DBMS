@@ -340,23 +340,27 @@ export const getMonthsForTerm = (examId: string): { month: number, yearOffset: 0
 }
 
 export const getPerformanceGrade = (percentage: number, result: string, grade: Grade): string => {
+    const isHighSchool = grade === Grade.IX || grade === Grade.X;
+
     if (result === 'FAIL') {
-        return grade === Grade.IX || grade === Grade.X ? 'FAIL' : 'D';
+        return isHighSchool ? 'FAIL' : 'D';
     }
-
-    if (grade === Grade.IX || grade === Grade.X) {
-        if (percentage >= 75) return 'D';
-        if (percentage >= 60) return 'I';
-        if (percentage >= 50) return 'II';
-        return 'III';
+    
+    if (isHighSchool) {
+        // High School Division System for PASS/SIMPLE PASS
+        if (percentage >= 75) return 'D'; // Distinction
+        if (percentage >= 60) return 'I'; // First Division
+        if (percentage >= 50) return 'II'; // Second Division
+        return 'III'; // Third Division
+    } else {
+        // Grading System for Nursery to Class VIII for PASS/SIMPLE PASS
+        // Based on: =IF(%>89,"O",IF(%>79,"A", IF(%>69,"B",IF(%>59,"C","D"))))
+        if (percentage > 89) return 'O'; // e.g. 90% and above
+        if (percentage > 79) return 'A'; // e.g. 80% to 89.99%
+        if (percentage > 69) return 'B'; // e.g. 70% to 79.99%
+        if (percentage > 59) return 'C'; // e.g. 60% to 69.99%
+        return 'D'; // e.g. below 60%
     }
-
-    if (percentage >= 90) return 'A+';
-    if (percentage >= 80) return 'A';
-    if (percentage >= 70) return 'B+';
-    if (percentage >= 60) return 'B';
-    if (percentage >= 50) return 'C+';
-    return 'C';
 };
 
 export const getRemarks = (percentage: number, result: string): string => {
