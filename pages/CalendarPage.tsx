@@ -10,9 +10,11 @@ interface CalendarPageProps {
     onAdd: () => void;
     onEdit: (event: CalendarEvent) => void;
     onDelete: (event: CalendarEvent) => void;
+    notificationDaysBefore: number;
+    onUpdatePrefs: (days: number) => void;
 }
 
-const CalendarPage: React.FC<CalendarPageProps> = ({ events, user, onAdd, onEdit, onDelete }) => {
+const CalendarPage: React.FC<CalendarPageProps> = ({ events, user, onAdd, onEdit, onDelete, notificationDaysBefore, onUpdatePrefs }) => {
     const navigate = useNavigate();
     const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -165,6 +167,26 @@ const CalendarPage: React.FC<CalendarPageProps> = ({ events, user, onAdd, onEdit
                         Add Event
                     </button>
                  )}
+            </div>
+
+            <div className="my-6 p-4 bg-slate-50 rounded-lg border">
+                <h3 className="font-bold text-slate-800">Notification Settings</h3>
+                <p className="text-sm text-slate-600 mb-2">Get reminders for upcoming events.</p>
+                <div className="flex items-center gap-3">
+                    <label htmlFor="notification-days" className="text-sm font-medium text-slate-700">Remind me:</label>
+                    <select
+                        id="notification-days"
+                        value={notificationDaysBefore}
+                        onChange={e => onUpdatePrefs(Number(e.target.value))}
+                        className="form-select px-3 py-1.5 text-sm border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500"
+                    >
+                        <option value="-1">Disabled</option>
+                        <option value="0">On the day</option>
+                        <option value="1">1 Day Before</option>
+                        <option value="3">3 Days Before</option>
+                        <option value="7">1 Week Before</option>
+                    </select>
+                </div>
             </div>
 
             <div className="border-t border-l border-slate-200">

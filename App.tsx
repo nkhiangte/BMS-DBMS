@@ -1,11 +1,7 @@
-
-
-
-
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent } from './types';
-import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST } from './constants';
+import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType } from './types';
+import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST, MIZORAM_HOLIDAYS } from './constants';
 import { getNextGrade, createDefaultFeePayments, calculateStudentResult, formatStudentId } from './utils';
 
 import { auth, db, firebaseConfig, firebase } from './firebaseConfig';
@@ -39,6 +35,7 @@ import InventoryFormModal from './components/InventoryFormModal';
 import ImportStudentsModal from './components/ImportStudentsModal';
 import TransferStudentModal from './components/TransferStudentModal';
 import StudentAttendancePage from './pages/StudentAttendancePage';
+import NotificationContainer from './components/NotificationContainer';
 
 // Auth Pages
 import LoginPage from './pages/LoginPage';
@@ -147,6 +144,10 @@ const App: React.FC = () => {
     const [isCalendarEventFormModalOpen, setIsCalendarEventFormModalOpen] = useState(false);
     const [editingCalendarEvent, setEditingCalendarEvent] = useState<CalendarEvent | null>(null);
     const [deletingCalendarEvent, setDeletingCalendarEvent] = useState<CalendarEvent | null>(null);
+
+    // --- NOTIFICATION STATE ---
+    const [notificationDaysBefore, setNotificationDaysBefore] = useState<number>(3); // Default to 3 days
+    const [activeNotifications, setActiveNotifications] = useState<{ id: string; message: string; }[]>([]);
 
     // --- DERIVED STATE (for Role-Based Access) ---
     const assignedGrade = useMemo(() => {
@@ -293,6 +294,89 @@ const App: React.FC = () => {
 
         return () => unsubscribers.forEach(unsub => unsub());
     }, [user, isFirebaseConfigured]);
+    
+    // --- NOTIFICATION LOGIC ---
+    useEffect(() => {
+        try {
+            const savedPrefs = localStorage.getItem('notificationPrefs');
+            if (savedPrefs) {
+                const prefs = JSON.parse(savedPrefs);
+                if (typeof prefs.daysBefore === 'number') {
+                    setNotificationDaysBefore(prefs.daysBefore);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to load notification preferences:", error);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!calendarEvents.length || notificationDaysBefore < 0) return; // -1 means disabled
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const todayStr = today.toISOString().split('T')[0];
+        const shownNotificationsKey = `shownNotifications_${todayStr}`;
+        let shownToday: Set<string>;
+        try {
+            shownToday = new Set(JSON.parse(localStorage.getItem(shownNotificationsKey) || '[]'));
+        } catch (e) {
+            shownToday = new Set();
+            localStorage.removeItem(shownNotificationsKey);
+        }
+
+        const newNotifications: { id: string; message: string; }[] = [];
+
+        const allPossibleEvents = [
+            ...calendarEvents,
+            ...MIZORAM_HOLIDAYS.map(h => ({
+                id: `gov-${h.date}`,
+                title: h.title,
+                date: h.date,
+                type: CalendarEventType.HOLIDAY
+            } as CalendarEvent))
+        ];
+
+        allPossibleEvents.forEach(event => {
+            const eventDate = new Date(event.date);
+            eventDate.setHours(0, 0, 0, 0);
+
+            if (eventDate < today) return;
+
+            const diffTime = eventDate.getTime() - today.getTime();
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays === notificationDaysBefore) {
+                if (!shownToday.has(event.id)) {
+                    newNotifications.push({
+                        id: event.id,
+                        message: `"${event.title}" is in ${notificationDaysBefore} day${notificationDaysBefore === 1 ? '' : 's'}.`,
+                    });
+                    shownToday.add(event.id);
+                }
+            }
+        });
+
+        if (newNotifications.length > 0) {
+            setActiveNotifications(prev => {
+                const existingIds = new Set(prev.map(n => n.id));
+                const uniqueNew = newNotifications.filter(n => !existingIds.has(n.id));
+                return [...prev, ...uniqueNew];
+            });
+            localStorage.setItem(shownNotificationsKey, JSON.stringify(Array.from(shownToday)));
+        }
+    }, [calendarEvents, notificationDaysBefore]);
+
+    const handleUpdateNotificationPrefs = (days: number) => {
+        setNotificationDaysBefore(days);
+        localStorage.setItem('notificationPrefs', JSON.stringify({ daysBefore: days }));
+    };
+
+    const handleDismissNotification = (id: string) => {
+        setActiveNotifications(prev => prev.filter(n => n.id !== id));
+    };
+
 
     // --- UI & MODAL HANDLERS ---
     const closeModal = useCallback(() => {
@@ -507,6 +591,21 @@ const App: React.FC = () => {
         await db.collection('students').doc(studentId).set({ feePayments: payments }, { merge: true });
     }, []);
     
+    const handleUpdateBulkFeePayments = useCallback(async (updates: Array<{ studentId: string; payments: FeePayments }>) => {
+        if (updates.length === 0) return;
+        const batch = db.batch();
+        updates.forEach(({ studentId, payments }) => {
+            const studentRef = db.collection('students').doc(studentId);
+            batch.set(studentRef, { feePayments: payments }, { merge: true });
+        });
+        try {
+            await batch.commit();
+        } catch (error) {
+            console.error("Error updating fee payments in batch:", error);
+            alert(`Failed to update fee payments. Error: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }, []);
+
     const handleSaveTc = async (tcData: Omit<TcRecord, 'id'>) => {
         const batch = db.batch();
         batch.set(db.collection('tcRecords').doc(), tcData);
@@ -804,6 +903,7 @@ const App: React.FC = () => {
             ) : (
                 <div className="bg-slate-100 min-h-screen">
                     <Header user={user} onLogout={handleLogout} />
+                    <NotificationContainer notifications={activeNotifications} onDismiss={handleDismissNotification} />
                     <main className="container mx-auto p-4 sm:p-6 lg:p-8">
                         <Routes>
                              <Route path="/" element={<DashboardPage user={user} onAddStudent={handleAddStudent} studentCount={students.length} academicYear={academicYear} onSetAcademicYear={handleSetAcademicYear} allUsers={allUsers} assignedGrade={assignedGrade} />} />
@@ -813,7 +913,7 @@ const App: React.FC = () => {
                                 <Route path="/report-card/:studentId" element={<PrintableReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear} user={user} assignedGrade={assignedGrade} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} />} />
                                 <Route path="/reports/search" element={<ReportSearchPage students={students} academicYear={academicYear} />} />
                                 <Route path="/classes" element={<ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} user={user} />} />
-                                <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} onOpenTransferModal={(s) => setTransferringStudent(s)} onDelete={(s) => setDeletingStudent(s)} user={user} assignedGrade={assignedGrade} onAddStudentToClass={handleAddStudentToClass} />} />
+                                <Route path="/classes/:grade" element={<ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear} onOpenImportModal={(g) => { setImportTargetGrade(g); setIsImportModalOpen(true); }} onOpenTransferModal={(s) => setTransferringStudent(s)} onDelete={(s) => setDeletingStudent(s)} user={user} assignedGrade={assignedGrade} onAddStudentToClass={handleAddStudentToClass} onUpdateBulkFeePayments={handleUpdateBulkFeePayments} />} />
                                 <Route path="/transfers" element={<TransferManagementPage students={students} tcRecords={tcRecords} />} />
                                 <Route path="/transfers/register" element={<TcRegistrationPage students={students} onSave={handleSaveTc} academicYear={academicYear} user={user} />} />
                                 <Route path="/transfers/records" element={<AllTcRecordsPage tcRecords={tcRecords} />} />
@@ -831,7 +931,7 @@ const App: React.FC = () => {
                                 <Route path="/communication" element={<CommunicationPage students={students} user={user} />} />
                                 <Route path="/staff/attendance" element={<StaffAttendancePage user={user} staff={staff} attendance={staffAttendance} onMarkAttendance={handleMarkStaffAttendance} fetchStaffAttendanceForMonth={fetchStaffAttendanceForMonth} academicYear={academicYear} />} />
                                 <Route path="/classes/:grade/attendance" element={<StudentAttendancePage students={students} allAttendance={studentAttendance} onUpdateAttendance={handleUpdateStudentAttendance} user={user} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} academicYear={academicYear} assignedGrade={assignedGrade} />} />
-                                <Route path="/calendar" element={<CalendarPage events={calendarEvents} user={user} onAdd={() => { setEditingCalendarEvent(null); setIsCalendarEventFormModalOpen(true); }} onEdit={(e) => { setEditingCalendarEvent(e); setIsCalendarEventFormModalOpen(true); }} onDelete={(e) => setDeletingCalendarEvent(e)} />} />
+                                <Route path="/calendar" element={<CalendarPage events={calendarEvents} user={user} onAdd={() => { setEditingCalendarEvent(null); setIsCalendarEventFormModalOpen(true); }} onEdit={(e) => { setEditingCalendarEvent(e); setIsCalendarEventFormModalOpen(true); }} onDelete={(e) => setDeletingCalendarEvent(e)} notificationDaysBefore={notificationDaysBefore} onUpdatePrefs={handleUpdateNotificationPrefs} />} />
                                 
                                 {/* Staff docs */}
                                 <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} user={user}/>} />

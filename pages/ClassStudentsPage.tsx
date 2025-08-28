@@ -1,11 +1,11 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, Grade, GradeDefinition, Staff, EmploymentStatus, User } from '../types';
-import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon, ClipboardDocumentCheckIcon, PlusIcon, MessageIcon, WhatsappIcon, UserIcon, DocumentReportIcon } from '../components/Icons';
+import { Student, Grade, GradeDefinition, Staff, EmploymentStatus, User, FeePayments } from '../types';
+import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon, ClipboardDocumentCheckIcon, PlusIcon, MessageIcon, WhatsappIcon, UserIcon, DocumentReportIcon, CurrencyDollarIcon } from '../components/Icons';
 import { formatStudentId, calculateDues, formatPhoneNumberForWhatsApp } from '../utils';
 import EditSubjectsModal from '../components/EditSubjectsModal';
 import { TERMINAL_EXAMS } from '../constants';
+import ExamFeeCollectionModal from '../components/ExamFeeCollectionModal';
 
 interface ClassStudentsPageProps {
   students: Student[];
@@ -19,6 +19,7 @@ interface ClassStudentsPageProps {
   user: User;
   assignedGrade: Grade | null;
   onAddStudentToClass: (grade: Grade) => void;
+  onUpdateBulkFeePayments: (updates: Array<{ studentId: string; payments: FeePayments }>) => Promise<void>;
 }
 
 const PhotoThumbnail: React.FC<{ student: Student }> = ({ student }) => {
@@ -46,13 +47,14 @@ const PhotoThumbnail: React.FC<{ student: Student }> = ({ student }) => {
     );
 };
 
-const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal, onOpenTransferModal, onDelete, user, assignedGrade, onAddStudentToClass }) => {
+const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal, onOpenTransferModal, onDelete, user, assignedGrade, onAddStudentToClass, onUpdateBulkFeePayments }) => {
   const { grade } = useParams<{ grade: string }>();
   const navigate = useNavigate();
   const decodedGrade = grade ? decodeURIComponent(grade) as Grade : '' as Grade;
   const gradeDef = gradeDefinitions[decodedGrade];
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExamFeeModalOpen, setIsExamFeeModalOpen] = useState(false);
   const [isEditingTeacher, setIsEditingTeacher] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
 
@@ -185,6 +187,13 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                 </Link>
                 {isClassTeacher && (
                    <>
+                    <button
+                        onClick={() => setIsExamFeeModalOpen(true)}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-violet-600 text-white font-semibold rounded-lg shadow-md hover:bg-violet-700 transition hover:-translate-y-0.5"
+                    >
+                        <CurrencyDollarIcon className="w-5 h-5" />
+                        Collect Exam Fees
+                    </button>
                      <button
                         onClick={() => onAddStudentToClass(decodedGrade)}
                         className="flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 transition hover:-translate-y-0.5"
@@ -306,6 +315,13 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
           initialGradeDefinition={gradeDef}
         />
       )}
+      <ExamFeeCollectionModal
+        isOpen={isExamFeeModalOpen}
+        onClose={() => setIsExamFeeModalOpen(false)}
+        onSave={onUpdateBulkFeePayments}
+        students={classStudents}
+        grade={decodedGrade}
+      />
     </>
   );
 };
