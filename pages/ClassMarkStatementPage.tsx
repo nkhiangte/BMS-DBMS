@@ -352,10 +352,10 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                             <td className="border px-2 py-1 text-left font-medium">
                                                 <Link to={`/student/${student.id}`} className="hover:underline text-sky-700">{student.name}</Link>
                                             </td>
-                                            {gradeDef.subjects.map(subject => {
+                                            {gradeDef.subjects.flatMap(subject => {
                                                 const studentResult = results.find(r => r.subject === subject.name);
                                                 if (subject.gradingSystem === 'OABC') {
-                                                    return <td key={subject.name} className="border px-2 py-1 text-center font-bold text-lg">{studentResult?.grade ?? '-'}</td>;
+                                                    return [<td key={subject.name} className="border px-2 py-1 text-center font-bold text-lg">{studentResult?.grade ?? '-'}</td>];
                                                 }
                                                 const examMarks = studentResult?.examMarks ?? '-';
                                                 const activityMarks = studentResult?.activityMarks ?? '-';
