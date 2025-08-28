@@ -97,8 +97,12 @@ const ReportCardContent: React.FC<ReportCardContentProps> = ({ student, examDeta
                             const isGradeBased = subjectDef.gradingSystem === 'OABC' || (subjectDef.examFullMarks === 0 && subjectDef.activityFullMarks === 0);
                             const examMarks = result?.examMarks ?? '-';
                             const activityMarks = result?.activityMarks ?? '-';
-// FIX: Added parentheses to clarify the order of operations between '??' and '||' to resolve a TypeScript parsing error.
-                            const total = (result?.marks ?? ((result?.examMarks ?? 0) + (result?.activityMarks ?? 0))) || '-';
+                            
+                            const hasSubjectActivities = subjectDef.activityFullMarks > 0;
+                            const calculatedTotal = result?.marks ?? (result?.examMarks ?? 0) + (hasSubjectActivities ? (result?.activityMarks ?? 0) : 0);
+                            
+                            const wasAnyMarkEntered = result && (result.marks != null || result.examMarks != null || result.activityMarks != null);
+                            const total = wasAnyMarkEntered ? calculatedTotal : '-';
                             
                             return (
                                 <tr key={subjectDef.name}>
@@ -216,14 +220,14 @@ const PrintableBulkReportCardPage: React.FC<PrintableBulkReportCardPageProps> = 
             // 3. Process each student
             const allReportData = classStudents.map(student => {
                 const termResults = student.academicPerformance?.find(e => e.id === examId)?.results || [];
-                const hasActivities = !GRADES_WITH_NO_ACTIVITIES.includes(student.grade);
                 
                 let grandTotal = 0;
                 let maxGrandTotal = 0;
                 gradeDef.subjects.filter(sub => isSubjectNumeric(sub, student.grade)).forEach(sub => {
                     const res = termResults.find(r => r.subject === sub.name);
-                    grandTotal += (res?.marks ?? (res?.examMarks ?? 0) + (res?.activityMarks ?? 0));
-                    maxGrandTotal += sub.examFullMarks + (hasActivities ? sub.activityFullMarks : 0);
+                    const hasSubjectActivities = sub.activityFullMarks > 0;
+                    grandTotal += (res?.marks ?? (res?.examMarks ?? 0) + (hasSubjectActivities ? (res?.activityMarks ?? 0) : 0));
+                    maxGrandTotal += sub.examFullMarks + (hasSubjectActivities ? sub.activityFullMarks : 0);
                 });
                 
                 const percentage = maxGrandTotal > 0 ? (grandTotal / maxGrandTotal) * 100 : 0;

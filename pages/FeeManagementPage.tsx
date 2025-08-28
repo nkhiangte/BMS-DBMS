@@ -1,4 +1,5 @@
 
+
 import React, { useState, FormEvent, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BackIcon, HomeIcon, SearchIcon, CurrencyDollarIcon, UserIcon, CheckIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons';
@@ -136,7 +137,7 @@ const FeeManagementPage: React.FC<FeeManagementPageProps> = ({ students, academi
   const allTuitionPaid = paymentData ? academicMonths.every(m => paymentData.tuitionFeesPaid[m]) : false;
 
   const tempStudentForDues: Student | null = foundStudent && paymentData ? { ...foundStudent, feePayments: paymentData } : null;
-  const dues = tempStudentForDues ? calculateDues(tempStudentForDues) : [];
+  const dues = tempStudentForDues ? calculateDues(tempStudentForDues, feeStructure) : [];
 
   const isReadOnly = user.role !== 'admin';
 

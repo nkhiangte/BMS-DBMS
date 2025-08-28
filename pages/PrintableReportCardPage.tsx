@@ -135,9 +135,12 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
           .filter(subjectDef => isSubjectNumeric(subjectDef, student.grade))
           .forEach(subjectDef => {
             const result = termResults.find(r => r.subject === subjectDef.name);
-            const marks = result?.marks ?? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0);
+            const hasSubjectActivities = subjectDef.activityFullMarks > 0;
+    
+            const marks = result?.marks ?? (result?.examMarks ?? 0) + (hasSubjectActivities ? (result?.activityMarks ?? 0) : 0);
             grandTotal += marks;
-            maxGrandTotal += subjectDef.examFullMarks + (hasActivitiesForThisGrade ? subjectDef.activityFullMarks : 0);
+            
+            maxGrandTotal += subjectDef.examFullMarks + (hasSubjectActivities ? subjectDef.activityFullMarks : 0);
         });
         
         const percentage = maxGrandTotal > 0 ? (grandTotal / maxGrandTotal) * 100 : 0;
@@ -149,7 +152,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
             performanceGrade: getPerformanceGrade(percentage, finalResult, student.grade),
             remarks: getRemarks(percentage, finalResult),
         };
-    }, [student, gradeDef, termResults, hasActivitiesForThisGrade]);
+    }, [student, gradeDef, termResults]);
 
 
     if (!student) {
@@ -253,8 +256,12 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                             const isGradeBased = subjectDef.gradingSystem === 'OABC' || (subjectDef.examFullMarks === 0 && subjectDef.activityFullMarks === 0);
                             const examMarks = result?.examMarks ?? '-';
                             const activityMarks = result?.activityMarks ?? '-';
-// FIX: Added parentheses to clarify the order of operations between '??' and '||' to resolve a TypeScript parsing error.
-                            const total = (result?.marks ?? ((result?.examMarks ?? 0) + (result?.activityMarks ?? 0))) || '-';
+                            
+                            const hasSubjectActivities = subjectDef.activityFullMarks > 0;
+                            const calculatedTotal = result?.marks ?? (result?.examMarks ?? 0) + (hasSubjectActivities ? (result?.activityMarks ?? 0) : 0);
+                            
+                            const wasAnyMarkEntered = result && (result.marks != null || result.examMarks != null || result.activityMarks != null);
+                            const total = wasAnyMarkEntered ? calculatedTotal : '-';
                             
                             return (
                                 <tr key={subjectDef.name}>

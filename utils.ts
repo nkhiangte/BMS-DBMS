@@ -1,4 +1,5 @@
 
+
 import { Student, Staff, Grade, FeePayments, SubjectMark, GradeDefinition, StaffAttendanceRecord, StudentAttendanceRecord, AttendanceStatus, StudentAttendanceStatus, SubjectDefinition, FeeStructure } from './types';
 import { academicMonths, GRADES_LIST, FEE_SET_GRADES } from './constants';
 
@@ -52,7 +53,7 @@ export const getFeeDetails = (grade: Grade, feeStructure: FeeStructure) => {
     return feeStructure.set1;
 };
 
-export const calculateDues = (student: Student): string[] => {
+export const calculateDues = (student: Student, feeStructure: FeeStructure): string[] => {
     // If a student record was created before the feePayments feature, it might be undefined.
     // We create a default state assuming no fees are paid.
     const defaultPayments: FeePayments = {
@@ -61,16 +62,18 @@ export const calculateDues = (student: Student): string[] => {
         examFeesPaid: { terminal1: false, terminal2: false, terminal3: false },
     };
     const feePayments = student.feePayments || defaultPayments;
+    const feeDetails = getFeeDetails(student.grade, feeStructure);
 
     const duesMessages: string[] = [];
 
     if (!feePayments.admissionFeePaid) {
-        duesMessages.push('Admission Fee');
+        duesMessages.push(`Admission Fee: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(feeDetails.admissionFee)}`);
     }
 
     const unpaidTuitionMonths = academicMonths.filter(month => !feePayments.tuitionFeesPaid[month]);
     if (unpaidTuitionMonths.length > 0) {
-        duesMessages.push(`Tuition Fee: ${unpaidTuitionMonths.length} month(s) pending`);
+        const totalTuitionDue = unpaidTuitionMonths.length * feeDetails.tuitionFee;
+        duesMessages.push(`Tuition Fee: ${unpaidTuitionMonths.length} month(s) pending (${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(totalTuitionDue)})`);
     }
 
     const unpaidExams: string[] = [];
@@ -78,7 +81,8 @@ export const calculateDues = (student: Student): string[] => {
     if (!feePayments.examFeesPaid.terminal2) unpaidExams.push('Term 2');
     if (!feePayments.examFeesPaid.terminal3) unpaidExams.push('Term 3');
     if (unpaidExams.length > 0) {
-        duesMessages.push(`Exam Fee: ${unpaidExams.join(', ')}`);
+        const totalExamDue = unpaidExams.length * feeDetails.examFee;
+        duesMessages.push(`Exam Fee: ${unpaidExams.join(', ')} (${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(totalExamDue)})`);
     }
 
     return duesMessages;

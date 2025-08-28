@@ -1,8 +1,9 @@
 
 
+
 import React, { useState, FormEvent, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Student, TcRecord, Grade, User } from '../types';
+import { Student, TcRecord, Grade, User, FeeStructure } from '../types';
 import { BackIcon, HomeIcon, DocumentPlusIcon, CheckIcon } from '../components/Icons';
 import { formatStudentId, calculateDues } from '../utils';
 import { GoogleGenAI } from '@google/genai';
@@ -14,6 +15,7 @@ interface TcRegistrationPageProps {
   onSave: (tcRecord: Omit<TcRecord, 'id'>) => void;
   academicYear: string;
   user: User;
+  feeStructure: FeeStructure;
 }
 
 const ReadonlyField: React.FC<{ label: string; value?: string | number }> = ({ label, value }) => (
@@ -48,7 +50,7 @@ const FormField: React.FC<{
     </div>
 );
 
-const TcRegistrationPage: React.FC<TcRegistrationPageProps> = ({ students, onSave, academicYear, user }) => {
+const TcRegistrationPage: React.FC<TcRegistrationPageProps> = ({ students, onSave, academicYear, user, feeStructure }) => {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -113,7 +115,7 @@ const TcRegistrationPage: React.FC<TcRegistrationPageProps> = ({ students, onSav
         setStudent(foundStudent);
         fetchDobInWords(foundStudent.dateOfBirth);
         
-        const duesArray = calculateDues(foundStudent);
+        const duesArray = calculateDues(foundStudent, feeStructure);
         const calculatedDues = duesArray.length > 0 ? duesArray.join('; ') + ' due.' : 'None';
 
         setFormData(prev => ({
@@ -124,7 +126,7 @@ const TcRegistrationPage: React.FC<TcRegistrationPageProps> = ({ students, onSav
     } else {
         setSearchError('Student ID not found. Please check and try again.');
     }
-  }, [studentIdInput, students, academicYear]);
+  }, [studentIdInput, students, academicYear, feeStructure]);
 
   useEffect(() => {
       if (location.state?.studentIdInput) {

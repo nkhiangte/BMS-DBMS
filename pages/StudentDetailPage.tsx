@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, User, Grade } from '../types';
+import { Student, User, Grade, FeeStructure } from '../types';
 import { BackIcon, EditIcon, UserIcon, AcademicCapIcon, DocumentReportIcon, HomeIcon, CurrencyDollarIcon, CheckCircleIcon, XCircleIcon, MessageIcon, WhatsappIcon } from '../components/Icons';
 import { formatStudentId, calculateDues, formatDateForDisplay, formatPhoneNumberForWhatsApp } from '../utils';
 
@@ -12,6 +12,7 @@ interface StudentDetailPageProps {
   academicYear: string;
   user: User;
   assignedGrade: Grade | null;
+  feeStructure: FeeStructure;
 }
 
 const PhotoWithFallback: React.FC<{src?: string, alt: string}> = ({ src, alt }) => {
@@ -57,7 +58,7 @@ const DetailSection: React.FC<{title: string, children: React.ReactNode}> = ({ t
 )
 
 
-const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit, academicYear, user, assignedGrade }) => {
+const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit, academicYear, user, assignedGrade, feeStructure }) => {
   const { studentId } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
   
@@ -83,7 +84,7 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit,
   }
   
   const formattedStudentId = formatStudentId(student, academicYear);
-  const dues = calculateDues(student);
+  const dues = calculateDues(student, feeStructure);
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">

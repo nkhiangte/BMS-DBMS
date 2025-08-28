@@ -1,7 +1,8 @@
 
 
+
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType, FeeStructure, FeeSet } from './types';
 import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST, MIZORAM_HOLIDAYS, DEFAULT_FEE_STRUCTURE } from './constants';
 import { getNextGrade, createDefaultFeePayments, calculateStudentResult, formatStudentId } from './utils';
@@ -265,6 +266,9 @@ const App: React.FC = () => {
     // Handlers that would exist in the full app
     const handleLogin = async (email: string, pass: string) => { /* ... */ };
     const handleLogout = () => auth.signOut();
+    const handleSignUp = async (name: string, email: string, pass: string) => { /* ... */ return { success: true, message: "Please wait for admin approval." }; };
+    const handleForgotPassword = async (email: string) => { /* ... */ return { success: true, message: "Password reset link sent." }; };
+    const handleChangePassword = async (current: string, newPass: string) => { /* ... */ return { success: true, message: "Password changed." }; };
     const handleAddStudent = () => { /* ... */ };
     const handleEditStudent = (student: Student) => { /* ... */ };
     const handleStudentFormSubmit = async (studentData: Omit<Student, 'id'>) => { /* ... */ };
@@ -274,6 +278,20 @@ const App: React.FC = () => {
     const handleEditStaff = (staffMember: Staff) => { /* ... */ };
     const handleStaffFormSubmit = async (staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => { /* ... */ };
     const handleUpdateGradeDefinition = async (grade: Grade, newDefinition: GradeDefinition) => { /* ... */ };
+    
+    // Global check for Academic Year. If a user is logged in but the year is not set,
+    // force them to set it unless they are on an authentication page.
+    const isAuthPage = ['/login', '/signup', '/forgot-password'].includes(location.pathname);
+    if (user && !academicYear && !isAuthPage) {
+        return (
+             <div className="min-h-screen flex flex-col">
+                <Header user={user} onLogout={handleLogout} className="print-hidden" />
+                <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
+                    <AcademicYearForm onSetAcademicYear={(year) => { localStorage.setItem('academicYear', year); setAcademicYear(year); }} />
+                </main>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -281,7 +299,10 @@ const App: React.FC = () => {
             <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
                 <Routes>
                     <Route path="/login" element={<LoginPage onLogin={handleLogin} error={authError} notification={notification} />} />
-                    {/* Other auth routes */}
+                    <Route path="/signup" element={<SignUpPage onSignUp={handleSignUp} />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage onForgotPassword={handleForgotPassword} />} />
+                    <Route path="/change-password" element={<PrivateRoute user={user}><ChangePasswordPage onChangePassword={handleChangePassword} /></PrivateRoute>} />
+
                     <Route path="/" element={
                         <PrivateRoute user={user}>
                             <DashboardPage 
@@ -302,7 +323,7 @@ const App: React.FC = () => {
                     } />
                     <Route path="/student/:studentId" element={
                         <PrivateRoute user={user}>
-                           {feeStructure && <StudentDetailPage students={students} onEdit={handleEditStudent} academicYear={academicYear!} user={user!} assignedGrade={assignedGrade} />}
+                           {feeStructure && <StudentDetailPage students={students} onEdit={handleEditStudent} academicYear={academicYear!} user={user!} assignedGrade={assignedGrade} feeStructure={feeStructure} />}
                         </PrivateRoute>
                     } />
                     <Route path="/student/:studentId/academics" element={
@@ -349,7 +370,6 @@ const App: React.FC = () => {
                            />
                         </PrivateRoute>
                     } />
-                     {/* FIX: Pass feeStructure to ClassStudentsPage to enable fee-related functionality on that page. */}
                      <Route path="/classes/:grade" element={
                         <PrivateRoute user={user}>
                            {feeStructure && <ClassStudentsPage 

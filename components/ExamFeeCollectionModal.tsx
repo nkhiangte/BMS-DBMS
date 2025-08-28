@@ -16,7 +16,6 @@ interface ExamFeeCollectionModalProps {
 const ExamFeeCollectionModal: React.FC<ExamFeeCollectionModalProps> = ({ isOpen, onClose, onSave, students, grade, feeStructure }) => {
     const [paymentData, setPaymentData] = useState<Record<string, FeePayments>>({});
     const [isSaving, setIsSaving] = useState(false);
-    // FIX: Pass the feeStructure object to the getFeeDetails utility function as the second argument.
     const feeDetails = getFeeDetails(grade, feeStructure);
 
     useEffect(() => {

@@ -268,7 +268,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
               {classStudents.map(student => {
-                  const dues = calculateDues(student);
+                  const dues = calculateDues(student, feeStructure);
                   return (
                     <tr key={student.id} className="hover:bg-slate-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-800">{student.rollNo}</td>
