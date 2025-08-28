@@ -308,17 +308,16 @@ export const calculateRanks = (
     }
   });
   
-  // Assign ranks to the passed students, handling ties
+  // Assign ranks to the passed students using dense ranking (1, 2, 2, 3)
   if (passedAndRankableStudents.length > 0) {
       let rank = 1;
       ranks.set(passedAndRankableStudents[0].studentId, rank);
       for (let i = 1; i < passedAndRankableStudents.length; i++) {
-          if (passedAndRankableStudents[i].totalMarks === passedAndRankableStudents[i - 1].totalMarks) {
-              ranks.set(passedAndRankableStudents[i].studentId, rank);
-          } else {
-              rank = i + 1;
-              ranks.set(passedAndRankableStudents[i].studentId, rank);
+          // If score is less than previous, increment rank. Otherwise, it's a tie, use same rank.
+          if (passedAndRankableStudents[i].totalMarks < passedAndRankableStudents[i - 1].totalMarks) {
+              rank++;
           }
+          ranks.set(passedAndRankableStudents[i].studentId, rank);
       }
   }
 
