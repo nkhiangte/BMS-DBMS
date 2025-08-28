@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, User, Grade, FeeStructure } from '../types';
@@ -123,7 +122,7 @@ const StudentDetailPage: React.FC<StudentDetailPageProps> = ({ students, onEdit,
                 </button>
              )}
                <Link
-                to={`/report-card/${student.id}`}
+                to={`/progress-report/${student.id}`}
                 className="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition hover:-translate-y-0.5"
               >
                 <DocumentReportIcon className="h-5 h-5" />
