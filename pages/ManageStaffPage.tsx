@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Staff, EmploymentStatus, Grade, GradeDefinition, Designation, User } from '../types';
@@ -30,7 +31,7 @@ const StaffCard: React.FC<{
         [EmploymentStatus.RETIRED]: 'bg-slate-200 text-slate-700',
     };
 
-    const canEdit = user.role === 'admin' || user.email?.toLowerCase() === staffMember.emailAddress.toLowerCase();
+    const canEdit = user.role === 'admin' || (user.email && staffMember.emailAddress && user.email.trim().toLowerCase() === staffMember.emailAddress.trim().toLowerCase());
     const canDelete = user.role === 'admin';
 
     return (
