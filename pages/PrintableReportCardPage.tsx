@@ -1,9 +1,9 @@
-
 import React, { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, SubjectMark, GradeDefinition, SubjectDefinition, User } from '../types';
 import { BackIcon, UserIcon, HomeIcon, PrinterIcon } from '../components/Icons';
 import { formatStudentId, formatDateForDisplay } from '../utils';
+import { GRADES_WITH_NO_ACTIVITIES } from '../constants';
 
 const PhotoWithFallback: React.FC<{src?: string, alt: string}> = ({ src, alt }) => {
     const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -28,26 +28,6 @@ const PhotoWithFallback: React.FC<{src?: string, alt: string}> = ({ src, alt }) 
     )
 };
 
-const getSplitMarks = (subjectName: string, results: SubjectMark[], subjectDef: SubjectDefinition) => {
-    const result = results.find(r => r.subject === subjectName);
-    const hasActivity = subjectDef.activityFullMarks > 0;
-    const fullExam = subjectDef.examFullMarks;
-    const fullActivity = subjectDef.activityFullMarks;
-    const fullTotal = fullExam + fullActivity;
-
-    if (!result) return { exam: null, activity: null, total: null, fullExam, fullActivity, fullTotal };
-
-    const examMarks = hasActivity ? (result.examMarks ?? null) : (result.marks ?? null);
-    const activityMarks = hasActivity ? (result.activityMarks ?? null) : null;
-    
-    let total: number | null = null;
-    if (examMarks !== null || activityMarks !== null) {
-        total = (examMarks || 0) + (activityMarks || 0);
-    }
-    
-    return { exam: examMarks, activity: activityMarks, total, fullExam, fullActivity, fullTotal };
-};
-
 
 interface PrintableReportCardPageProps {
   students: Student[];
@@ -62,6 +42,35 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
     const navigate = useNavigate();
 
     const student = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
+
+    const hasActivitiesForThisGrade = useMemo(() => {
+        if (!student) return false;
+        return !GRADES_WITH_NO_ACTIVITIES.includes(student.grade);
+    }, [student]);
+
+    const getSplitMarks = (subjectName: string, results: SubjectMark[], subjectDef: SubjectDefinition) => {
+        const result = results.find(r => r.subject === subjectName);
+        const useSplitMarks = hasActivitiesForThisGrade && subjectDef.activityFullMarks > 0;
+        
+        const fullExam = subjectDef.examFullMarks;
+        const fullActivity = useSplitMarks ? subjectDef.activityFullMarks : 0;
+        const fullTotal = fullExam + fullActivity;
+
+        if (!result) return { exam: null, activity: null, total: null, fullExam, fullActivity, fullTotal };
+
+        if (useSplitMarks) {
+            const examMarks = result.examMarks ?? null;
+            const activityMarks = result.activityMarks ?? null;
+            let total: number | null = null;
+            if (examMarks !== null || activityMarks !== null) {
+                total = (examMarks || 0) + (activityMarks || 0);
+            }
+            return { exam: examMarks, activity: activityMarks, total, fullExam, fullActivity, fullTotal };
+        } else {
+            const totalFromMarks = result.marks ?? (result.examMarks ?? 0) + (result.activityMarks ?? 0);
+            return { exam: null, activity: null, total: totalFromMarks || null, fullExam: subjectDef.examFullMarks, fullActivity: 0, fullTotal: subjectDef.examFullMarks };
+        }
+    };
 
     if (!student) {
         return (
@@ -109,13 +118,18 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
         };
     }, [student]);
 
+    const hasActivityMarks = useMemo(() => {
+        if (!gradeDef) return false;
+        return hasActivitiesForThisGrade && gradeDef.subjects.some(s => s.activityFullMarks > 0);
+    }, [gradeDef, hasActivitiesForThisGrade]);
+
+
     const summaryData = useMemo(() => {
         if (!student || !allExamsData || !gradeDef) return null;
 
         let grandTotal = 0;
         let maxGrandTotal = 0;
         
-        // ONLY use final term data for summary
         const finalTermResults = allExamsData.term3;
 
         gradeDef.subjects.forEach(subjectDef => {
@@ -142,21 +156,22 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
             result,
             remarks: getRemarks(percentage, result),
         };
-    }, [student, allExamsData, gradeDef]);
-
-     const hasActivityMarks = useMemo(() => gradeDef?.subjects.some(s => s.activityFullMarks > 0) ?? false, [gradeDef]);
+    }, [student, allExamsData, gradeDef, getSplitMarks]);
 
     const termTotals = useMemo(() => {
         if (!gradeDef || !allExamsData) return { t1: 0, t2: 0, t3: 0, max: 0 };
         let t1 = 0, t2 = 0, t3 = 0, max = 0;
         gradeDef.subjects.forEach(subjectDef => {
-            t1 += getSplitMarks(subjectDef.name, allExamsData.term1, subjectDef).total ?? 0;
-            t2 += getSplitMarks(subjectDef.name, allExamsData.term2, subjectDef).total ?? 0;
-            t3 += getSplitMarks(subjectDef.name, allExamsData.term3, subjectDef).total ?? 0;
-            max += subjectDef.examFullMarks + subjectDef.activityFullMarks;
+            const term1Marks = getSplitMarks(subjectDef.name, allExamsData.term1, subjectDef);
+            const term2Marks = getSplitMarks(subjectDef.name, allExamsData.term2, subjectDef);
+            const term3Marks = getSplitMarks(subjectDef.name, allExamsData.term3, subjectDef);
+            t1 += term1Marks.total ?? 0;
+            t2 += term2Marks.total ?? 0;
+            t3 += term3Marks.total ?? 0;
+            max += term1Marks.fullTotal; // fullTotal is same for all terms
         });
         return { t1, t2, t3, max };
-    }, [gradeDef, allExamsData]);
+    }, [gradeDef, allExamsData, getSplitMarks]);
 
     if (!gradeDef || !summaryData) {
         return (

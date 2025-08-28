@@ -1,5 +1,6 @@
 import React from 'react';
-import { SubjectMark, SubjectDefinition } from '../types';
+import { SubjectMark, SubjectDefinition, Grade } from '../types';
+import { GRADES_WITH_NO_ACTIVITIES } from '../constants';
 
 interface AcademicRecordTableProps {
   examName: string;
@@ -7,10 +8,13 @@ interface AcademicRecordTableProps {
   isEditing: boolean;
   onUpdate: (newResults: SubjectMark[]) => void;
   subjectDefinitions: SubjectDefinition[];
+  grade: Grade;
 }
 
-const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, results, isEditing, onUpdate, subjectDefinitions }) => {
+const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, results, isEditing, onUpdate, subjectDefinitions, grade }) => {
   
+  const hasActivitiesForThisGrade = !GRADES_WITH_NO_ACTIVITIES.includes(grade);
+
   const handleMarksChange = (subjectName: string, field: 'examMarks' | 'activityMarks' | 'marks', value: string, max: number) => {
     const newMark = parseInt(value, 10);
     // When input is cleared, value is '', newMark is NaN, validatedMark becomes undefined. This is correct.
@@ -21,10 +25,18 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
       if (r.subject === subjectName) {
         subjectFound = true;
         // Create a new object for the updated result to ensure state immutability
-        return {
-          ...r,
-          [field]: validatedMark,
-        };
+        const updatedResult = { ...r };
+        
+        // When switching to a single mark system, consolidate old marks and clear split ones.
+        if (field === 'marks') {
+            updatedResult.marks = validatedMark;
+            delete updatedResult.examMarks;
+            delete updatedResult.activityMarks;
+        } else {
+            (updatedResult as any)[field] = validatedMark;
+            delete updatedResult.marks;
+        }
+        return updatedResult;
       }
       return r;
     });
@@ -33,8 +45,11 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
     // being entered for this subject in this exam. We need to add a new result object.
     if (!subjectFound) {
       const newResult: SubjectMark = { subject: subjectName };
-      // TypeScript needs a little help here to dynamically assign the property
-      (newResult as any)[field] = validatedMark;
+      if (field === 'marks') {
+        newResult.marks = validatedMark;
+      } else {
+        (newResult as any)[field] = validatedMark;
+      }
       newResults.push(newResult);
     }
     
@@ -64,7 +79,7 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
             ) : (
               subjectDefinitions.map((subjectDef) => {
                 const result = results.find(r => r.subject === subjectDef.name) || { subject: subjectDef.name };
-                const useSplitMarks = subjectDef.activityFullMarks > 0;
+                const useSplitMarks = hasActivitiesForThisGrade && subjectDef.activityFullMarks > 0;
                 
                 return (
                   <tr key={subjectDef.name}>
@@ -77,14 +92,14 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
                       {isEditing ? (
                         <input 
                           type="number"
-                          value={useSplitMarks ? (result.examMarks ?? '') : (result.marks ?? '')}
+                          value={useSplitMarks ? (result.examMarks ?? '') : (result.marks ?? (result.examMarks ?? ''))}
                           onChange={(e) => handleMarksChange(subjectDef.name, useSplitMarks ? 'examMarks' : 'marks', e.target.value, subjectDef.examFullMarks)}
                           className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
                           placeholder={`/ ${subjectDef.examFullMarks}`}
                           max={subjectDef.examFullMarks}
                         />
                       ) : (
-                        useSplitMarks ? (result.examMarks ?? '-') : (result.marks ?? '-')
+                        useSplitMarks ? (result.examMarks ?? '-') : ((result.marks ?? ((result.examMarks ?? 0) + (result.activityMarks ?? 0))) || '-')
                       )}
                     </td>
 
@@ -111,8 +126,8 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
                     {/* Total Column */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900">
                       {useSplitMarks
-                        ? ((result.examMarks || 0) + (result.activityMarks || 0) || '-')
-                        : (result.marks ?? '-')
+                        ? (((result.examMarks || 0) + (result.activityMarks || 0)) || '-')
+                        : ((result.marks ?? ((result.examMarks ?? 0) + (result.activityMarks ?? 0))) || '-')
                       }
                     </td>
                   </tr>

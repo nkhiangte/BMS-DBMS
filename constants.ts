@@ -1,5 +1,3 @@
-
-
 import { Grade, Gender, Category, GradeDefinition, Staff, MaritalStatus, Department, Designation, EmployeeType, BloodGroup, EmploymentStatus, StaffType, InventoryCategory, InventoryStatus, HostelBlock, RoomType, HostelStaffRole, HostelInventoryCategory, StockLogType, Qualification } from './types';
 
 export const QUALIFICATION_LIST: Qualification[] = Object.values(Qualification);
@@ -14,6 +12,15 @@ export const STAFF_TYPE_LIST: StaffType[] = ['Teaching', 'Non-Teaching'];
 export const GRADES_LIST: Grade[] = Object.values(Grade);
 export const GENDER_LIST: Gender[] = Object.values(Gender);
 export const CATEGORY_LIST: Category[] = Object.values(Category);
+
+export const GRADES_WITH_NO_ACTIVITIES: Grade[] = [
+  Grade.NURSERY,
+  Grade.KINDERGARTEN,
+  Grade.I,
+  Grade.II,
+  Grade.IX,
+  Grade.X,
+];
 
 export const TERMINAL_EXAMS = [
   { id: 'terminal1', name: 'First Terminal Exam' },

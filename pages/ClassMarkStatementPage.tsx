@@ -1,10 +1,8 @@
-
-
 import React, { useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, StudentStatus, Exam, SubjectMark, User } from '../types';
 import { BackIcon, HomeIcon, PrinterIcon, EditIcon, InboxArrowDownIcon, SpinnerIcon } from '../components/Icons';
-import { TERMINAL_EXAMS } from '../constants';
+import { TERMINAL_EXAMS, GRADES_WITH_NO_ACTIVITIES } from '../constants';
 import { formatStudentId, calculateStudentResult } from '../utils';
 import * as XLSX from 'xlsx';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -50,6 +48,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
     const gradeDef = useMemo(() => grade ? gradeDefinitions[grade] : null, [grade, gradeDefinitions]);
     
     const isAllowed = user.role === 'admin' || grade === assignedGrade;
+    const hasActivitiesForThisGrade = useMemo(() => grade ? !GRADES_WITH_NO_ACTIVITIES.includes(grade) : false, [grade]);
     
     const classStudents = useMemo(() => {
         if (!grade) return [];
@@ -59,7 +58,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
     }, [students, grade]);
 
     const statementData = useMemo(() => {
-        if (!gradeDef) return [];
+        if (!gradeDef || !grade) return [];
         return classStudents.map(student => {
             const exam = student.academicPerformance?.find(e => e.id === examId);
             const results = exam?.results || [];
@@ -69,13 +68,14 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
 
             gradeDef.subjects.forEach(subject => {
                 const result = results.find(r => r.subject === subject.name);
-                const hasActivity = subject.activityFullMarks > 0;
-                const obtainedMarks = hasActivity 
+                const useSplitMarks = hasActivitiesForThisGrade && subject.activityFullMarks > 0;
+                
+                const obtainedMarks = useSplitMarks
                     ? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0) 
-                    : (result?.marks ?? 0);
+                    : (result?.marks ?? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0));
                 
                 totalMarks += obtainedMarks;
-                totalMaxMarks += subject.examFullMarks + subject.activityFullMarks;
+                totalMaxMarks += subject.examFullMarks + (useSplitMarks ? subject.activityFullMarks : 0);
             });
             
             const percentage = totalMaxMarks > 0 ? (totalMarks / totalMaxMarks) * 100 : 0;
@@ -92,16 +92,16 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                 grade: getGradeLetter(percentage, finalResult)
             };
         });
-    }, [classStudents, examId, gradeDef]);
+    }, [classStudents, examId, gradeDef, grade, hasActivitiesForThisGrade]);
 
     const handleDownloadTemplate = () => {
         if (!gradeDef || !examDetails) return;
 
         const headers = ['Roll No', 'Student Name'];
-        const hasSplitMarksSystem = gradeDef.subjects.some(s => s.activityFullMarks > 0);
+        const useSplitMarks = hasActivitiesForThisGrade && gradeDef.subjects.some(s => s.activityFullMarks > 0);
 
         gradeDef.subjects.forEach(subject => {
-            if (hasSplitMarksSystem && subject.activityFullMarks > 0) {
+            if (useSplitMarks && subject.activityFullMarks > 0) {
                 headers.push(`${subject.name} (Exam)`);
                 headers.push(`${subject.name} (Activity)`);
             } else {
@@ -155,9 +155,9 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                 
                 let hasUpdate = false;
                 gradeDef.subjects.forEach(subject => {
-                    const hasActivity = subject.activityFullMarks > 0;
-                    const examHeader = hasActivity ? `${subject.name} (Exam)` : subject.name;
-                    const activityHeader = hasActivity ? `${subject.name} (Activity)` : null;
+                    const useSplitMarks = hasActivitiesForThisGrade && subject.activityFullMarks > 0;
+                    const examHeader = useSplitMarks ? `${subject.name} (Exam)` : subject.name;
+                    const activityHeader = useSplitMarks ? `${subject.name} (Activity)` : null;
                     
                     const examValue = row[examHeader];
                     const activityValue = activityHeader ? row[activityHeader] : undefined;
@@ -181,7 +181,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                             }
                         };
                         
-                        if (hasActivity) {
+                        if (useSplitMarks) {
                             const newExamMark = processMark(examValue, subject.examFullMarks, 'Exam');
                             const newActivityMark = processMark(activityValue, subject.activityFullMarks, 'Activity');
                             if(newExamMark !== undefined) subjectResult.examMarks = newExamMark;
@@ -297,7 +297,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                 <th rowSpan={2} className="border border-slate-300 p-1 align-bottom">Roll</th>
                                 <th rowSpan={2} className="border border-slate-300 p-1 align-bottom text-left">Student Name</th>
                                 {gradeDef.subjects.map(subject => (
-                                    <th key={subject.name} colSpan={subject.activityFullMarks > 0 ? 3 : 1} className="border border-slate-300 p-1">
+                                    <th key={subject.name} colSpan={hasActivitiesForThisGrade && subject.activityFullMarks > 0 ? 3 : 1} className="border border-slate-300 p-1">
                                         {subject.name}
                                     </th>
                                 ))}
@@ -305,8 +305,9 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                 {isAllowed && <th rowSpan={2} className="border border-slate-300 p-1 align-middle text-center print:hidden">Actions</th>}
                             </tr>
                             <tr>
-                                {gradeDef.subjects.map(subject => (
-                                    subject.activityFullMarks > 0 ? (
+                                {gradeDef.subjects.flatMap(subject => {
+                                    const useSplitMarks = hasActivitiesForThisGrade && subject.activityFullMarks > 0;
+                                    return useSplitMarks ? (
                                         <React.Fragment key={subject.name}>
                                             <th className="border border-slate-300 p-1 font-normal">Exam ({subject.examFullMarks})</th>
                                             <th className="border border-slate-300 p-1 font-normal">Act ({subject.activityFullMarks})</th>
@@ -315,7 +316,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                     ) : (
                                         <th key={subject.name} className="border border-slate-300 p-1 font-semibold">Marks ({subject.examFullMarks})</th>
                                     )
-                                ))}
+                                })}
                                 <th className="border border-slate-300 p-1 font-semibold">Total Marks</th>
                                 <th className="border border-slate-300 p-1 font-semibold">%</th>
                                 <th className="border border-slate-300 p-1 font-semibold">Result</th>
@@ -329,15 +330,15 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                     <td className="border border-slate-300 p-1 text-left font-medium">{student.name}</td>
                                     {gradeDef.subjects.map(subject => {
                                         const mark = results.find(r => r.subject === subject.name);
-                                        const hasActivity = subject.activityFullMarks > 0;
-                                        return hasActivity ? (
+                                        const useSplitMarks = hasActivitiesForThisGrade && subject.activityFullMarks > 0;
+                                        return useSplitMarks ? (
                                             <React.Fragment key={subject.name}>
                                                 <td className="border border-slate-300 p-1 text-center">{mark?.examMarks ?? '-'}</td>
                                                 <td className="border border-slate-300 p-1 text-center">{mark?.activityMarks ?? '-'}</td>
                                                 <td className="border border-slate-300 p-1 text-center font-semibold bg-slate-50">{(mark?.examMarks ?? 0) + (mark?.activityMarks ?? 0)}</td>
                                             </React.Fragment>
                                         ) : (
-                                            <td key={subject.name} className="border border-slate-300 p-1 text-center font-semibold bg-slate-50">{mark?.marks ?? '-'}</td>
+                                            <td key={subject.name} className="border border-slate-300 p-1 text-center font-semibold bg-slate-50">{(mark?.marks ?? (mark?.examMarks ?? 0) + (mark?.activityMarks ?? 0)) || '-'}</td>
                                         );
                                     })}
                                     <td className="border border-slate-300 p-1 text-center font-bold">{totalMarks} / {totalMaxMarks}</td>

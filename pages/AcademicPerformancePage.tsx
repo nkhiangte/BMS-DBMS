@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Exam, SubjectMark, Grade, GradeDefinition, User } from '../types';
@@ -173,6 +171,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
                         isEditing={isEditing && canEdit}
                         onUpdate={(newResults) => handleUpdateExamData(exam.id, 'results', newResults)}
                         subjectDefinitions={gradeDef.subjects}
+                        grade={student.grade}
                     />
                     <div className="mt-4">
                         <label className="block text-sm font-bold text-slate-800 mb-1">Teacher's Remarks for {exam.name}</label>
