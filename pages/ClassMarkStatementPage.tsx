@@ -1,9 +1,9 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, Grade, GradeDefinition, StudentStatus, Exam, SubjectMark, User } from '../types';
+import { Student, Grade, GradeDefinition, StudentStatus, Exam, SubjectMark, User, StudentAttendanceRecord, StudentAttendanceStatus } from '../types';
 import { BackIcon, HomeIcon, PrinterIcon, EditIcon, InboxArrowDownIcon, SpinnerIcon } from '../components/Icons';
 import { TERMINAL_EXAMS, GRADES_WITH_NO_ACTIVITIES } from '../constants';
-import { formatStudentId, calculateStudentResult } from '../utils';
+import { formatStudentId, calculateStudentResult, calculateRanks } from '../utils';
 import * as XLSX from 'xlsx';
 import ConfirmationModal from '../components/ConfirmationModal';
 import MarksEntryModal from '../components/MarksEntryModal';
@@ -31,9 +31,10 @@ interface ClassMarkStatementPageProps {
     onUpdateClassMarks: (updates: Array<{ studentId: string; performance: Exam[] }>) => Promise<void>;
     user: User;
     assignedGrade: Grade | null;
+    fetchStudentAttendanceForMonth: (grade: Grade, year: number, month: number) => Promise<{ [date: string]: StudentAttendanceRecord }>;
 }
 
-const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ students, gradeDefinitions, academicYear, onUpdateClassMarks, user, assignedGrade }) => {
+const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ students, gradeDefinitions, academicYear, onUpdateClassMarks, user, assignedGrade, fetchStudentAttendanceForMonth }) => {
     const { grade: encodedGrade, examId } = useParams<{ grade: string; examId: string }>();
     const navigate = useNavigate();
 
@@ -42,6 +43,10 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
     const [importData, setImportData] = useState<{ updates: Array<{ studentId: string; performance: Exam[] }>; errors: string[] } | null>(null);
     const [isMarksEntryModalOpen, setIsMarksEntryModalOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    const [attendanceData, setAttendanceData] = useState<Map<string, number | null>>(new Map());
+    const [ranks, setRanks] = useState<Map<string, number | 'NA' | null>>(new Map());
+    const [isLoadingExtraData, setIsLoadingExtraData] = useState(true);
 
     const grade = useMemo(() => encodedGrade ? decodeURIComponent(encodedGrade) as Grade : null, [encodedGrade]);
     const examDetails = useMemo(() => TERMINAL_EXAMS.find(e => e.id === examId), [examId]);
@@ -56,6 +61,81 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
             .filter(s => s.grade === grade && s.status === StudentStatus.ACTIVE)
             .sort((a, b) => a.rollNo - b.rollNo);
     }, [students, grade]);
+
+    useEffect(() => {
+        const calculateExtraData = async () => {
+            if (!grade || !academicYear || classStudents.length === 0) {
+                setIsLoadingExtraData(false);
+                return;
+            }
+            setIsLoadingExtraData(true);
+
+            // --- 1. Calculate Ranks based on Final Term ---
+            const finalExamId = 'terminal3';
+            const studentScores = classStudents.map(student => {
+                const finalExam = student.academicPerformance?.find(e => e.id === finalExamId);
+                const results = finalExam?.results || [];
+                const studentGradeDef = gradeDefinitions[student.grade];
+                
+                let totalMarks = 0;
+                if (studentGradeDef) {
+                     const hasActivities = !GRADES_WITH_NO_ACTIVITIES.includes(student.grade);
+                     studentGradeDef.subjects.forEach(subject => {
+                        const result = results.find(r => r.subject === subject.name);
+                        const useSplitMarks = hasActivities && subject.activityFullMarks > 0;
+                        const obtainedMarks = useSplitMarks
+                            ? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0) 
+                            : (result?.marks ?? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0));
+                        totalMarks += obtainedMarks;
+                    });
+                }
+
+                const { finalResult } = calculateStudentResult(results, studentGradeDef, student.grade);
+                return { studentId: student.id, totalMarks, result: finalResult };
+            });
+            setRanks(calculateRanks(studentScores));
+
+            // --- 2. Calculate Attendance ---
+            const attendanceMap = new Map<string, { present: number, absent: number }>();
+            classStudents.forEach(s => attendanceMap.set(s.id, { present: 0, absent: 0 }));
+
+            const [startYearStr] = academicYear.split('-');
+            const startYear = parseInt(startYearStr, 10);
+            const academicMonths = ["April", "May", "June", "July", "August", "September", "October", "November", "December", "January", "February", "March"];
+            const monthMap: { [key: string]: number } = { April: 3, May: 4, June: 5, July: 6, August: 7, September: 8, October: 9, November: 10, December: 11, January: 0, February: 1, March: 2 };
+            
+            for (const monthName of academicMonths) {
+                const monthIndex = monthMap[monthName];
+                const year = monthIndex >= 3 ? startYear : startYear + 1;
+                try {
+                    const monthlyData = await fetchStudentAttendanceForMonth(grade, year, monthIndex + 1);
+                    Object.values(monthlyData).forEach(dailyRecord => {
+                        classStudents.forEach(student => {
+                            const status = dailyRecord[student.id];
+                            if (status === StudentAttendanceStatus.PRESENT) {
+                                attendanceMap.get(student.id)!.present++;
+                            } else if (status === StudentAttendanceStatus.ABSENT) {
+                                attendanceMap.get(student.id)!.absent++;
+                            }
+                        });
+                    });
+                } catch (error) {
+                    console.error(`Could not fetch attendance for ${monthName} ${year}:`, error);
+                }
+            }
+            
+            const finalAttendanceData = new Map<string, number | null>();
+            attendanceMap.forEach((data, studentId) => {
+                const total = data.present + data.absent;
+                finalAttendanceData.set(studentId, total > 0 ? (data.present / total) * 100 : null);
+            });
+            setAttendanceData(finalAttendanceData);
+
+            setIsLoadingExtraData(false);
+        };
+
+        calculateExtraData();
+    }, [classStudents, grade, academicYear, gradeDefinitions, fetchStudentAttendanceForMonth]);
 
     const statementData = useMemo(() => {
         if (!gradeDef || !grade) return [];
@@ -302,6 +382,8 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                     </th>
                                 ))}
                                 <th colSpan={4} className="border border-slate-300 p-1">Grand Total</th>
+                                <th rowSpan={2} className="border border-slate-300 p-1 align-middle text-center">Rank</th>
+                                <th rowSpan={2} className="border border-slate-300 p-1 align-middle text-center">Attendance %</th>
                                 {isAllowed && <th rowSpan={2} className="border border-slate-300 p-1 align-middle text-center print:hidden">Actions</th>}
                             </tr>
                             <tr>
@@ -345,6 +427,10 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                     <td className="border border-slate-300 p-1 text-center font-bold">{percentage.toFixed(2)}%</td>
                                     <td className={`border border-slate-300 p-1 text-center font-bold ${result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}`}>{result}</td>
                                     <td className="border border-slate-300 p-1 text-center font-bold">{division}</td>
+                                    <td className="border border-slate-300 p-1 text-center font-bold">{isLoadingExtraData ? '...' : (ranks.get(student.id) ?? '-')}</td>
+                                    <td className="border border-slate-300 p-1 text-center font-bold">
+                                        {isLoadingExtraData ? '...' : (attendanceData.get(student.id) !== null ? `${attendanceData.get(student.id)?.toFixed(2)}%` : 'N/A')}
+                                    </td>
                                     {isAllowed && (
                                         <td className="border border-slate-300 p-1 text-center print:hidden">
                                             <Link

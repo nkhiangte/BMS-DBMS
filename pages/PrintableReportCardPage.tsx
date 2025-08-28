@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, Grade, SubjectMark, GradeDefinition, SubjectDefinition, User } from '../types';
+import { Student, Grade, SubjectMark, GradeDefinition, SubjectDefinition, User, StudentStatus, StudentAttendanceRecord, StudentAttendanceStatus } from '../types';
 import { BackIcon, UserIcon, HomeIcon, PrinterIcon } from '../components/Icons';
-import { formatStudentId, formatDateForDisplay } from '../utils';
+import { formatStudentId, formatDateForDisplay, calculateStudentResult, calculateRanks } from '../utils';
 import { GRADES_WITH_NO_ACTIVITIES } from '../constants';
 
 const PhotoWithFallback: React.FC<{src?: string, alt: string}> = ({ src, alt }) => {
@@ -35,11 +35,16 @@ interface PrintableReportCardPageProps {
   academicYear: string;
   user: User;
   assignedGrade: Grade | null;
+  fetchStudentAttendanceForMonth: (grade: Grade, year: number, month: number) => Promise<{ [date: string]: StudentAttendanceRecord }>;
 }
 
-const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ students, gradeDefinitions, academicYear, user, assignedGrade }) => {
+const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ students, gradeDefinitions, academicYear, user, assignedGrade, fetchStudentAttendanceForMonth }) => {
     const { studentId } = useParams<{ studentId: string; examId: string }>();
     const navigate = useNavigate();
+    
+    const [annualAttendance, setAnnualAttendance] = useState<number | null>(null);
+    const [rank, setRank] = useState<number | 'NA' | null>(null);
+    const [isLoadingExtraData, setIsLoadingExtraData] = useState(true);
 
     const student = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
 
@@ -47,6 +52,74 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
         if (!student) return false;
         return !GRADES_WITH_NO_ACTIVITIES.includes(student.grade);
     }, [student]);
+
+    useEffect(() => {
+        const calculateExtraData = async () => {
+            if (!student || !academicYear) {
+                setIsLoadingExtraData(false);
+                return;
+            }
+            setIsLoadingExtraData(true);
+
+            // --- 1. Calculate Rank ---
+            const classmates = students.filter(s => s.grade === student.grade && s.status === StudentStatus.ACTIVE);
+            const finalExamId = 'terminal3';
+            
+            const studentScores = classmates.map(s => {
+                const finalExam = s.academicPerformance?.find(e => e.id === finalExamId);
+                const results = finalExam?.results || [];
+                const studentGradeDef = gradeDefinitions[s.grade];
+                
+                let totalMarks = 0;
+                if (studentGradeDef) {
+                    const hasActivities = !GRADES_WITH_NO_ACTIVITIES.includes(s.grade);
+                    studentGradeDef.subjects.forEach(subject => {
+                        const result = results.find(r => r.subject === subject.name);
+                        const useSplitMarks = hasActivities && subject.activityFullMarks > 0;
+                        const obtainedMarks = useSplitMarks
+                            ? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0)
+                            : (result?.marks ?? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0));
+                        totalMarks += obtainedMarks;
+                    });
+                }
+                const { finalResult } = calculateStudentResult(results, studentGradeDef, s.grade);
+                return { studentId: s.id, totalMarks, result: finalResult };
+            });
+
+            const classRanks = calculateRanks(studentScores);
+            setRank(classRanks.get(student.id) ?? null);
+
+            // --- 2. Calculate Attendance ---
+            let present = 0;
+            let absent = 0;
+            const [startYearStr] = academicYear.split('-');
+            const startYear = parseInt(startYearStr, 10);
+            const academicMonths = ["April", "May", "June", "July", "August", "September", "October", "November", "December", "January", "February", "March"];
+            const monthMap: { [key: string]: number } = { April: 3, May: 4, June: 5, July: 6, August: 7, September: 8, October: 9, November: 10, December: 11, January: 0, February: 1, March: 2 };
+
+            for (const monthName of academicMonths) {
+                const monthIndex = monthMap[monthName];
+                const year = monthIndex >= 3 ? startYear : startYear + 1;
+                try {
+                    const monthlyData = await fetchStudentAttendanceForMonth(student.grade, year, monthIndex + 1);
+                    Object.values(monthlyData).forEach(dailyRecord => {
+                        const status = dailyRecord[student.id];
+                        if (status === StudentAttendanceStatus.PRESENT) present++;
+                        else if (status === StudentAttendanceStatus.ABSENT) absent++;
+                    });
+                } catch (error) {
+                    console.error(`Could not fetch attendance for ${monthName} ${year}:`, error);
+                }
+            }
+            
+            const totalDays = present + absent;
+            setAnnualAttendance(totalDays > 0 ? (present / totalDays) * 100 : null);
+
+            setIsLoadingExtraData(false);
+        };
+
+        calculateExtraData();
+    }, [student, students, academicYear, gradeDefinitions, fetchStudentAttendanceForMonth]);
 
     const getSplitMarks = (subjectName: string, results: SubjectMark[], subjectDef: SubjectDefinition) => {
         const result = results.find(r => r.subject === subjectName);
@@ -140,7 +213,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
         
         const percentage = maxGrandTotal > 0 ? (grandTotal / maxGrandTotal) * 100 : 0;
         
-        const result = percentage >= 33 ? "PASS" : "FAIL";
+        const { finalResult } = calculateStudentResult(finalTermResults, gradeDef, student.grade);
         
         const getRemarks = (p: number, res: string) => {
             if (res === 'FAIL') return 'Requires serious attention';
@@ -153,8 +226,8 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
             grandTotal,
             maxGrandTotal,
             percentage: percentage.toFixed(2),
-            result,
-            remarks: getRemarks(percentage, result),
+            result: finalResult,
+            remarks: getRemarks(percentage, finalResult),
         };
     }, [student, allExamsData, gradeDef, getSplitMarks]);
 
@@ -327,10 +400,11 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                     <SummaryItem 
                         label="Final Result" 
                         value={summaryData.result} 
-                        color={summaryData.result === 'PASS' ? 'text-emerald-600' : 'text-red-600'}
+                        color={summaryData.result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}
                     />
-                    <SummaryItem label="Annual Rank" value="--" />
-                    <div className="col-span-full">
+                    <SummaryItem label="Annual Rank" value={isLoadingExtraData ? '...' : (rank ?? '--')} />
+                    <SummaryItem label="Annual Attendance" value={isLoadingExtraData ? '...' : (annualAttendance !== null ? `${annualAttendance.toFixed(2)}%` : '--')} />
+                    <div className="col-span-full md:col-span-3">
                          <SummaryItem label="Remarks" value={summaryData.remarks} />
                     </div>
                 </div>

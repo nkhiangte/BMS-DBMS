@@ -274,3 +274,39 @@ export const formatPhoneNumberForWhatsApp = (phone: string): string => {
     // Otherwise, return the cleaned number, assuming it might be an international number with a different country code.
     return digitsOnly;
 };
+
+export const calculateRanks = (
+  studentScores: Array<{ studentId: string; totalMarks: number; result: 'PASS' | 'FAIL' | 'SIMPLE PASS' }>
+): Map<string, number | 'NA'> => {
+  const ranks = new Map<string, number | 'NA'>();
+
+  // Filter out failed students and sort by marks descending
+  const passedStudents = studentScores
+    .filter(s => s.result !== 'FAIL')
+    .sort((a, b) => b.totalMarks - a.totalMarks);
+
+  // Assign 'NA' to all failed students first
+  studentScores.forEach(s => {
+    if (s.result === 'FAIL') {
+      ranks.set(s.studentId, 'NA');
+    }
+  });
+
+  // Assign ranks to passed students, handling ties
+  if (passedStudents.length > 0) {
+      let rank = 1;
+      ranks.set(passedStudents[0].studentId, rank);
+      for (let i = 1; i < passedStudents.length; i++) {
+          // If the current student has the same score as the previous one, give them the same rank
+          if (passedStudents[i].totalMarks === passedStudents[i - 1].totalMarks) {
+              ranks.set(passedStudents[i].studentId, rank);
+          } else {
+              // Otherwise, the new rank is the current position (i + 1)
+              rank = i + 1;
+              ranks.set(passedStudents[i].studentId, rank);
+          }
+      }
+  }
+
+  return ranks;
+};
