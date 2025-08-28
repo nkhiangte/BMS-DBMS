@@ -93,18 +93,30 @@ const CalendarPage: React.FC<CalendarPageProps> = ({ events, user, onAdd, onEdit
             // Deduplicate events by title to avoid showing "Holiday" twice
             const uniqueDayEvents = Array.from(new Map(dayEvents.map(e => [e.title, e])).values());
 
+            const isHoliday = uniqueDayEvents.some(event => event.type === CalendarEventType.HOLIDAY);
+            const eventsToShow = uniqueDayEvents.filter(event => !event.id.startsWith('weekend-'));
+            
             const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
+
+            const dayNumberClasses = ['font-semibold'];
+            if(isToday) {
+                dayNumberClasses.push('bg-sky-600 text-white rounded-full w-7 h-7 flex items-center justify-center');
+            } else if (isHoliday) {
+                dayNumberClasses.push('text-red-600');
+            } else {
+                dayNumberClasses.push('text-slate-800');
+            }
 
             calendarDays.push(
                 <div key={day} className="border-r border-b p-2 min-h-[120px] flex flex-col relative group transition-colors hover:bg-sky-50">
-                    <span className={`font-semibold ${isToday ? 'bg-sky-600 text-white rounded-full w-7 h-7 flex items-center justify-center' : 'text-slate-800'}`}>
+                    <span className={dayNumberClasses.join(' ')}>
                         {day}
                     </span>
                     <div className="mt-1 space-y-1 overflow-y-auto">
-                        {uniqueDayEvents.map(event => (
-                            <div key={event.id} className={`p-1.5 rounded-md text-xs font-semibold border ${event.id.startsWith('gov-') || event.id.startsWith('weekend-') ? '' : 'cursor-pointer'} ${getEventColor(event.type)}`} title={`${event.type}: ${event.title}`}>
+                        {eventsToShow.map(event => (
+                            <div key={event.id} className={`p-1.5 rounded-md text-xs font-semibold border ${event.id.startsWith('gov-') ? '' : 'cursor-pointer'} ${getEventColor(event.type)}`} title={`${event.type}: ${event.title}`}>
                                 <p className="truncate">{event.title}</p>
-                                {user.role === 'admin' && !event.id.startsWith('gov-') && !event.id.startsWith('weekend-') && (
+                                {user.role === 'admin' && !event.id.startsWith('gov-') && (
                                     <div className="absolute top-1 right-1 hidden group-hover:flex gap-1">
                                         <button onClick={() => onEdit(event)} className="p-1 bg-white/50 rounded-full hover:bg-white"><EditIcon className="w-4 h-4 text-slate-600"/></button>
                                         <button onClick={() => onDelete(event)} className="p-1 bg-white/50 rounded-full hover:bg-white"><TrashIcon className="w-4 h-4 text-red-600"/></button>

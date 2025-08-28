@@ -59,15 +59,29 @@ export const HOSTEL_INVENTORY_CATEGORY_LIST: HostelInventoryCategory[] = Object.
 export const CALENDAR_EVENT_TYPE_LIST: CalendarEventType[] = Object.values(CalendarEventType);
 
 export const MIZORAM_HOLIDAYS: { date: string, title: string }[] = [
-    { date: '2024-01-01', title: "New Year's Day" },
-    { date: '2024-01-26', title: "Republic Day" },
-    { date: '2024-03-01', title: "Chapchar Kut" },
-    { date: '2024-03-29', title: "Good Friday" },
-    { date: '2024-04-11', title: "Id-ul-Fitr" },
-    { date: '2024-06-15', title: "Y.M.A. Day" },
-    { date: '2024-06-30', title: "Remna Ni" },
-    { date: '2024-08-15', title: "Independence Day" },
-    { date: '2024-10-02', title: "Gandhi Jayanti" },
-    { date: '2024-12-25', title: "Christmas Day" },
-    { date: '2024-12-26', title: "Christmas Holiday" },
+    // 2025 Holidays
+    { date: '2025-04-10', title: 'Mahavir Jayanti' },
+    { date: '2025-04-18', title: 'Good Friday' },
+    { date: '2025-05-12', title: 'Buddha Purnima' },
+    { date: '2025-06-07', title: "Idu'l Zuha" },
+    { date: '2025-06-15', title: 'YMA Day' },
+    { date: '2025-06-30', title: 'Remna Ni' },
+    { date: '2025-07-06', title: 'MHIP Day' },
+    { date: '2025-07-06', title: 'Muharram' },
+    { date: '2025-08-15', title: 'Independence Day' },
+    { date: '2025-08-16', title: 'Janmashtami' },
+    { date: '2025-09-05', title: "Prophet Mohamed's Birthday (Id-e-Milad)" },
+    { date: '2025-10-02', title: "Mahatma Gandhi's Birthday" },
+    { date: '2025-10-02', title: 'Dussehra (Vijay Dashmi)' },
+    { date: '2025-10-20', title: 'Diwali (Deepavalli)' },
+    { date: '2025-11-05', title: "Guru Nanak's Birthday" },
+    { date: '2025-12-25', title: 'Christmas Day' },
+    { date: '2025-12-26', title: 'Christmas Holiday' },
+    
+    // 2026 Holidays
+    { date: '2026-01-01', title: "New Year's Day" },
+    { date: '2026-01-11', title: 'Missionary Day' },
+    { date: '2026-01-26', title: 'Republic Day' },
+    { date: '2026-02-20', title: 'State Day' },
+    { date: '2026-03-06', title: 'Chapchar kut' },
 ];
