@@ -480,3 +480,19 @@ export interface StudentAttendanceRecord {
 export interface DailyStudentAttendance {
     [grade: string]: StudentAttendanceRecord;
 }
+
+// --- NEW: Calendar Types ---
+export enum CalendarEventType {
+    HOLIDAY = "Holiday",
+    EXAM = "Exam Schedule",
+    EVENT = "School Event",
+    MEETING = "Staff Meeting",
+}
+
+export interface CalendarEvent {
+    id: string;
+    title: string;
+    date: string; // YYYY-MM-DD
+    type: CalendarEventType;
+    description?: string;
+}

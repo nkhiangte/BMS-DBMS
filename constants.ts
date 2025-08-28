@@ -1,4 +1,4 @@
-import { Grade, Gender, Category, GradeDefinition, Staff, MaritalStatus, Department, Designation, EmployeeType, BloodGroup, EmploymentStatus, StaffType, InventoryCategory, InventoryStatus, HostelBlock, RoomType, HostelStaffRole, HostelInventoryCategory, StockLogType, Qualification } from './types';
+import { Grade, Gender, Category, GradeDefinition, Staff, MaritalStatus, Department, Designation, EmployeeType, BloodGroup, EmploymentStatus, StaffType, InventoryCategory, InventoryStatus, HostelBlock, RoomType, HostelStaffRole, HostelInventoryCategory, StockLogType, Qualification, CalendarEventType } from './types';
 
 export const QUALIFICATION_LIST: Qualification[] = Object.values(Qualification);
 export const MARITAL_STATUS_LIST: MaritalStatus[] = Object.values(MaritalStatus);
@@ -56,3 +56,4 @@ export const INVENTORY_STATUS_LIST: InventoryStatus[] = Object.values(InventoryS
 export const HOSTEL_BLOCK_LIST: HostelBlock[] = Object.values(HostelBlock);
 export const HOSTEL_STAFF_ROLE_LIST: HostelStaffRole[] = Object.values(HostelStaffRole);
 export const HOSTEL_INVENTORY_CATEGORY_LIST: HostelInventoryCategory[] = Object.values(HostelInventoryCategory);
+export const CALENDAR_EVENT_TYPE_LIST: CalendarEventType[] = Object.values(CalendarEventType);

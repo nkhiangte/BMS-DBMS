@@ -1,5 +1,6 @@
 
 
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { UsersIcon, PlusIcon, DocumentReportIcon, BookOpenIcon, TransferIcon, BriefcaseIcon, CurrencyDollarIcon, AcademicCapIcon, ArchiveBoxIcon, BuildingOfficeIcon, UserGroupIcon, CalendarDaysIcon, MegaphoneIcon } from '../components/Icons';
@@ -166,6 +167,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
                 icon={<BuildingOfficeIcon className="w-7 h-7" />}
                 color="rose"
                 action={<Link to="/hostel">{isAdmin ? 'Manage Hostel' : 'View Hostel'}</Link>}
+            />
+
+            <DashboardCard
+                title="School Calendar"
+                description="View holidays, exams, and school events."
+                icon={<CalendarDaysIcon className="w-7 h-7" />}
+                color="teal"
+                action={<Link to="/calendar">View Calendar</Link>}
             />
         
             <DashboardCard

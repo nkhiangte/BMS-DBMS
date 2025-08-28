@@ -1,8 +1,9 @@
 
 
+
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord } from './types';
+import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent } from './types';
 import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST } from './constants';
 import { getNextGrade, createDefaultFeePayments, calculateStudentResult, formatStudentId } from './utils';
 
@@ -68,6 +69,8 @@ import HostelResidentFormModal from './components/HostelResidentFormModal';
 import AcademicYearForm from './components/AcademicYearForm';
 import { UserManagementPage } from './pages/UserManagementPage';
 import CommunicationPage from './pages/CommunicationPage';
+import CalendarPage from './pages/CalendarPage';
+import CalendarEventFormModal from './components/CalendarEventFormModal';
 
 // IMPORTANT: Replace with your own imgbb API key.
 // You can get a free key from https://api.imgbb.com/
@@ -117,6 +120,7 @@ const App: React.FC = () => {
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [staffAttendance, setStaffAttendance] = useState<StaffAttendanceRecord | null>(null);
     const [studentAttendance, setStudentAttendance] = useState<DailyStudentAttendance | null>(null);
+    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
 
 
     // --- MODAL & UI STATE ---
@@ -139,6 +143,9 @@ const App: React.FC = () => {
     const [isImporting, setIsImporting] = useState(false);
     const [importTargetGrade, setImportTargetGrade] = useState<Grade | null>(null);
     const [transferringStudent, setTransferringStudent] = useState<Student | null>(null);
+    const [isCalendarEventFormModalOpen, setIsCalendarEventFormModalOpen] = useState(false);
+    const [editingCalendarEvent, setEditingCalendarEvent] = useState<CalendarEvent | null>(null);
+    const [deletingCalendarEvent, setDeletingCalendarEvent] = useState<CalendarEvent | null>(null);
 
     // --- DERIVED STATE (for Role-Based Access) ---
     const assignedGrade = useMemo(() => {
@@ -185,7 +192,7 @@ const App: React.FC = () => {
     // --- DATA FETCHING FROM FIRESTORE ---
     useEffect(() => {
         if (!user || user.role === 'pending' || !isFirebaseConfigured) {
-            setStudents([]); setStaff([]); setTcRecords([]); setServiceCertificateRecords([]); setGradeDefinitions(GRADE_DEFINITIONS); setInventory([]); setHostelStaff([]); setHostelInventory([]); setHostelStockLogs([]); setAllUsers([]); setAcademicYear(null); setHostelResidents([]); setHostelRooms([]); setStaffAttendance(null); setStudentAttendance(null);
+            setStudents([]); setStaff([]); setTcRecords([]); setServiceCertificateRecords([]); setGradeDefinitions(GRADE_DEFINITIONS); setInventory([]); setHostelStaff([]); setHostelInventory([]); setHostelStockLogs([]); setAllUsers([]); setAcademicYear(null); setHostelResidents([]); setHostelRooms([]); setStaffAttendance(null); setStudentAttendance(null); setCalendarEvents([]);
             return;
         };
 
@@ -200,6 +207,7 @@ const App: React.FC = () => {
             ['hostelStockLogs', setHostelStockLogs],
             ['hostelResidents', setHostelResidents],
             ['hostelRooms', setHostelRooms],
+            ['calendarEvents', setCalendarEvents],
         ];
         
         const unsubscribers = collectionsToSync.map(([path, setter]) => {
@@ -214,6 +222,8 @@ const App: React.FC = () => {
                 query = query.orderBy('firstName');
             } else if (path === 'hostelStockLogs') {
                 query = query.orderBy('date', 'desc').limit(200);
+            } else if (path === 'calendarEvents') {
+                query = query.orderBy('date');
             }
 
             return query.onSnapshot(snapshot => {
@@ -291,6 +301,7 @@ const App: React.FC = () => {
         setIsHostelStaffFormModalOpen(false); setEditingHostelStaff(null); setDeletingHostelStaff(null);
         setIsHostelResidentFormModalOpen(false); setEditingHostelResident(null);
         setIsImportModalOpen(false); setImportTargetGrade(null); setTransferringStudent(null);
+        setIsCalendarEventFormModalOpen(false); setEditingCalendarEvent(null); setDeletingCalendarEvent(null);
     }, []);
 
     const handleAddStudent = () => {
@@ -640,6 +651,27 @@ const App: React.FC = () => {
         }
     }, []);
 
+    const handleCalendarEventFormSubmit = useCallback(async (eventData: Omit<CalendarEvent, 'id'>) => {
+        try {
+            if (editingCalendarEvent) {
+                await db.collection('calendarEvents').doc(editingCalendarEvent.id).set(eventData);
+            } else {
+                await db.collection('calendarEvents').add(eventData);
+            }
+            closeModal();
+        } catch (error) {
+            console.error("Error saving calendar event:", error);
+            alert(`Failed to save event. Error: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }, [editingCalendarEvent, closeModal]);
+
+    const handleDeleteCalendarEventConfirm = useCallback(async () => {
+        if (deletingCalendarEvent) {
+            await db.collection('calendarEvents').doc(deletingCalendarEvent.id).delete();
+            closeModal();
+        }
+    }, [deletingCalendarEvent, closeModal]);
+
     // Fix: Add missing handlers for authentication, routing, and other functionalities.
     const handleLogin = async (email: string, pass: string) => {
       try {
@@ -798,6 +830,7 @@ const App: React.FC = () => {
                                 <Route path="/communication" element={<CommunicationPage students={students} user={user} />} />
                                 <Route path="/staff/attendance" element={<StaffAttendancePage user={user} staff={staff} attendance={staffAttendance} onMarkAttendance={handleMarkStaffAttendance} fetchStaffAttendanceForMonth={fetchStaffAttendanceForMonth} academicYear={academicYear} />} />
                                 <Route path="/classes/:grade/attendance" element={<StudentAttendancePage students={students} allAttendance={studentAttendance} onUpdateAttendance={handleUpdateStudentAttendance} user={user} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} academicYear={academicYear} assignedGrade={assignedGrade} />} />
+                                <Route path="/calendar" element={<CalendarPage events={calendarEvents} user={user} onAdd={() => { setEditingCalendarEvent(null); setIsCalendarEventFormModalOpen(true); }} onEdit={(e) => { setEditingCalendarEvent(e); setIsCalendarEventFormModalOpen(true); }} onDelete={(e) => setDeletingCalendarEvent(e)} />} />
                                 
                                 {/* Staff docs */}
                                 <Route path="/staff/certificates" element={<StaffDocumentsPage serviceCertificateRecords={serviceCertificateRecords} user={user}/>} />
@@ -832,6 +865,8 @@ const App: React.FC = () => {
                     {isHostelResidentFormModalOpen && <HostelResidentFormModal isOpen={isHostelResidentFormModalOpen} onClose={closeModal} onSubmit={handleHostelResidentFormSubmit} resident={editingHostelResident} allStudents={students} allRooms={hostelRooms} allResidents={hostelResidents}/>}
                     {isImportModalOpen && <ImportStudentsModal isOpen={isImportModalOpen} onClose={closeModal} onImport={handleImportStudents} grade={importTargetGrade} allStudents={students} allGrades={GRADES_LIST} isImporting={isImporting} />}
                     {transferringStudent && <TransferStudentModal isOpen={!!transferringStudent} onClose={closeModal} onConfirm={handleTransferStudent} student={transferringStudent} allStudents={students} allGrades={GRADES_LIST} />}
+                    {isCalendarEventFormModalOpen && <CalendarEventFormModal isOpen={isCalendarEventFormModalOpen} onClose={closeModal} onSubmit={handleCalendarEventFormSubmit} event={editingCalendarEvent} />}
+                    {deletingCalendarEvent && <ConfirmationModal isOpen={!!deletingCalendarEvent} onClose={closeModal} onConfirm={handleDeleteCalendarEventConfirm} title="Delete Event">Are you sure you want to delete <strong className="font-bold">{deletingCalendarEvent.title}</strong>? This action cannot be undone.</ConfirmationModal>}
                 </div>
             )}
         </HashRouter>
