@@ -363,6 +363,7 @@ const App: React.FC = () => {
         unsubscribers.push(db.collection('students').onSnapshot(snapshot => setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Student[])));
         unsubscribers.push(db.collection('staff').onSnapshot(snapshot => setStaff(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Staff[])));
         unsubscribers.push(db.collection('config').doc('feeStructure').onSnapshot(doc => doc.exists ? setFeeStructure(doc.data() as FeeStructure) : db.collection('config').doc('feeStructure').set(DEFAULT_FEE_STRUCTURE)));
+        unsubscribers.push(db.collection('users').onSnapshot(snapshot => setAllUsers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User)))));
         // ... other data listeners for inventory, tc, etc.
         return () => unsubscribers.forEach(unsub => unsub());
     }, [user]);
