@@ -332,9 +332,13 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                 <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Roll</th>
                                 <th rowSpan={2} className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom">Student Name</th>
                                 {gradeDef.subjects.map(subject => (
-                                    <th key={subject.name} colSpan={hasActivitiesForThisGrade && subject.activityFullMarks > 0 ? 2 : 1} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase">{subject.name}</th>
+                                    <th key={subject.name} colSpan={hasActivitiesForThisGrade && subject.activityFullMarks > 0 ? 2 : 1} className="border px-1 py-2 text-center font-bold text-slate-800 uppercase text-xs tracking-wider [writing-mode:vertical-rl] rotate-180 whitespace-nowrap">
+                                        {subject.name}
+                                    </th>
                                 ))}
-                                <th colSpan={hasActivitiesForThisGrade ? 3 : 1} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase">Totals</th>
+                                <th colSpan={hasActivitiesForThisGrade ? 3 : 1} className="border px-1 py-2 text-center font-bold text-slate-800 uppercase text-xs tracking-wider [writing-mode:vertical-rl] rotate-180 whitespace-nowrap">
+                                    Totals
+                                </th>
                                 <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">%</th>
                                 <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">{isHighSchool ? 'Division' : 'Grade'}</th>
                                 <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Result</th>
