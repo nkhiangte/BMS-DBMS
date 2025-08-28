@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType, FeeStructure, FeeSet } from './types';
@@ -130,6 +131,7 @@ const App: React.FC = () => {
 
     const [isStudentFormOpen, setIsStudentFormOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+    const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
     const [newStudentTargetGrade, setNewStudentTargetGrade] = useState<Grade | null>(null);
     const [isStaffFormOpen, setIsStaffFormOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
@@ -137,6 +139,7 @@ const App: React.FC = () => {
     const [isInventoryFormOpen, setIsInventoryFormOpen] = useState(false);
     const [editingInventoryItem, setEditingInventoryItem] = useState<InventoryItem | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
     const [importTargetGrade, setImportTargetGrade] = useState<Grade | null>(null);
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [transferringStudent, setTransferringStudent] = useState<Student | null>(null);
@@ -322,12 +325,67 @@ const App: React.FC = () => {
         }
     };
 
-    // Placeholder Handlers
+    // Handlers
     const handleAddStudent = () => { setIsStudentFormOpen(true); };
     const handleEditStudent = (student: Student) => { setEditingStudent(student); setIsStudentFormOpen(true); };
-    const handleStudentFormSubmit = async (studentData: Omit<Student, 'id'>) => { console.log('submitting student', studentData); };
-    const handleUpdateAcademic = (studentId: string, performance: Exam[]) => { console.log('updating academic', studentId); };
-    const handleUpdateFeePayments = (studentId: string, payments: FeePayments) => { console.log('updating fees', studentId); };
+    const handleStudentFormSubmit = async (studentData: Omit<Student, 'id'>) => {
+        try {
+            addNotification("Saving student details...", "success");
+
+            let photographUrl = studentData.photographUrl;
+            if (photographUrl && !photographUrl.startsWith('http')) {
+                photographUrl = await uploadImage(photographUrl);
+            }
+
+            const dataToSave = { ...studentData, photographUrl };
+
+            if (editingStudent) {
+                await db.collection('students').doc(editingStudent.id).update(dataToSave);
+                addNotification("Student details updated successfully!", "success");
+            } else {
+                await db.collection('students').add(dataToSave);
+                addNotification("New student added successfully!", "success");
+            }
+        } catch (error) {
+            console.error("Error saving student details:", error);
+            addNotification("Failed to save student details.", "error");
+        } finally {
+            setIsStudentFormOpen(false);
+            setEditingStudent(null);
+            setNewStudentTargetGrade(null);
+        }
+    };
+    const handleUpdateAcademic = async (studentId: string, performance: Exam[]) => {
+        try {
+            await db.collection('students').doc(studentId).update({ academicPerformance: performance });
+            addNotification("Academic records updated successfully!", "success");
+        } catch (error) {
+            console.error("Error updating academic performance:", error);
+            addNotification("Failed to update academic records.", "error");
+        }
+    };
+    const handleUpdateFeePayments = async (studentId: string, payments: FeePayments) => {
+        try {
+            await db.collection('students').doc(studentId).update({ feePayments: payments });
+            addNotification("Fee payment status updated successfully!", "success");
+        } catch (error) {
+            console.error("Error updating fee payments:", error);
+            addNotification("Failed to update fee payments.", "error");
+        }
+    };
+    const handleDeleteStudent = async (student: Student) => {
+        if (!student) return;
+        try {
+            await db.collection('students').doc(student.id).delete();
+            addNotification(`Student ${student.name} deleted successfully.`, "success");
+        } catch (error) {
+            console.error("Error deleting student:", error);
+            addNotification("Failed to delete student.", "error");
+        } finally {
+            setDeletingStudent(null);
+        }
+    };
+
     const handleAddStaff = () => { setIsStaffFormOpen(true); };
     const handleEditStaff = (staffMember: Staff) => { setEditingStaff(staffMember); setIsStaffFormOpen(true); };
     const handleStaffFormSubmit = async (staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => {
@@ -424,9 +482,55 @@ const App: React.FC = () => {
     const handleUpdateBulkMarks = async (updates: Array<{ studentId: string; performance: Exam[] }>) => { console.log('Updating bulk marks', updates.length); };
     const handleOpenImportModal = (grade: Grade | null) => { setImportTargetGrade(grade); setIsImportModalOpen(true); };
     const handleOpenTransferModal = (student: Student) => { setTransferringStudent(student); setIsTransferModalOpen(true); };
-    const handleTransferStudent = async (studentId: string, newGrade: Grade, newRollNo: number) => { console.log(`Transferring student ${studentId} to ${newGrade}`); setIsTransferModalOpen(false); };
+    const handleTransferStudent = async (studentId: string, newGrade: Grade, newRollNo: number) => {
+        try {
+            await db.collection('students').doc(studentId).update({
+                grade: newGrade,
+                rollNo: newRollNo,
+            });
+            addNotification("Student transferred successfully!", "success");
+        } catch (error) {
+            console.error("Error transferring student:", error);
+            addNotification("Failed to transfer student.", "error");
+        } finally {
+            setIsTransferModalOpen(false);
+            setTransferringStudent(null);
+        }
+    };
+    const handleImportStudents = async (newStudents: Omit<Student, 'id'>[], grade: Grade) => {
+        setIsImporting(true);
+        try {
+            const batch = db.batch();
+            newStudents.forEach(studentData => {
+                const docRef = db.collection('students').doc();
+                batch.set(docRef, studentData);
+            });
+            await batch.commit();
+            addNotification(`Successfully imported ${newStudents.length} students into ${grade}.`, "success");
+        } catch (error) {
+            console.error("Error importing students:", error);
+            addNotification("Failed to import students.", "error");
+        } finally {
+            setIsImporting(false);
+            setIsImportModalOpen(false);
+        }
+    };
     const handleAddStudentToClass = (grade: Grade) => { setNewStudentTargetGrade(grade); setIsStudentFormOpen(true); };
-    const handleUpdateBulkFeePayments = async (updates: Array<{ studentId: string; payments: FeePayments }>) => { console.log('Updating bulk fee payments', updates.length); };
+    const handleUpdateBulkFeePayments = async (updates: Array<{ studentId: string; payments: FeePayments }>) => {
+        if (updates.length === 0) return;
+        try {
+            const batch = db.batch();
+            updates.forEach(({ studentId, payments }) => {
+                const docRef = db.collection('students').doc(studentId);
+                batch.update(docRef, { feePayments: payments });
+            });
+            await batch.commit();
+            addNotification(`Updated fee payments for ${updates.length} students.`, "success");
+        } catch (error) {
+            console.error("Error updating bulk fee payments:", error);
+            addNotification("Failed to update bulk fee payments.", "error");
+        }
+    };
     
     // Auth Effect
     useEffect(() => {
@@ -518,9 +622,8 @@ const App: React.FC = () => {
                     <Route path="/students" element={<PrivateRoute user={user}><StudentListPage students={activeStudents} onAdd={handleAddStudent} onEdit={handleEditStudent} academicYear={academicYear!} user={user!} assignedGrade={assignedGrade} /></PrivateRoute>} />
                     <Route path="/student/:studentId" element={<PrivateRoute user={user}>{feeStructure && <StudentDetailPage students={students} onEdit={handleEditStudent} academicYear={academicYear!} user={user!} assignedGrade={assignedGrade} feeStructure={feeStructure} />}</PrivateRoute>} />
                     <Route path="/student/:studentId/academics" element={<PrivateRoute user={user}><AcademicPerformancePage students={students} onUpdateAcademic={handleUpdateAcademic} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} user={user!} assignedGrade={assignedGrade}/></PrivateRoute>} />
-                    {/* Fix: Changed onOpenImportModal to handleOpenImportModal */}
                     <Route path="/classes" element={<PrivateRoute user={user}><ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={handleOpenImportModal} user={user!} /></PrivateRoute>} />
-                    <Route path="/classes/:grade" element={<PrivateRoute user={user}>{feeStructure && <ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} onUpdateClassTeacher={handleUpdateClassTeacher} academicYear={academicYear!} onOpenImportModal={handleOpenImportModal} onOpenTransferModal={handleOpenTransferModal} onDelete={() => {}} user={user!} assignedGrade={assignedGrade} onAddStudentToClass={handleAddStudentToClass} onUpdateBulkFeePayments={handleUpdateBulkFeePayments} feeStructure={feeStructure} />}</PrivateRoute>} />
+                    <Route path="/classes/:grade" element={<PrivateRoute user={user}>{feeStructure && <ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} onUpdateClassTeacher={handleUpdateClassTeacher} academicYear={academicYear!} onOpenImportModal={handleOpenImportModal} onOpenTransferModal={handleOpenTransferModal} onDelete={setDeletingStudent} user={user!} assignedGrade={assignedGrade} onAddStudentToClass={handleAddStudentToClass} onUpdateBulkFeePayments={handleUpdateBulkFeePayments} feeStructure={feeStructure} />}</PrivateRoute>} />
                     <Route path="/classes/:grade/attendance" element={<PrivateRoute user={user}><StudentAttendancePage students={students} allAttendance={studentAttendance} onUpdateAttendance={handleUpdateStudentAttendance} user={user!} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} academicYear={academicYear!} assignedGrade={assignedGrade} /></PrivateRoute>} />
 
                     {/* Fees */}
@@ -573,7 +676,40 @@ const App: React.FC = () => {
                     <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
             </main>
+            <StudentFormModal
+                isOpen={isStudentFormOpen}
+                onClose={() => { setIsStudentFormOpen(false); setEditingStudent(null); setNewStudentTargetGrade(null); }}
+                onSubmit={handleStudentFormSubmit}
+                student={editingStudent}
+                newStudentTargetGrade={newStudentTargetGrade}
+                academicYear={academicYear!}
+            />
+             <ImportStudentsModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onImport={handleImportStudents}
+                grade={importTargetGrade}
+                allStudents={students}
+                allGrades={GRADES_LIST}
+                isImporting={isImporting}
+            />
+            {transferringStudent && <TransferStudentModal
+                isOpen={isTransferModalOpen}
+                onClose={() => setIsTransferModalOpen(false)}
+                onConfirm={handleTransferStudent}
+                student={transferringStudent}
+                allStudents={students}
+                allGrades={GRADES_LIST}
+            />}
             <StaffFormModal isOpen={isStaffFormOpen} onClose={() => { setIsStaffFormOpen(false); setEditingStaff(null); }} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions} />
+            <ConfirmationModal
+                isOpen={!!deletingStudent}
+                onClose={() => setDeletingStudent(null)}
+                onConfirm={() => { if(deletingStudent) handleDeleteStudent(deletingStudent); }}
+                title="Confirm Student Deletion"
+            >
+                <p>Are you sure you want to delete <span className="font-bold">{deletingStudent?.name}</span>? This action cannot be undone and will remove all associated records.</p>
+            </ConfirmationModal>
             <ConfirmationModal
                 isOpen={!!deletingStaff}
                 onClose={() => setDeletingStaff(null)}
