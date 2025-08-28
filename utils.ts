@@ -112,18 +112,21 @@ export const calculateStudentResult = (
     }
 
     const failedSubjects: string[] = [];
-    const hasActivityMarks = gradeDef.subjects.some(s => s.activityFullMarks > 0);
 
     gradeDef.subjects
       .filter(subject => isSubjectNumeric(subject, grade))
       .forEach(subject => {
         const result = finalTermResults.find(r => r.subject === subject.name);
-        const singleMark = result?.marks ?? 0;
-        const obtained = hasActivityMarks ? ((result?.examMarks ?? 0) + (result?.activityMarks ?? 0)) : singleMark;
-        const full = subject.examFullMarks + (hasActivityMarks ? subject.activityFullMarks : 0);
+        
+        // Harmonized logic: prioritize 'marks' field, but fallback to summing components.
+        // This makes it robust to how data was entered (e.g., single field vs split fields).
+        const obtained = result?.marks ?? ((result?.examMarks ?? 0) + (result?.activityMarks ?? 0));
+        
+        const full = subject.examFullMarks + subject.activityFullMarks;
 
         if (full > 0) {
             // Uniform pass mark of 33 for all numeric subjects across all grades.
+            // A score of 33 is a pass.
             if (obtained < 33) {
                 failedSubjects.push(subject.name);
             }
@@ -338,27 +341,18 @@ export const getMonthsForTerm = (examId: string): { month: number, yearOffset: 0
 }
 
 export const getPerformanceGrade = (percentage: number, result: string, grade: Grade): string => {
-    const isHighSchool = grade === Grade.IX || grade === Grade.X;
-
+    // If the student has failed, the grade is D, regardless of percentage.
     if (result === 'FAIL') {
-        return isHighSchool ? 'FAIL' : 'D';
+        return 'D';
     }
     
-    if (isHighSchool) {
-        // High School Division System for PASS/SIMPLE PASS
-        if (percentage >= 75) return 'D'; // Distinction
-        if (percentage >= 60) return 'I'; // First Division
-        if (percentage >= 50) return 'II'; // Second Division
-        return 'III'; // Third Division
-    } else {
-        // Grading System for Nursery to Class VIII for PASS/SIMPLE PASS
-        // Based on: =IF(%>89,"O",IF(%>79,"A", IF(%>69,"B",IF(%>59,"C","D"))))
-        if (percentage > 89) return 'O'; // e.g. 90% and above
-        if (percentage > 79) return 'A'; // e.g. 80% to 89.99%
-        if (percentage > 69) return 'B'; // e.g. 70% to 79.99%
-        if (percentage > 59) return 'C'; // e.g. 60% to 69.99%
-        return 'D'; // e.g. below 60%
-    }
+    // Unified Grading System for all classes from Nursery to Class X for PASS/SIMPLE PASS
+    // Based on user request: =IF(%>89,"O",IF(%>79,"A", IF(%>69,"B",IF(%>59,"C","D"))))
+    if (percentage > 89) return 'O'; // Outstanding (e.g. 90% and above)
+    if (percentage > 79) return 'A'; // (e.g. 80% to 89.99%)
+    if (percentage > 69) return 'B'; // (e.g. 70% to 79.99%)
+    if (percentage > 59) return 'C'; // (e.g. 60% to 69.99%)
+    return 'D'; // (e.g. below 60%)
 };
 
 export const getRemarks = (percentage: number, result: string): string => {
