@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, SubjectMark, GradeDefinition, SubjectDefinition, User, StudentStatus, StudentAttendanceRecord, StudentAttendanceStatus } from '../types';
 import { BackIcon, UserIcon, HomeIcon, PrinterIcon } from '../components/Icons';
 import { formatStudentId, formatDateForDisplay, calculateStudentResult, calculateRanks } from '../utils';
-import { GRADES_WITH_NO_ACTIVITIES } from '../constants';
+import { GRADES_WITH_NO_ACTIVITIES, TERMINAL_EXAMS } from '../constants';
 
 const PhotoWithFallback: React.FC<{src?: string, alt: string}> = ({ src, alt }) => {
     const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -39,7 +39,7 @@ interface PrintableReportCardPageProps {
 }
 
 const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ students, gradeDefinitions, academicYear, user, assignedGrade, fetchStudentAttendanceForMonth }) => {
-    const { studentId } = useParams<{ studentId: string; examId: string }>();
+    const { studentId, examId } = useParams<{ studentId: string; examId: string }>();
     const navigate = useNavigate();
     
     const [annualAttendance, setAnnualAttendance] = useState<number | null>(null);
@@ -48,6 +48,9 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
 
     const student = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
 
+    const isFinalTerm = examId === 'terminal3';
+    const examDetails = useMemo(() => TERMINAL_EXAMS.find(e => e.id === examId), [examId]);
+
     const hasActivitiesForThisGrade = useMemo(() => {
         if (!student) return false;
         return !GRADES_WITH_NO_ACTIVITIES.includes(student.grade);
@@ -55,7 +58,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
 
     useEffect(() => {
         const calculateExtraData = async () => {
-            if (!student || !academicYear) {
+            if (!student || !academicYear || !isFinalTerm) {
                 setIsLoadingExtraData(false);
                 return;
             }
@@ -121,7 +124,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
         };
 
         calculateExtraData();
-    }, [student, students, academicYear, gradeDefinitions, fetchStudentAttendanceForMonth]);
+    }, [student, students, academicYear, gradeDefinitions, fetchStudentAttendanceForMonth, isFinalTerm]);
 
     const getSplitMarks = (subjectName: string, results: SubjectMark[], subjectDef: SubjectDefinition) => {
         const result = results.find(r => r.subject === subjectName);
@@ -256,7 +259,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
         return { t1, t2, t3, max };
     }, [gradeDef, allExamsData, getSplitMarks]);
 
-    if (!gradeDef || !summaryData) {
+    if (!gradeDef || !examDetails) {
         return (
             <div className="text-center bg-white p-10 rounded-xl shadow-lg">
                 <h2 className="text-2xl font-bold text-red-600">Report Card Data Not Found</h2>
@@ -268,6 +271,24 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
             </div>
         );
     }
+// FIX: Pass subjectDef to renderTermCells to fix scope and property access errors.
+    const renderTermCells = (termData: ReturnType<typeof getSplitMarks>, subjectDefForCell: SubjectDefinition) => {
+        const { grade, exam, activity, total } = termData;
+        const isEffectivelyGradeBased = subjectDefForCell.examFullMarks === 0 && subjectDefForCell.activityFullMarks === 0;
+        const isGradeBased = subjectDefForCell.gradingSystem === 'OABC' || isEffectivelyGradeBased;
+    
+        return isGradeBased ? (
+            <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center font-bold text-lg">{grade ?? '-'}</td>
+        ) : hasActivityMarks ? (
+            <>
+                <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{exam ?? '-'}</td>
+                <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{activity ?? '-'}</td>
+                <td className="border border-slate-300 px-2 py-1 text-center text-slate-800 font-semibold">{total ?? '-'}</td>
+            </>
+        ) : (
+            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{total ?? '-'}</td>
+        );
+    };
     
     const DetailItem: React.FC<{label: string, value?: string | number}> = ({ label, value }) => (
         <div><span className="font-semibold text-slate-800">{label}:</span> <span className="text-slate-800">{value || 'N/A'}</span></div>
@@ -303,7 +324,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                 <h1 className="text-4xl font-bold text-sky-800">Bethel Mission School</h1>
                 <p className="text-lg font-semibold text-slate-600">Champhai, Mizoram</p>
                 <p className="text-sm text-slate-500">DISE Code 15040100705</p>
-                <h2 className="text-2xl font-semibold text-slate-600 mt-4">Annual Progress Report Card</h2>
+                <h2 className="text-2xl font-semibold text-slate-600 mt-4">{isFinalTerm ? 'Annual Progress Report Card' : `Progress Report - ${examDetails?.name}`}</h2>
                 <p className="text-lg text-slate-500">Academic Year: {academicYear}</p>
             </header>
 
@@ -330,21 +351,29 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                     <thead className="bg-slate-100 font-semibold text-slate-800">
                         <tr>
                             <th rowSpan={hasActivityMarks ? 2 : 1} className="border border-slate-300 px-2 py-1 text-left align-bottom">Subject</th>
-                            <th colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center">I Term</th>
-                            <th colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center">II Term</th>
-                            <th colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center">Final Term</th>
+                            {isFinalTerm ? (
+                                <>
+                                    <th colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center">I Term</th>
+                                    <th colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center">II Term</th>
+                                    <th colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center">Final Term</th>
+                                </>
+                            ) : (
+                                <th colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center">{examDetails?.name}</th>
+                            )}
                         </tr>
                         {hasActivityMarks && (
                             <tr>
-                                <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Exam</th>
-                                <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Act.</th>
-                                <th className="border border-slate-300 px-2 py-1 text-slate-800">Total</th>
-                                <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Exam</th>
-                                <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Act.</th>
-                                <th className="border border-slate-300 px-2 py-1 text-slate-800">Total</th>
-                                <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Exam</th>
-                                <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Act.</th>
-                                <th className="border border-slate-300 px-2 py-1 text-slate-800">Total</th>
+                                {isFinalTerm ? (
+                                    <>
+                                        <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Exam</th><th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Act.</th><th className="border border-slate-300 px-2 py-1 text-slate-800">Total</th>
+                                        <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Exam</th><th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Act.</th><th className="border border-slate-300 px-2 py-1 text-slate-800">Total</th>
+                                        <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Exam</th><th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Act.</th><th className="border border-slate-300 px-2 py-1 text-slate-800">Total</th>
+                                    </>
+                                ) : (
+                                    <>
+                                        <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Exam</th><th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Act.</th><th className="border border-slate-300 px-2 py-1 text-slate-800">Total</th>
+                                    </>
+                                )}
                             </tr>
                         )}
                     </thead>
@@ -353,40 +382,19 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                             const term1 = getSplitMarks(subjectDef.name, allExamsData.term1, subjectDef);
                             const term2 = getSplitMarks(subjectDef.name, allExamsData.term2, subjectDef);
                             const term3 = getSplitMarks(subjectDef.name, allExamsData.term3, subjectDef);
-                            const isGradeBased = subjectDef.gradingSystem === 'OABC';
-
+                            const currentTermData = examId === 'terminal1' ? term1 : examId === 'terminal2' ? term2 : term3;
+                            
                             return (
                                 <tr key={subjectDef.name}>
                                     <td className="border border-slate-300 px-2 py-1 text-left text-slate-800">{subjectDef.name}</td>
-                                    {/* Term 1 */}
-                                    {isGradeBased ? <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center font-bold text-lg">{term1.grade ?? '-'}</td> : hasActivityMarks ? (
+                                    {isFinalTerm ? (
                                         <>
-                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term1.exam ?? '-'}</td>
-                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term1.activity ?? '-'}</td>
-                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800 font-semibold">{term1.total ?? '-'}</td>
+                                            {renderTermCells(term1, subjectDef)}
+                                            {renderTermCells(term2, subjectDef)}
+                                            {renderTermCells(term3, subjectDef)}
                                         </>
                                     ) : (
-                                        <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term1.total ?? '-'}</td>
-                                    )}
-                                    {/* Term 2 */}
-                                     {isGradeBased ? <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center font-bold text-lg">{term2.grade ?? '-'}</td> : hasActivityMarks ? (
-                                        <>
-                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term2.exam ?? '-'}</td>
-                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term2.activity ?? '-'}</td>
-                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800 font-semibold">{term2.total ?? '-'}</td>
-                                        </>
-                                    ) : (
-                                        <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term2.total ?? '-'}</td>
-                                    )}
-                                    {/* Term 3 */}
-                                     {isGradeBased ? <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center font-bold text-lg">{term3.grade ?? '-'}</td> : hasActivityMarks ? (
-                                        <>
-                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term3.exam ?? '-'}</td>
-                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term3.activity ?? '-'}</td>
-                                            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800 font-semibold">{term3.total ?? '-'}</td>
-                                        </>
-                                    ) : (
-                                        <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term3.total ?? '-'}</td>
+                                        renderTermCells(currentTermData, subjectDef)
                                     )}
                                 </tr>
                             )
@@ -395,31 +403,41 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                     <tfoot className="bg-slate-100 font-bold">
                         <tr>
                             <td className="border border-slate-300 px-2 py-1 text-left text-slate-900">Total</td>
-                             <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center text-slate-900">{termTotals.t1} / {termTotals.max}</td>
-                             <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center text-slate-900">{termTotals.t2} / {termTotals.max}</td>
-                             <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center text-slate-900">{termTotals.t3} / {termTotals.max}</td>
+                            {isFinalTerm ? (
+                                <>
+                                    <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center text-slate-900">{termTotals.t1} / {termTotals.max}</td>
+                                    <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center text-slate-900">{termTotals.t2} / {termTotals.max}</td>
+                                    <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center text-slate-900">{termTotals.t3} / {termTotals.max}</td>
+                                </>
+                            ) : (
+                                <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center text-slate-900">
+                                    {(examId === 'terminal1' ? termTotals.t1 : examId === 'terminal2' ? termTotals.t2 : termTotals.t3)} / {termTotals.max}
+                                </td>
+                            )}
                         </tr>
                     </tfoot>
                 </table>
             </section>
 
-             <section>
-                <h3 className="text-xl font-bold text-slate-700 mb-4 text-center">Annual Result Summary (Based on Final Term)</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <SummaryItem label="Final Term Total" value={`${summaryData.grandTotal} / ${summaryData.maxGrandTotal}`} />
-                    <SummaryItem label="Final Term Percentage" value={`${summaryData.percentage}%`} />
-                    <SummaryItem 
-                        label="Final Result" 
-                        value={summaryData.result} 
-                        color={summaryData.result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}
-                    />
-                    <SummaryItem label="Annual Rank" value={isLoadingExtraData ? '...' : (rank ?? '--')} />
-                    <SummaryItem label="Annual Attendance" value={isLoadingExtraData ? '...' : (annualAttendance !== null ? `${annualAttendance.toFixed(2)}%` : '--')} />
-                    <div className="col-span-full md:col-span-3">
-                         <SummaryItem label="Remarks" value={summaryData.remarks} />
+             {isFinalTerm && summaryData && (
+                 <section>
+                    <h3 className="text-xl font-bold text-slate-700 mb-4 text-center">Annual Result Summary (Based on Final Term)</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <SummaryItem label="Final Term Total" value={`${summaryData.grandTotal} / ${summaryData.maxGrandTotal}`} />
+                        <SummaryItem label="Final Term Percentage" value={`${summaryData.percentage}%`} />
+                        <SummaryItem 
+                            label="Final Result" 
+                            value={summaryData.result} 
+                            color={summaryData.result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}
+                        />
+                        <SummaryItem label="Annual Rank" value={isLoadingExtraData ? '...' : (rank ?? '--')} />
+                        <SummaryItem label="Annual Attendance" value={isLoadingExtraData ? '...' : (annualAttendance !== null ? `${annualAttendance.toFixed(2)}%` : '--')} />
+                        <div className="col-span-full md:col-span-3">
+                            <SummaryItem label="Remarks" value={summaryData.remarks} />
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
+             )}
 
             <footer className="mt-12 pt-6 border-t-2 border-slate-300 text-center text-sm text-slate-500">
                 <div className="flex justify-around items-end" style={{minHeight: '60px'}}>

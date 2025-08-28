@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Student } from '../types';
@@ -115,12 +113,12 @@ const ReportSearchPage: React.FC<ReportSearchPageProps> = ({ students, academicY
                 <p className="text-slate-700">{foundStudent.grade} - {formatStudentId(foundStudent, academicYear)}</p>
                 <div className="mt-6 flex flex-col sm:flex-row gap-4">
                      <Link to={`/student/${foundStudent.id}/academics`} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 transition">
-                        <AcademicCapIcon className="h-5 w-5" />
+                        <AcademicCapIcon className="h-5 h-5" />
                         Enter/Edit Marks
                     </Link>
-                    <Link to={`/report-card/${foundStudent.id}`} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 transition">
-                        <DocumentReportIcon className="h-5 w-5" />
-                        View Full Report Card
+                    <Link to={`/progress-report/${foundStudent.id}`} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 transition">
+                        <DocumentReportIcon className="h-5 h-5" />
+                        View Progress Reports
                     </Link>
                 </div>
             </div>
