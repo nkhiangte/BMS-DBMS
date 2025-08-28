@@ -73,9 +73,9 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                 gradeDef.subjects.forEach(subjectDef => {
                     const result = exam?.results.find(r => r.subject === subjectDef.name);
                     initialMarks[student.id][subjectDef.name] = {
-                        marks: result?.marks ?? '',
-                        examMarks: result?.examMarks ?? '',
-                        activityMarks: result?.activityMarks ?? '',
+                        marks: result?.marks,
+                        examMarks: result?.examMarks,
+                        activityMarks: result?.activityMarks,
                         grade: result?.grade ?? '',
                     };
                 });
@@ -85,10 +85,14 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
     }, [isOpen, students, gradeDef, examId]);
 
     const handleMarkChange = (studentId: string, subjectName: string, field: 'marks' | 'examMarks' | 'activityMarks' | 'grade', value: string, max?: number) => {
-        let finalValue: string | number = value;
+        let finalValue: string | number | undefined = value;
         if (field !== 'grade') {
-            finalValue = value === '' ? '' : Math.max(0, Math.min(parseInt(value, 10), max || 100));
-            if (value !== '' && isNaN(Number(finalValue))) return;
+            if (value === '') {
+                finalValue = undefined;
+            } else {
+                const num = parseInt(value, 10);
+                finalValue = isNaN(num) ? undefined : Math.max(0, Math.min(num, max || 100));
+            }
         }
 
         setMarksData(prev => {
@@ -150,12 +154,17 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
             const newResults: SubjectMark[] = [];
             gradeDef.subjects.forEach(subjectDef => {
                 const subjectMarks = studentMarks[subjectDef.name];
+                if (!subjectMarks) return;
+                
                 const newResult: SubjectMark = { subject: subjectDef.name };
 
-                const processMark = (val: any) => val === '' || val === null || val === undefined ? undefined : Number(val);
-                const processGrade = (val: any) => val === '' || val === null || val === undefined ? undefined : val;
+                const processMark = (val: any) => val === '' || val == null ? undefined : Number(val);
+                const processGrade = (val: any) => val === '' || val == null ? undefined : val;
+                
+                const isEffectivelyGradeBased = subjectDef.examFullMarks === 0 && subjectDef.activityFullMarks === 0;
+                const isGradeBased = subjectDef.gradingSystem === 'OABC' || isEffectivelyGradeBased;
 
-                if(subjectDef.gradingSystem === 'OABC') {
+                if(isGradeBased) {
                     newResult.grade = processGrade(subjectMarks.grade);
                 } else if (subjectDef.activityFullMarks > 0) {
                     newResult.examMarks = processMark(subjectMarks.examMarks);
@@ -200,7 +209,7 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                 <th className="border p-2 text-left font-bold text-slate-800">Roll</th>
                                 <th className="border p-2 text-left font-bold text-slate-800">Student Name</th>
                                 {gradeDef.subjects.map(subject => (
-                                    <th key={subject.name} colSpan={subject.gradingSystem === 'OABC' ? 1 : (subject.activityFullMarks > 0 ? 2 : 1)} className="border p-2 text-center font-bold text-slate-800">
+                                    <th key={subject.name} colSpan={subject.gradingSystem === 'OABC' || (subject.examFullMarks === 0 && subject.activityFullMarks === 0) ? 1 : (subject.activityFullMarks > 0 ? 2 : 1)} className="border p-2 text-center font-bold text-slate-800">
                                         {subject.name}
                                     </th>
                                 ))}
@@ -209,7 +218,6 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                 <th className="border p-2"></th>
                                 <th className="border p-2"></th>
                                 {gradeDef.subjects.flatMap(subject => {
-                                     // FIX: Make grade detection more robust.
                                     const isEffectivelyGradeBased = subject.examFullMarks === 0 && subject.activityFullMarks === 0;
                                     const isGradeBased = subject.gradingSystem === 'OABC' || isEffectivelyGradeBased;
                                     
@@ -232,23 +240,26 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                     {gradeDef.subjects.flatMap((subject, subjectIndex) => {
                                         const marks = marksData[student.id]?.[subject.name] || {};
                                         
-                                        // FIX: Make grade detection more robust.
                                         const isEffectivelyGradeBased = subject.examFullMarks === 0 && subject.activityFullMarks === 0;
                                         const isGradeBased = subject.gradingSystem === 'OABC' || isEffectivelyGradeBased;
 
                                         if (isGradeBased) {
                                             return [
                                                 <td key={subject.name} className="border p-1">
-                                                    <select
+                                                    <input
                                                         id={`marks-input-${studentIndex}-${subjectIndex}-0`}
+                                                        type="text"
                                                         value={marks.grade ?? ''}
-                                                        onChange={e => handleMarkChange(student.id, subject.name, 'grade', e.target.value)}
+                                                        onChange={e => {
+                                                            const val = e.target.value.toUpperCase();
+                                                            if (/^[OABC]?$/.test(val)) {
+                                                                handleMarkChange(student.id, subject.name, 'grade', val);
+                                                            }
+                                                        }}
                                                         onKeyDown={e => handleKeyDown(e, studentIndex, subjectIndex, 0)}
-                                                        className="w-full text-center p-1 rounded-md border-slate-300"
-                                                    >
-                                                        <option value="">--</option>
-                                                        {OABC_GRADES.map(g => <option key={g} value={g}>{g}</option>)}
-                                                    </select>
+                                                        className="w-full text-center p-1 rounded-md border-slate-300 font-bold"
+                                                        maxLength={1}
+                                                    />
                                                 </td>
                                             ]
                                         } else if (subject.activityFullMarks > 0) {
