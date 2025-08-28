@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -22,8 +23,13 @@ const LoginPage: React.FC<LoginPageProps> = ({
 
   useEffect(() => {
     const messageFromState = location.state?.message;
+    const messageFromStorage = sessionStorage.getItem('loginMessage');
+
     if (messageFromState) {
         setNotification(messageFromState);
+    } else if (messageFromStorage) {
+        setNotification(messageFromStorage);
+        sessionStorage.removeItem('loginMessage');
     } else {
         setNotification(propNotification);
     }

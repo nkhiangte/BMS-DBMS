@@ -148,6 +148,7 @@ const App: React.FC = () => {
     const [isHostelResidentFormOpen, setIsHostelResidentFormOpen] = useState(false);
     const [isCalendarEventFormOpen, setIsCalendarEventFormOpen] = useState(false);
     const [editingCalendarEvent, setEditingCalendarEvent] = useState<CalendarEvent | null>(null);
+    const [deletingCalendarEvent, setDeletingCalendarEvent] = useState<CalendarEvent | null>(null);
 
     const [academicYear, setAcademicYear] = useState<string | null>(localStorage.getItem('academicYear'));
     const [authError, setAuthError] = useState('');
@@ -272,9 +273,8 @@ const App: React.FC = () => {
             const credential = firebase.auth.EmailAuthProvider.credential(firebaseUser.email, current);
             await firebaseUser.reauthenticateWithCredential(credential);
             await firebaseUser.updatePassword(newPass);
-            auth.signOut().then(() => {
-                navigate('/login', { replace: true, state: { message: 'Password changed successfully. Please log in again.' } });
-            });
+            sessionStorage.setItem('loginMessage', 'Password changed successfully. Please log in again.');
+            await auth.signOut();
             return { success: true };
         } catch (error: any) {
             let message = 'An error occurred while changing the password.';
@@ -477,8 +477,35 @@ const App: React.FC = () => {
     const handleUpdateHostelStock = async (itemId: string, change: number, notes: string) => { console.log('Updating hostel stock', itemId, change, notes); };
     const handleAddCalendarEvent = () => { setEditingCalendarEvent(null); setIsCalendarEventFormOpen(true); };
     const handleEditCalendarEvent = (event: CalendarEvent) => { setEditingCalendarEvent(event); setIsCalendarEventFormOpen(true); };
-    const handleDeleteCalendarEvent = (event: CalendarEvent) => { console.log('Deleting calendar event', event.id); };
-    const handleCalendarEventFormSubmit = async (eventData: Omit<CalendarEvent, 'id'>) => { console.log('Submitting calendar event', eventData); setIsCalendarEventFormOpen(false); };
+    const handleDeleteCalendarEvent = async () => {
+        if (!deletingCalendarEvent) return;
+        try {
+            await db.collection('calendarEvents').doc(deletingCalendarEvent.id).delete();
+            addNotification(`Event "${deletingCalendarEvent.title}" deleted successfully.`, "success");
+        } catch (error) {
+            console.error("Error deleting calendar event:", error);
+            addNotification("Failed to delete event.", "error");
+        } finally {
+            setDeletingCalendarEvent(null);
+        }
+    };
+    const handleCalendarEventFormSubmit = async (eventData: Omit<CalendarEvent, 'id'>) => {
+        try {
+            if (editingCalendarEvent) {
+                await db.collection('calendarEvents').doc(editingCalendarEvent.id).update(eventData);
+                addNotification(`Event "${eventData.title}" updated successfully.`, 'success');
+            } else {
+                await db.collection('calendarEvents').add(eventData);
+                addNotification(`Event "${eventData.title}" added successfully.`, 'success');
+            }
+        } catch (error) {
+            console.error("Error saving calendar event:", error);
+            addNotification("Failed to save event.", "error");
+        } finally {
+            setIsCalendarEventFormOpen(false);
+            setEditingCalendarEvent(null);
+        }
+    };
     const handleUpdateCalendarPrefs = (days: number) => { setCalendarNotificationPrefs({ daysBefore: days }); };
     const handleUpdateBulkMarks = async (updates: Array<{ studentId: string; performance: Exam[] }>) => { console.log('Updating bulk marks', updates.length); };
     const handleOpenImportModal = (grade: Grade | null) => { setImportTargetGrade(grade); setIsImportModalOpen(true); };
@@ -575,6 +602,10 @@ const App: React.FC = () => {
         unsubscribers.push(db.collection('staff').onSnapshot(snapshot => setStaff(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Staff[])));
         unsubscribers.push(db.collection('config').doc('feeStructure').onSnapshot(doc => doc.exists ? setFeeStructure(doc.data() as FeeStructure) : db.collection('config').doc('feeStructure').set(DEFAULT_FEE_STRUCTURE)));
         unsubscribers.push(db.collection('users').onSnapshot(snapshot => setAllUsers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User)))));
+        unsubscribers.push(db.collection('calendarEvents').onSnapshot(snapshot => {
+            const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as CalendarEvent[];
+            setCalendarEvents(events.sort((a, b) => a.date.localeCompare(b.date)));
+        }));
         unsubscribers.push(db.collection('config').doc('gradeDefinitions').onSnapshot(doc => {
             if (doc.exists) {
                 const remoteData = doc.data() as Record<string, Partial<GradeDefinition>> | undefined;
@@ -657,7 +688,7 @@ const App: React.FC = () => {
                     {/* Other Modules */}
                     <Route path="/inventory" element={<PrivateRoute user={user}><InventoryPage inventory={inventory} onAdd={handleAddInventoryItem} onEdit={handleEditInventoryItem} onDelete={handleDeleteInventoryItem} user={user!} /></PrivateRoute>} />
                     <Route path="/communication" element={<PrivateRoute user={user}><CommunicationPage students={activeStudents} user={user!} /></PrivateRoute>} />
-                    <Route path="/calendar" element={<PrivateRoute user={user}><CalendarPage events={calendarEvents} user={user!} onAdd={handleAddCalendarEvent} onEdit={handleEditCalendarEvent} onDelete={handleDeleteCalendarEvent} notificationDaysBefore={calendarNotificationPrefs.daysBefore} onUpdatePrefs={handleUpdateCalendarPrefs} /></PrivateRoute>} />
+                    <Route path="/calendar" element={<PrivateRoute user={user}><CalendarPage events={calendarEvents} user={user!} onAdd={handleAddCalendarEvent} onEdit={handleEditCalendarEvent} onDelete={setDeletingCalendarEvent} notificationDaysBefore={calendarNotificationPrefs.daysBefore} onUpdatePrefs={handleUpdateCalendarPrefs} /></PrivateRoute>} />
 
                     {/* Hostel */}
                     <Route path="/hostel" element={<PrivateRoute user={user}><HostelDashboardPage /></PrivateRoute>} />
@@ -718,6 +749,20 @@ const App: React.FC = () => {
                 title="Confirm Staff Deletion"
             >
                 <p>Are you sure you want to delete <span className="font-bold">{deletingStaff?.firstName} {deletingStaff?.lastName}</span>? This action cannot be undone.</p>
+            </ConfirmationModal>
+            <CalendarEventFormModal
+                isOpen={isCalendarEventFormOpen}
+                onClose={() => { setIsCalendarEventFormOpen(false); setEditingCalendarEvent(null); }}
+                onSubmit={handleCalendarEventFormSubmit}
+                event={editingCalendarEvent}
+            />
+            <ConfirmationModal
+                isOpen={!!deletingCalendarEvent}
+                onClose={() => setDeletingCalendarEvent(null)}
+                onConfirm={handleDeleteCalendarEvent}
+                title="Confirm Event Deletion"
+            >
+                <p>Are you sure you want to delete the event <span className="font-bold">{deletingCalendarEvent?.title}</span>? This action cannot be undone.</p>
             </ConfirmationModal>
         </div>
     );
