@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType } from './types';
@@ -37,6 +38,7 @@ import ImportStudentsModal from './components/ImportStudentsModal';
 import TransferStudentModal from './components/TransferStudentModal';
 import StudentAttendancePage from './pages/StudentAttendancePage';
 import NotificationContainer from './components/NotificationContainer';
+import PrintableBulkReportCardPage from './pages/PrintableBulkReportCardPage';
 
 // Auth Pages
 import LoginPage from './pages/LoginPage';
@@ -926,6 +928,7 @@ const App: React.FC = () => {
                                 <Route path="/staff/:staffId" element={<StaffDetailPage staff={staff} onEdit={(s: Staff) => { setEditingStaff(s); setIsStaffFormModalOpen(true); }} gradeDefinitions={gradeDefinitions} />} />
                                 <Route path="/fees" element={<FeeManagementPage students={students} academicYear={academicYear} onUpdateFeePayments={handleUpdateFeePayments} user={user} />} />
                                 <Route path="/reports/class-statement/:grade/:examId" element={<ClassMarkStatementPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear} onUpdateClassMarks={handleUpdateClassMarks} user={user} assignedGrade={assignedGrade} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} />} />
+                                <Route path="/reports/bulk-print/:grade/:examId" element={<PrintableBulkReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} />} />
                                 <Route path="/promotion" element={<PromotionPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear} onPromoteStudents={handlePromoteStudents} user={user} />} />
                                 <Route path="/inventory" element={<InventoryPage inventory={inventory} onAdd={() => setIsInventoryFormModalOpen(true)} onEdit={(i) => { setEditingInventoryItem(i); setIsInventoryFormModalOpen(true); }} onDelete={(i) => setDeletingInventoryItem(i)} user={user} />} />
                                 <Route path="/change-password" element={<ChangePasswordPage onChangePassword={handleChangePassword} />} />
@@ -948,28 +951,65 @@ const App: React.FC = () => {
                                 <Route path="/hostel/attendance" element={<HostelAttendancePage />} />
                                 <Route path="/hostel/mess" element={<HostelMessPage />} />
                                 <Route path="/hostel/staff" element={<HostelStaffPage staff={hostelStaff} onAdd={() => setIsHostelStaffFormModalOpen(true)} onEdit={(s) => { setEditingHostelStaff(s); setIsHostelStaffFormModalOpen(true); }} onDelete={(s) => setDeletingHostelStaff(s)} user={user} />} />
-                                <Route path="/hostel/inventory" element={<HostelInventoryPage inventory={hostelInventory} stockLogs={hostelStockLogs} onUpdateStock={handleUpdateHostelStock} user={user} />} />
+                                <Route path="/hostel/inventory" element={<HostelInventoryPage inventory={hostelInventory} stockLogs={hostelStockLogs} onUpdateStock={handleUpdateHostelStock} user={user}/>} />
                                 <Route path="/hostel/discipline" element={<HostelDisciplinePage />} />
                                 <Route path="/hostel/health" element={<HostelHealthPage />} />
                                 <Route path="/hostel/communication" element={<HostelCommunicationPage />} />
                                 <Route path="/hostel/settings" element={<HostelSettingsPage />} />
 
+                                {/* Catch all other routes */}
                                 <Route path="*" element={<Navigate to="/" />} />
                         </Routes>
                     </main>
-                    {isFormModalOpen && <StudentFormModal isOpen={isFormModalOpen} onClose={closeModal} onSubmit={handleFormSubmit} student={editingStudent} newStudentTargetGrade={newStudentTargetGrade} academicYear={academicYear} />}
-                    {deletingStudent && <ConfirmationModal isOpen={!!deletingStudent} onClose={closeModal} onConfirm={handleDeleteConfirm} title="Delete Student">Are you sure you want to delete <strong className="font-bold">{deletingStudent?.name}</strong>? This action cannot be undone.</ConfirmationModal>}
-                    {isStaffFormModalOpen && <StaffFormModal isOpen={isStaffFormModalOpen} onClose={closeModal} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions} />}
-                    {deletingStaff && <ConfirmationModal isOpen={!!deletingStaff} onClose={closeModal} onConfirm={handleDeleteStaffConfirm} title="Delete Staff Member">Are you sure you want to delete <strong className="font-bold">{deletingStaff?.firstName} {deletingStaff?.lastName}</strong>? This action cannot be undone.</ConfirmationModal>}
-                    {isInventoryFormModalOpen && <InventoryFormModal isOpen={isInventoryFormModalOpen} onClose={closeModal} onSubmit={handleInventoryFormSubmit} item={editingInventoryItem} />}
-                    {deletingInventoryItem && <ConfirmationModal isOpen={!!deletingInventoryItem} onClose={closeModal} onConfirm={handleDeleteInventoryItemConfirm} title="Delete Inventory Item">Are you sure you want to delete <strong className="font-bold">{deletingInventoryItem?.name}</strong>? This action cannot be undone.</ConfirmationModal>}
-                    {isHostelStaffFormModalOpen && <HostelStaffFormModal isOpen={isHostelStaffFormModalOpen} onClose={closeModal} onSubmit={handleHostelStaffFormSubmit} staffMember={editingHostelStaff} />}
-                    {deletingHostelStaff && <ConfirmationModal isOpen={!!deletingHostelStaff} onClose={closeModal} onConfirm={handleDeleteHostelStaffConfirm} title="Delete Hostel Staff">Are you sure you want to delete <strong className="font-bold">{deletingHostelStaff?.name}</strong>? This action cannot be undone.</ConfirmationModal>}
-                    {isHostelResidentFormModalOpen && <HostelResidentFormModal isOpen={isHostelResidentFormModalOpen} onClose={closeModal} onSubmit={handleHostelResidentFormSubmit} resident={editingHostelResident} allStudents={students} allRooms={hostelRooms} allResidents={hostelResidents}/>}
-                    {isImportModalOpen && <ImportStudentsModal isOpen={isImportModalOpen} onClose={closeModal} onImport={handleImportStudents} grade={importTargetGrade} allStudents={students} allGrades={GRADES_LIST} isImporting={isImporting} />}
-                    {transferringStudent && <TransferStudentModal isOpen={!!transferringStudent} onClose={closeModal} onConfirm={handleTransferStudent} student={transferringStudent} allStudents={students} allGrades={GRADES_LIST} />}
-                    {isCalendarEventFormModalOpen && <CalendarEventFormModal isOpen={isCalendarEventFormModalOpen} onClose={closeModal} onSubmit={handleCalendarEventFormSubmit} event={editingCalendarEvent} />}
-                    {deletingCalendarEvent && <ConfirmationModal isOpen={!!deletingCalendarEvent} onClose={closeModal} onConfirm={handleDeleteCalendarEventConfirm} title="Delete Event">Are you sure you want to delete <strong className="font-bold">{deletingCalendarEvent.title}</strong>? This action cannot be undone.</ConfirmationModal>}
+                    {isFormModalOpen && (
+                        <StudentFormModal isOpen={isFormModalOpen} onClose={closeModal} onSubmit={handleFormSubmit} student={editingStudent} newStudentTargetGrade={newStudentTargetGrade} academicYear={academicYear} />
+                    )}
+                    {deletingStudent && (
+                        <ConfirmationModal isOpen={!!deletingStudent} onClose={closeModal} onConfirm={handleDeleteConfirm} title="Confirm Deletion">
+                            <p>Are you sure you want to delete the record for <span className="font-bold">{deletingStudent.name}</span>? This action cannot be undone.</p>
+                        </ConfirmationModal>
+                    )}
+                    {isStaffFormModalOpen && (
+                        <StaffFormModal isOpen={isStaffFormModalOpen} onClose={closeModal} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions}/>
+                    )}
+                    {deletingStaff && (
+                        <ConfirmationModal isOpen={!!deletingStaff} onClose={closeModal} onConfirm={handleDeleteStaffConfirm} title="Confirm Deletion">
+                             <p>Are you sure you want to delete the record for <span className="font-bold">{deletingStaff.firstName} {deletingStaff.lastName}</span>? This action cannot be undone.</p>
+                        </ConfirmationModal>
+                    )}
+                    {isInventoryFormModalOpen && (
+                        <InventoryFormModal isOpen={isInventoryFormModalOpen} onClose={closeModal} onSubmit={handleInventoryFormSubmit} item={editingInventoryItem} />
+                    )}
+                    {deletingInventoryItem && (
+                        <ConfirmationModal isOpen={!!deletingInventoryItem} onClose={closeModal} onConfirm={handleDeleteInventoryItemConfirm} title="Confirm Deletion">
+                             <p>Are you sure you want to delete the item <span className="font-bold">{deletingInventoryItem.name}</span> from the inventory?</p>
+                        </ConfirmationModal>
+                    )}
+                    {isImportModalOpen && (
+                        <ImportStudentsModal isOpen={isImportModalOpen} onClose={closeModal} onImport={handleImportStudents} grade={importTargetGrade} allStudents={students} allGrades={GRADES_LIST} isImporting={isImporting} />
+                    )}
+                    {transferringStudent && (
+                        <TransferStudentModal isOpen={!!transferringStudent} onClose={closeModal} onConfirm={handleTransferStudent} student={transferringStudent} allStudents={students} allGrades={GRADES_LIST} />
+                    )}
+                    {isHostelStaffFormModalOpen && (
+                        <HostelStaffFormModal isOpen={isHostelStaffFormModalOpen} onClose={closeModal} onSubmit={handleHostelStaffFormSubmit} staffMember={editingHostelStaff} />
+                    )}
+                     {deletingHostelStaff && (
+                        <ConfirmationModal isOpen={!!deletingHostelStaff} onClose={closeModal} onConfirm={handleDeleteHostelStaffConfirm} title="Confirm Deletion">
+                             <p>Are you sure you want to delete the record for hostel staff <span className="font-bold">{deletingHostelStaff.name}</span>?</p>
+                        </ConfirmationModal>
+                    )}
+                    {isHostelResidentFormModalOpen && (
+                        <HostelResidentFormModal isOpen={isHostelResidentFormModalOpen} onClose={closeModal} onSubmit={handleHostelResidentFormSubmit} resident={editingHostelResident} allStudents={students} allRooms={hostelRooms} allResidents={hostelResidents} />
+                    )}
+                     {isCalendarEventFormModalOpen && (
+                        <CalendarEventFormModal isOpen={isCalendarEventFormModalOpen} onClose={closeModal} onSubmit={handleCalendarEventFormSubmit} event={editingCalendarEvent} />
+                    )}
+                    {deletingCalendarEvent && (
+                        <ConfirmationModal isOpen={!!deletingCalendarEvent} onClose={closeModal} onConfirm={handleDeleteCalendarEventConfirm} title="Confirm Deletion">
+                             <p>Are you sure you want to delete the event <span className="font-bold">{deletingCalendarEvent.title}</span> from the calendar?</p>
+                        </ConfirmationModal>
+                    )}
                 </div>
             )}
         </HashRouter>

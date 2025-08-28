@@ -1,8 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, SubjectMark, GradeDefinition, SubjectDefinition, User, StudentStatus, StudentAttendanceRecord, StudentAttendanceStatus } from '../types';
-import { BackIcon, UserIcon, HomeIcon, PrinterIcon } from '../components/Icons';
-import { formatStudentId, formatDateForDisplay, calculateStudentResult, calculateRanks, getPerformanceGrade, getRemarks } from '../utils';
+import { BackIcon, UserIcon, HomeIcon, PrinterIcon, SpinnerIcon } from '../components/Icons';
+import { formatStudentId, formatDateForDisplay, calculateStudentResult, calculateRanks, getPerformanceGrade, getRemarks, getMonthsForTerm } from '../utils';
 import { GRADES_WITH_NO_ACTIVITIES, TERMINAL_EXAMS } from '../constants';
 
 const PhotoWithFallback: React.FC<{src?: string, alt: string}> = ({ src, alt }) => {
@@ -42,24 +42,31 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
     const { studentId, examId } = useParams<{ studentId: string; examId: string }>();
     const navigate = useNavigate();
     
-    const [annualAttendance, setAnnualAttendance] = useState<number | null>(null);
+    const [termAttendance, setTermAttendance] = useState<string | null>(null);
     const [rank, setRank] = useState<number | 'NA' | null>(null);
     const [isLoadingExtraData, setIsLoadingExtraData] = useState(true);
 
     const student = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
     const isHighSchool = student?.grade === Grade.IX || student?.grade === Grade.X;
-
-    const isFinalTerm = examId === 'terminal3';
     const examDetails = useMemo(() => TERMINAL_EXAMS.find(e => e.id === examId), [examId]);
-
+    
     const hasActivitiesForThisGrade = useMemo(() => {
         if (!student) return false;
         return !GRADES_WITH_NO_ACTIVITIES.includes(student.grade);
     }, [student]);
 
+    const gradeDef = useMemo(() => student ? gradeDefinitions[student.grade] : undefined, [student, gradeDefinitions]);
+    
+    const termResults = useMemo(() => {
+        if (!student || !examId) return [];
+        const exam = student.academicPerformance?.find(e => e.id === examId);
+        return exam?.results.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null || r.grade != null) || [];
+    }, [student, examId]);
+
+
     useEffect(() => {
         const calculateExtraData = async () => {
-            if (!student || !academicYear || !isFinalTerm) {
+            if (!student || !academicYear || !examId || !gradeDef) {
                 setIsLoadingExtraData(false);
                 return;
             }
@@ -67,28 +74,20 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
 
             // --- 1. Calculate Rank ---
             const classmates = students.filter(s => s.grade === student.grade && s.status === StudentStatus.ACTIVE);
-            const finalExamId = 'terminal3';
             
             const studentScores = classmates.map(s => {
-                const finalExam = s.academicPerformance?.find(e => e.id === finalExamId);
-                const results = finalExam?.results || [];
-                const studentGradeDef = gradeDefinitions[s.grade];
+                const sExam = s.academicPerformance?.find(e => e.id === examId);
+                const sResults = sExam?.results || [];
+                const sGradeDef = gradeDefinitions[s.grade];
                 
                 let totalMarks = 0;
-                if (studentGradeDef) {
-                    const hasActivities = !GRADES_WITH_NO_ACTIVITIES.includes(s.grade);
-                    studentGradeDef.subjects
-                      .filter(subject => subject.gradingSystem !== 'OABC')
-                      .forEach(subject => {
-                        const result = results.find(r => r.subject === subject.name);
-                        const useSplitMarks = hasActivities && subject.activityFullMarks > 0;
-                        const obtainedMarks = useSplitMarks
-                            ? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0)
-                            : (result?.marks ?? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0));
-                        totalMarks += obtainedMarks;
+                if (sGradeDef) {
+                    sGradeDef.subjects.filter(sub => sub.gradingSystem !== 'OABC').forEach(sub => {
+                        const res = sResults.find(r => r.subject === sub.name);
+                        totalMarks += (res?.marks ?? (res?.examMarks ?? 0) + (res?.activityMarks ?? 0));
                     });
                 }
-                const { finalResult } = calculateStudentResult(results, studentGradeDef, s.grade);
+                const { finalResult } = calculateStudentResult(sResults, sGradeDef, s.grade);
                 return { studentId: s.id, totalMarks, result: finalResult };
             });
 
@@ -100,70 +99,65 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
             let absent = 0;
             const [startYearStr] = academicYear.split('-');
             const startYear = parseInt(startYearStr, 10);
-            const academicMonths = ["April", "May", "June", "July", "August", "September", "October", "November", "December", "January", "February", "March"];
-            const monthMap: { [key: string]: number } = { April: 3, May: 4, June: 5, July: 6, August: 7, September: 8, October: 9, November: 10, December: 11, January: 0, February: 1, March: 2 };
+            const termMonths = getMonthsForTerm(examId);
 
-            for (const monthName of academicMonths) {
-                const monthIndex = monthMap[monthName];
-                const year = monthIndex >= 3 ? startYear : startYear + 1;
+            for (const { month, yearOffset } of termMonths) {
+                const year = startYear + yearOffset;
                 try {
-                    const monthlyData = await fetchStudentAttendanceForMonth(student.grade, year, monthIndex + 1);
+                    const monthlyData = await fetchStudentAttendanceForMonth(student.grade, year, month + 1);
                     Object.values(monthlyData).forEach(dailyRecord => {
                         const status = dailyRecord[student.id];
                         if (status === StudentAttendanceStatus.PRESENT) present++;
                         else if (status === StudentAttendanceStatus.ABSENT) absent++;
                     });
                 } catch (error) {
-                    console.error(`Could not fetch attendance for ${monthName} ${year}:`, error);
+                    console.error(`Could not fetch attendance for term ${examId}:`, error);
                 }
             }
             
             const totalDays = present + absent;
-            setAnnualAttendance(totalDays > 0 ? (present / totalDays) * 100 : null);
+            setTermAttendance(totalDays > 0 ? `${((present / totalDays) * 100).toFixed(2)}%` : 'N/A');
 
             setIsLoadingExtraData(false);
         };
 
         calculateExtraData();
-    }, [student, students, academicYear, gradeDefinitions, fetchStudentAttendanceForMonth, isFinalTerm]);
+    }, [student, students, academicYear, gradeDefinitions, examId, gradeDef, fetchStudentAttendanceForMonth]);
 
-    const getSplitMarks = (subjectName: string, results: SubjectMark[], subjectDef: SubjectDefinition) => {
-        const result = results.find(r => r.subject === subjectName);
-        const useSplitMarks = hasActivitiesForThisGrade && subjectDef.activityFullMarks > 0;
+
+    const summaryData = useMemo(() => {
+        if (!student || !gradeDef || termResults.length === 0) return null;
+
+        let grandTotal = 0;
+        let maxGrandTotal = 0;
         
-        const fullExam = subjectDef.examFullMarks;
-        const fullActivity = useSplitMarks ? subjectDef.activityFullMarks : 0;
-        const fullTotal = fullExam + fullActivity;
+        gradeDef.subjects
+          .filter(subjectDef => subjectDef.gradingSystem !== 'OABC')
+          .forEach(subjectDef => {
+            const result = termResults.find(r => r.subject === subjectDef.name);
+            const marks = result?.marks ?? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0);
+            grandTotal += marks;
+            maxGrandTotal += subjectDef.examFullMarks + (hasActivitiesForThisGrade ? subjectDef.activityFullMarks : 0);
+        });
         
-        if (subjectDef.gradingSystem === 'OABC') {
-            return { grade: result?.grade ?? null, exam: null, activity: null, total: null, fullExam, fullActivity, fullTotal };
-        }
+        const percentage = maxGrandTotal > 0 ? (grandTotal / maxGrandTotal) * 100 : 0;
+        const { finalResult } = calculateStudentResult(termResults, gradeDef, student.grade);
+        
+        return {
+            percentage: `${percentage.toFixed(2)}%`,
+            result: finalResult,
+            performanceGrade: getPerformanceGrade(percentage, finalResult, student.grade),
+            remarks: getRemarks(percentage, finalResult),
+        };
+    }, [student, gradeDef, termResults, hasActivitiesForThisGrade]);
 
-        if (!result) return { grade: null, exam: null, activity: null, total: null, fullExam, fullActivity, fullTotal };
-
-        if (useSplitMarks) {
-            const examMarks = result.examMarks ?? null;
-            const activityMarks = result.activityMarks ?? null;
-            let total: number | null = null;
-            if (examMarks !== null || activityMarks !== null) {
-                total = (examMarks || 0) + (activityMarks || 0);
-            }
-            return { grade: null, exam: examMarks, activity: activityMarks, total, fullExam, fullActivity, fullTotal };
-        } else {
-            const totalFromMarks = result.marks ?? (result.examMarks ?? 0) + (result.activityMarks ?? 0);
-            return { grade: null, exam: null, activity: null, total: totalFromMarks || null, fullExam: subjectDef.examFullMarks, fullActivity: 0, fullTotal: subjectDef.examFullMarks };
-        }
-    };
 
     if (!student) {
         return (
             <div className="text-center bg-white p-10 rounded-xl shadow-lg">
                 <h2 className="text-2xl font-bold text-red-600">Student Not Found</h2>
                 <p className="text-slate-500 mt-2">The requested student could not be found in the database.</p>
-                <button onClick={() => navigate('/')} className="mt-6 flex items-center mx-auto justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 transition">
-                    <BackIcon className="w-5 h-5" />
-                    Return to Dashboard
-                </button>
+                <button onClick={() => navigate('/')} className="mt-6 btn btn-primary"><BackIcon className="w-5 h-5" /> Return</button>
             </div>
         );
     }
@@ -175,137 +169,39 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
             <div className="text-center bg-white p-10 rounded-xl shadow-lg">
                 <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
                 <p className="text-slate-500 mt-2">You do not have permission to view this student's report card.</p>
-                 <button onClick={() => navigate('/')} className="mt-6 flex items-center mx-auto justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 transition">
-                    <BackIcon className="w-5 h-5" />
-                    Return to Dashboard
-                </button>
+                 <button onClick={() => navigate('/')} className="mt-6 btn btn-primary"><BackIcon className="w-5 h-5" />Return</button>
             </div>
         );
     }
-
-    const gradeDef = useMemo(() => student ? gradeDefinitions[student.grade] : undefined, [student, gradeDefinitions]);
-
-    const allExamsData = useMemo(() => {
-        if (!student) return null;
-        const studentPerformance = student.academicPerformance || [];
-        
-        const getResultsForTerm = (termId: string): SubjectMark[] => {
-            const exam = studentPerformance.find(e => e.id === termId);
-            return exam?.results.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null || r.grade != null) || [];
-        };
-
-        return {
-            term1: getResultsForTerm('terminal1'),
-            term2: getResultsForTerm('terminal2'),
-            term3: getResultsForTerm('terminal3'),
-        };
-    }, [student]);
-
-    const hasActivityMarks = useMemo(() => {
-        if (!gradeDef) return false;
-        return hasActivitiesForThisGrade && gradeDef.subjects.some(s => s.activityFullMarks > 0);
-    }, [gradeDef, hasActivitiesForThisGrade]);
-
-
-    const summaryData = useMemo(() => {
-        if (!student || !allExamsData || !gradeDef) return null;
-
-        let grandTotal = 0;
-        let maxGrandTotal = 0;
-        
-        const finalTermResults = allExamsData.term3;
-
-        gradeDef.subjects
-          .filter(subjectDef => subjectDef.gradingSystem !== 'OABC')
-          .forEach(subjectDef => {
-            const finalTermMarks = getSplitMarks(subjectDef.name, finalTermResults, subjectDef);
-            grandTotal += finalTermMarks.total ?? 0;
-            maxGrandTotal += finalTermMarks.fullTotal ?? 0;
-        });
-        
-        const percentage = maxGrandTotal > 0 ? (grandTotal / maxGrandTotal) * 100 : 0;
-        
-        const { finalResult } = calculateStudentResult(finalTermResults, gradeDef, student.grade);
-        
-        return {
-            grandTotal,
-            maxGrandTotal,
-            percentage: percentage.toFixed(2),
-            result: finalResult,
-            performanceGrade: getPerformanceGrade(percentage, finalResult, student.grade),
-            remarks: getRemarks(percentage, finalResult),
-        };
-    }, [student, allExamsData, gradeDef, getSplitMarks]);
-
-    const termTotals = useMemo(() => {
-        if (!gradeDef || !allExamsData) return { t1: 0, t2: 0, t3: 0, max: 0 };
-        let t1 = 0, t2 = 0, t3 = 0, max = 0;
-        gradeDef.subjects
-          .filter(subjectDef => subjectDef.gradingSystem !== 'OABC')
-          .forEach(subjectDef => {
-            const term1Marks = getSplitMarks(subjectDef.name, allExamsData.term1, subjectDef);
-            const term2Marks = getSplitMarks(subjectDef.name, allExamsData.term2, subjectDef);
-            const term3Marks = getSplitMarks(subjectDef.name, allExamsData.term3, subjectDef);
-            t1 += term1Marks.total ?? 0;
-            t2 += term2Marks.total ?? 0;
-            t3 += term3Marks.total ?? 0;
-            max += term1Marks.fullTotal; // fullTotal is same for all terms
-        });
-        return { t1, t2, t3, max };
-    }, [gradeDef, allExamsData, getSplitMarks]);
-
+    
     if (!gradeDef || !examDetails) {
         return (
             <div className="text-center bg-white p-10 rounded-xl shadow-lg">
                 <h2 className="text-2xl font-bold text-red-600">Report Card Data Not Found</h2>
-                <p className="text-slate-500 mt-2">The requested student or exam data is incomplete.</p>
-                <button onClick={() => navigate('/')} className="mt-6 flex items-center mx-auto justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 transition">
-                    <BackIcon className="w-5 h-5" />
-                    Return to Dashboard
-                </button>
+                 <p className="text-slate-500 mt-2">The requested student or exam data is incomplete.</p>
+                <button onClick={() => navigate('/')} className="mt-6 btn btn-primary"><BackIcon className="w-5 h-5" />Return</button>
             </div>
         );
     }
-// FIX: Pass subjectDef to renderTermCells to fix scope and property access errors.
-    const renderTermCells = (termData: ReturnType<typeof getSplitMarks>, subjectDefForCell: SubjectDefinition) => {
-        const { grade, exam, activity, total } = termData;
-        const isEffectivelyGradeBased = subjectDefForCell.examFullMarks === 0 && subjectDefForCell.activityFullMarks === 0;
-        const isGradeBased = subjectDefForCell.gradingSystem === 'OABC' || isEffectivelyGradeBased;
     
-        return isGradeBased ? (
-            <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center font-bold text-lg">{grade ?? '-'}</td>
-        ) : hasActivityMarks ? (
-            <>
-                <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{exam ?? '-'}</td>
-                <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{activity ?? '-'}</td>
-                <td className="border border-slate-300 px-2 py-1 text-center text-slate-800 font-semibold">{total ?? '-'}</td>
-            </>
-        ) : (
-            <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{total ?? '-'}</td>
-        );
-    };
-    
-    const DetailItem: React.FC<{label: string, value?: string | number}> = ({ label, value }) => (
-        <div><span className="font-semibold text-slate-800">{label}:</span> <span className="text-slate-800">{value || 'N/A'}</span></div>
-    );
-     const SummaryItem: React.FC<{ label: string; value: string | number; color?: string; }> = ({ label, value, color = 'text-slate-800' }) => (
-        <div className="bg-slate-50 p-3 rounded-lg">
-            <div className="text-sm text-slate-500">{label}</div>
-            <div className={`text-lg font-bold ${color}`}>{value}</div>
+    const SummaryItem: React.FC<{ label: string; value: string | number | null; color?: string; }> = ({ label, value, color = 'text-slate-800' }) => (
+        <div className="bg-slate-50 p-3 rounded-lg text-center">
+            <div className="text-sm text-slate-500 font-semibold">{label}</div>
+            <div className={`text-xl font-bold ${color}`}>{value ?? '--'}</div>
         </div>
     );
     
     return (
       <div className="printable-area">
         <div className="mb-6 flex justify-between items-center print:hidden">
-            <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-800 transition-colors">
+            <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-800">
                 <BackIcon className="w-5 h-5" /> Back
             </button>
             <div className="flex items-center gap-4">
-                 <Link to="/" className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition-colors" title="Go to Home/Dashboard">
+                 <Link to="/" className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-800" title="Go to Home">
                     <HomeIcon className="w-5 h-5" /> <span>Home</span>
                 </Link>
-                <button onClick={() => window.print()} className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 flex items-center">
+                <button onClick={() => window.print()} className="btn btn-primary">
                     <PrinterIcon className="w-5 h-5" /><span className="ml-2">Print This Report</span>
                 </button>
             </div>
@@ -319,7 +215,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                 <h1 className="text-4xl font-bold text-sky-800">Bethel Mission School</h1>
                 <p className="text-lg font-semibold text-slate-600">Champhai, Mizoram</p>
                 <p className="text-sm text-slate-500">DISE Code 15040100705</p>
-                <h2 className="text-2xl font-semibold text-slate-600 mt-4">{isFinalTerm ? 'Annual Progress Report Card' : `Progress Report - ${examDetails?.name}`}</h2>
+                <h2 className="text-2xl font-semibold text-slate-600 mt-4">Progress Report - {examDetails?.name}</h2>
                 <p className="text-lg text-slate-500">Academic Year: {academicYear}</p>
             </header>
 
@@ -330,12 +226,12 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                         <PhotoWithFallback src={student.photographUrl} alt={`${student.name}'s photograph`} />
                     </div>
                     <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-md flex-grow">
-                       <DetailItem label="Name" value={student.name} />
-                       <DetailItem label="Student ID" value={formatStudentId(student, academicYear)} />
-                       <DetailItem label="Grade" value={student.grade} />
-                       <DetailItem label="Roll No." value={String(student.rollNo)} />
-                       <DetailItem label="Date of Birth" value={formatDateForDisplay(student.dateOfBirth)} />
-                       <DetailItem label="Father's Name" value={student.fatherName} />
+                       <div><span className="font-semibold text-slate-800">Name:</span> <span className="text-slate-800">{student.name}</span></div>
+                       <div><span className="font-semibold text-slate-800">Student ID:</span> <span className="text-slate-800">{formatStudentId(student, academicYear)}</span></div>
+                       <div><span className="font-semibold text-slate-800">Grade:</span> <span className="text-slate-800">{student.grade}</span></div>
+                       <div><span className="font-semibold text-slate-800">Roll No.:</span> <span className="text-slate-800">{String(student.rollNo)}</span></div>
+                       <div><span className="font-semibold text-slate-800">Date of Birth:</span> <span className="text-slate-800">{formatDateForDisplay(student.dateOfBirth)}</span></div>
+                       <div><span className="font-semibold text-slate-800">Father's Name:</span> <span className="text-slate-800">{student.fatherName}</span></div>
                     </div>
                 </div>
             </section>
@@ -345,93 +241,53 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                  <table className="min-w-full border-collapse border border-slate-400 text-sm">
                     <thead className="bg-slate-100 font-semibold text-slate-800">
                         <tr>
-                            <th rowSpan={hasActivityMarks ? 2 : 1} className="border border-slate-300 px-2 py-1 text-left align-bottom">Subject</th>
-                            {isFinalTerm ? (
-                                <>
-                                    <th colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center">I Term</th>
-                                    <th colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center">II Term</th>
-                                    <th colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center">Final Term</th>
-                                </>
-                            ) : (
-                                <th colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center">{examDetails?.name}</th>
-                            )}
+                            <th className="border border-slate-300 px-2 py-1 text-left">Subject</th>
+                            {hasActivitiesForThisGrade && <th className="border border-slate-300 px-2 py-1 text-center">Exam</th>}
+                            {hasActivitiesForThisGrade && <th className="border border-slate-300 px-2 py-1 text-center">Activity</th>}
+                            <th className="border border-slate-300 px-2 py-1 text-center">Total</th>
                         </tr>
-                        {hasActivityMarks && (
-                            <tr>
-                                {isFinalTerm ? (
-                                    <>
-                                        <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Exam</th><th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Act.</th><th className="border border-slate-300 px-2 py-1 text-slate-800">Total</th>
-                                        <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Exam</th><th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Act.</th><th className="border border-slate-300 px-2 py-1 text-slate-800">Total</th>
-                                        <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Exam</th><th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Act.</th><th className="border border-slate-300 px-2 py-1 text-slate-800">Total</th>
-                                    </>
-                                ) : (
-                                    <>
-                                        <th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Exam</th><th className="border border-slate-300 px-2 py-1 font-normal text-slate-800">Act.</th><th className="border border-slate-300 px-2 py-1 text-slate-800">Total</th>
-                                    </>
-                                )}
-                            </tr>
-                        )}
                     </thead>
                     <tbody>
-                        {gradeDef.subjects.map((subjectDef) => {
-                            const term1 = getSplitMarks(subjectDef.name, allExamsData.term1, subjectDef);
-                            const term2 = getSplitMarks(subjectDef.name, allExamsData.term2, subjectDef);
-                            const term3 = getSplitMarks(subjectDef.name, allExamsData.term3, subjectDef);
-                            const currentTermData = examId === 'terminal1' ? term1 : examId === 'terminal2' ? term2 : term3;
+                        {gradeDef.subjects.map(subjectDef => {
+                            const result = termResults.find(r => r.subject === subjectDef.name);
+                            const isGradeBased = subjectDef.gradingSystem === 'OABC' || (subjectDef.examFullMarks === 0 && subjectDef.activityFullMarks === 0);
+                            const examMarks = result?.examMarks ?? '-';
+                            const activityMarks = result?.activityMarks ?? '-';
+// FIX: Added parentheses to clarify the order of operations between '??' and '||' to resolve a TypeScript parsing error.
+                            const total = (result?.marks ?? ((result?.examMarks ?? 0) + (result?.activityMarks ?? 0))) || '-';
                             
                             return (
                                 <tr key={subjectDef.name}>
                                     <td className="border border-slate-300 px-2 py-1 text-left text-slate-800">{subjectDef.name}</td>
-                                    {isFinalTerm ? (
-                                        <>
-                                            {renderTermCells(term1, subjectDef)}
-                                            {renderTermCells(term2, subjectDef)}
-                                            {renderTermCells(term3, subjectDef)}
-                                        </>
-                                    ) : (
-                                        renderTermCells(currentTermData, subjectDef)
-                                    )}
+                                    {hasActivitiesForThisGrade && <td className="border border-slate-300 px-2 py-1 text-center">{isGradeBased ? '' : examMarks}</td>}
+                                    {hasActivitiesForThisGrade && <td className="border border-slate-300 px-2 py-1 text-center">{isGradeBased ? '' : activityMarks}</td>}
+                                    <td className="border border-slate-300 px-2 py-1 text-center font-bold">{isGradeBased ? result?.grade : total}</td>
                                 </tr>
                             )
                         })}
                     </tbody>
-                    <tfoot className="bg-slate-100 font-bold">
-                        <tr>
-                            <td className="border border-slate-300 px-2 py-1 text-left text-slate-900">Total</td>
-                            {isFinalTerm ? (
-                                <>
-                                    <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center text-slate-900">{termTotals.t1} / {termTotals.max}</td>
-                                    <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center text-slate-900">{termTotals.t2} / {termTotals.max}</td>
-                                    <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center text-slate-900">{termTotals.t3} / {termTotals.max}</td>
-                                </>
-                            ) : (
-                                <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center text-slate-900">
-                                    {(examId === 'terminal1' ? termTotals.t1 : examId === 'terminal2' ? termTotals.t2 : termTotals.t3)} / {termTotals.max}
-                                </td>
-                            )}
-                        </tr>
-                    </tfoot>
                 </table>
             </section>
 
-             {isFinalTerm && summaryData && (
+             {summaryData && (
                  <section>
-                    <h3 className="text-xl font-bold text-slate-700 mb-4 text-center">Final Term Result Summary</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <SummaryItem label="Final Term Total" value={`${summaryData.grandTotal} / ${summaryData.maxGrandTotal}`} />
-                        <SummaryItem label="Final Term Percentage" value={`${summaryData.percentage}%`} />
-                        <SummaryItem 
-                            label="Final Result" 
-                            value={summaryData.result} 
-                            color={summaryData.result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}
-                        />
-                        <SummaryItem label={isHighSchool ? 'Final Division' : 'Final Grade'} value={summaryData.performanceGrade} />
-                        <SummaryItem label="Rank in Class" value={isLoadingExtraData ? '...' : (rank ?? '--')} />
-                        <SummaryItem label="Overall Attendance" value={isLoadingExtraData ? '...' : (annualAttendance !== null ? `${annualAttendance.toFixed(2)}%` : '--')} />
-                        <div className="col-span-full md:col-span-2">
+                    <h3 className="text-xl font-bold text-slate-700 mb-4 text-center">{examDetails.name} Summary</h3>
+                    {isLoadingExtraData ? (
+                        <div className="flex justify-center items-center gap-2 text-slate-600"><SpinnerIcon className="w-5 h-5"/> <span>Loading summary...</span></div>
+                    ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                            <SummaryItem label="%" value={summaryData.percentage} />
+                            <SummaryItem label="Attendance" value={termAttendance} />
+                            <SummaryItem label="Rank" value={rank} />
+                            <SummaryItem 
+                                label="Result" 
+                                value={summaryData.result} 
+                                color={summaryData.result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}
+                            />
+                            <SummaryItem label={isHighSchool ? 'Division' : 'Grade'} value={summaryData.performanceGrade} />
                             <SummaryItem label="Remarks" value={summaryData.remarks} />
                         </div>
-                    </div>
+                    )}
                 </section>
              )}
 

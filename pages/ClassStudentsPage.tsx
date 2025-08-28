@@ -1,11 +1,13 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, Staff, EmploymentStatus, User, FeePayments } from '../types';
-import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon, ClipboardDocumentCheckIcon, PlusIcon, MessageIcon, WhatsappIcon, UserIcon, DocumentReportIcon, CurrencyDollarIcon } from '../components/Icons';
+import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon, ClipboardDocumentCheckIcon, PlusIcon, MessageIcon, WhatsappIcon, UserIcon, DocumentReportIcon, CurrencyDollarIcon, PrinterIcon } from '../components/Icons';
 import { formatStudentId, calculateDues, formatPhoneNumberForWhatsApp } from '../utils';
 import EditSubjectsModal from '../components/EditSubjectsModal';
 import { TERMINAL_EXAMS } from '../constants';
 import ExamFeeCollectionModal from '../components/ExamFeeCollectionModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+
 
 interface ClassStudentsPageProps {
   students: Student[];
@@ -55,6 +57,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExamFeeModalOpen, setIsExamFeeModalOpen] = useState(false);
+  const [isBulkPrintModalOpen, setIsBulkPrintModalOpen] = useState(false);
   const [isEditingTeacher, setIsEditingTeacher] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
 
@@ -117,6 +120,19 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
     }
       
     setIsEditingTeacher(false);
+  };
+
+  const BulkPrintModal: React.FC = () => {
+      const [examId, setExamId] = useState<string>('');
+      return (
+          <ConfirmationModal isOpen={isBulkPrintModalOpen} onClose={() => setIsBulkPrintModalOpen(false)} onConfirm={() => navigate(`/reports/bulk-print/${encodeURIComponent(decodedGrade)}/${examId}`)} title="Select Exam for Bulk Printing" confirmDisabled={!examId}>
+              <p>Please select the terminal exam for which you want to print all report cards.</p>
+              <select value={examId} onChange={e => setExamId(e.target.value)} className="mt-4 w-full border-slate-300 rounded-md shadow-sm">
+                  <option value="" disabled>-- Select Exam --</option>
+                  {TERMINAL_EXAMS.map(exam => <option key={exam.id} value={exam.id}>{exam.name}</option>)}
+              </select>
+          </ConfirmationModal>
+      )
   };
 
   if (!decodedGrade || !gradeDef) {
@@ -185,6 +201,10 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                     <ClipboardDocumentCheckIcon className="w-5 h-5" />
                     Daily Attendance
                 </Link>
+                 <button onClick={() => setIsBulkPrintModalOpen(true)} className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition hover:-translate-y-0.5">
+                    <PrinterIcon className="w-5 h-5" />
+                    Bulk Print Reports
+                </button>
                 {isClassTeacher && (
                    <>
                     <button
@@ -322,6 +342,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
         students={classStudents}
         grade={decodedGrade}
       />
+      <BulkPrintModal />
     </>
   );
 };
