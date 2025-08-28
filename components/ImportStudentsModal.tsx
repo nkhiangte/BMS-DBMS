@@ -64,9 +64,6 @@ const ImportStudentsModal: React.FC<ImportStudentsModalProps> = ({ isOpen, onClo
         const csvContent = CSV_HEADERS.join(',');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
-        if (link.href) {
-            URL.revokeObjectURL(link.href);
-        }
         link.href = URL.createObjectURL(blob);
         link.download = `student_import_template_${targetGrade}.csv`;
         document.body.appendChild(link);

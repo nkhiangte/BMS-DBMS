@@ -272,8 +272,9 @@ const App: React.FC = () => {
             const credential = firebase.auth.EmailAuthProvider.credential(firebaseUser.email, current);
             await firebaseUser.reauthenticateWithCredential(credential);
             await firebaseUser.updatePassword(newPass);
-            await auth.signOut();
-            navigate('/login', { replace: true, state: { message: 'Password changed successfully. Please log in again.' } });
+            auth.signOut().then(() => {
+                navigate('/login', { replace: true, state: { message: 'Password changed successfully. Please log in again.' } });
+            });
             return { success: true };
         } catch (error: any) {
             let message = 'An error occurred while changing the password.';
