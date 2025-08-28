@@ -30,6 +30,9 @@ const StaffCard: React.FC<{
         [EmploymentStatus.RETIRED]: 'bg-slate-200 text-slate-700',
     };
 
+    const canEdit = user.role === 'admin' || user.email?.toLowerCase() === staffMember.emailAddress.toLowerCase();
+    const canDelete = user.role === 'admin';
+
     return (
         <div className={`bg-white rounded-xl shadow-lg p-5 flex flex-col transition-all duration-300 h-full ${!isActive ? 'opacity-70 bg-slate-50' : 'hover:shadow-xl hover:scale-[1.02]'}`}>
             <div className="flex items-start gap-4 pb-4 border-b">
@@ -57,16 +60,16 @@ const StaffCard: React.FC<{
                     <button 
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(staffMember); }} 
                         className="p-2 text-slate-600 hover:bg-slate-100 rounded-full flex-shrink-0 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed" 
-                        title="Edit Staff Details"
-                        disabled={user.role !== 'admin'}
+                        title={canEdit ? "Edit Staff Details" : "You can only edit your own profile"}
+                        disabled={!canEdit}
                     >
                         <EditIcon className="w-5 h-5"/>
                     </button>
                     <button 
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(staffMember); }} 
                         className="p-2 text-red-600 hover:bg-red-100 rounded-full flex-shrink-0 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed" 
-                        title="Remove Staff"
-                        disabled={user.role !== 'admin'}
+                        title={canDelete ? "Remove Staff" : "Admin access required"}
+                        disabled={!canDelete}
                     >
                         <TrashIcon className="w-5 h-5"/>
                     </button>
