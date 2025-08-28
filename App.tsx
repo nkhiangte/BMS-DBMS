@@ -134,6 +134,7 @@ const App: React.FC = () => {
     const [newStudentTargetGrade, setNewStudentTargetGrade] = useState<Grade | null>(null);
     const [isStaffFormOpen, setIsStaffFormOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+    const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
     const [isInventoryFormOpen, setIsInventoryFormOpen] = useState(false);
     const [editingInventoryItem, setEditingInventoryItem] = useState<InventoryItem | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -276,6 +277,20 @@ const App: React.FC = () => {
         }
     };
     
+    const handleUpdateGradeDefinition = async (grade: Grade, newDefinition: GradeDefinition) => {
+        try {
+             const gradeUpdate: { [key: string]: any } = { ...newDefinition };
+             if (!newDefinition.classTeacherId) {
+                gradeUpdate.classTeacherId = firebase.firestore.FieldValue.delete();
+             }
+             await db.collection('config').doc('gradeDefinitions').set({ [grade]: gradeUpdate }, { merge: true });
+            addNotification(`Updated definition for ${grade}.`, 'success');
+        } catch (error) {
+            console.error(`Error updating grade definition for ${grade}:`, error);
+            addNotification(`Failed to update definition for ${grade}.`, 'error');
+        }
+    };
+
     // Placeholder Handlers
     const handleAddStudent = () => { setIsStudentFormOpen(true); };
     const handleEditStudent = (student: Student) => { setEditingStudent(student); setIsStudentFormOpen(true); };
@@ -284,8 +299,72 @@ const App: React.FC = () => {
     const handleUpdateFeePayments = (studentId: string, payments: FeePayments) => { console.log('updating fees', studentId); };
     const handleAddStaff = () => { setIsStaffFormOpen(true); };
     const handleEditStaff = (staffMember: Staff) => { setEditingStaff(staffMember); setIsStaffFormOpen(true); };
-    const handleStaffFormSubmit = async (staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => { console.log('submitting staff', staffData); };
-    const handleUpdateGradeDefinition = async (grade: Grade, newDefinition: GradeDefinition) => { console.log('updating grade def', grade); };
+    const handleStaffFormSubmit = async (staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => {
+        try {
+            addNotification("Saving staff details...", "success");
+
+            let photographUrl = staffData.photographUrl;
+            if (photographUrl && !photographUrl.startsWith('http')) {
+                photographUrl = await uploadImage(photographUrl);
+            }
+
+            const dataToSave = { ...staffData, photographUrl };
+
+            if (editingStaff) {
+                // Update existing staff
+                await db.collection('staff').doc(editingStaff.id).update(dataToSave);
+
+                // Handle class teacher assignment changes
+                const oldAssignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === editingStaff.id) as Grade | undefined;
+
+                if (oldAssignedGradeKey !== assignedGradeKey) {
+                    // Unassign from old class if it exists
+                    if (oldAssignedGradeKey) {
+                        const oldGradeDef = { ...gradeDefinitions[oldAssignedGradeKey], classTeacherId: undefined };
+                        await handleUpdateGradeDefinition(oldAssignedGradeKey, oldGradeDef);
+                    }
+                    // Assign to new class if selected
+                    if (assignedGradeKey) {
+                        const newGradeDef = { ...gradeDefinitions[assignedGradeKey], classTeacherId: editingStaff.id };
+                        await handleUpdateGradeDefinition(assignedGradeKey, newGradeDef);
+                    }
+                }
+                addNotification("Staff details updated successfully!", "success");
+            } else {
+                // Add new staff
+                const newStaffRef = await db.collection('staff').add(dataToSave);
+                if (assignedGradeKey) {
+                    const newGradeDef = { ...gradeDefinitions[assignedGradeKey], classTeacherId: newStaffRef.id };
+                    await handleUpdateGradeDefinition(assignedGradeKey, newGradeDef);
+                }
+                addNotification("New staff member added successfully!", "success");
+            }
+        } catch (error) {
+            console.error("Error saving staff details:", error);
+            addNotification("Failed to save staff details.", "error");
+        } finally {
+            setIsStaffFormOpen(false);
+            setEditingStaff(null);
+        }
+    };
+    const handleDeleteStaff = async (staffMember: Staff) => {
+        if (!staffMember) return;
+        try {
+            // Unassign as class teacher if they are one
+            const assignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === staffMember.id) as Grade | undefined;
+            if (assignedGradeKey) {
+                const gradeDefUpdate = { ...gradeDefinitions[assignedGradeKey], classTeacherId: undefined };
+                await handleUpdateGradeDefinition(assignedGradeKey, gradeDefUpdate);
+            }
+            await db.collection('staff').doc(staffMember.id).delete();
+            addNotification("Staff member deleted successfully.", "success");
+        } catch (error) {
+            console.error("Error deleting staff member:", error);
+            addNotification("Failed to delete staff member.", "error");
+        } finally {
+            setDeletingStaff(null);
+        }
+    };
     const handleUpdateFeeStructure = async (newStructure: FeeStructure) => {
         try {
             await db.collection('config').doc('feeStructure').set(newStructure);
@@ -364,6 +443,22 @@ const App: React.FC = () => {
         unsubscribers.push(db.collection('staff').onSnapshot(snapshot => setStaff(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Staff[])));
         unsubscribers.push(db.collection('config').doc('feeStructure').onSnapshot(doc => doc.exists ? setFeeStructure(doc.data() as FeeStructure) : db.collection('config').doc('feeStructure').set(DEFAULT_FEE_STRUCTURE)));
         unsubscribers.push(db.collection('users').onSnapshot(snapshot => setAllUsers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User)))));
+        unsubscribers.push(db.collection('config').doc('gradeDefinitions').onSnapshot(doc => {
+            if (doc.exists) {
+                const remoteDefinitions = doc.data() as Record<string, GradeDefinition>;
+                const merged = { ...GRADE_DEFINITIONS };
+                for (const grade in remoteDefinitions) {
+                    if (merged[grade as Grade]) {
+                        merged[grade as Grade] = { ...merged[grade as Grade], ...remoteDefinitions[grade as Grade] };
+                    } else {
+                        merged[grade as Grade] = remoteDefinitions[grade];
+                    }
+                }
+                setGradeDefinitions(merged);
+            } else {
+                db.collection('config').doc('gradeDefinitions').set(GRADE_DEFINITIONS);
+            }
+        }));
         // ... other data listeners for inventory, tc, etc.
         return () => unsubscribers.forEach(unsub => unsub());
     }, [user]);
@@ -409,7 +504,7 @@ const App: React.FC = () => {
                     <Route path="/fees" element={<PrivateRoute user={user}>{feeStructure && <FeeManagementPage students={activeStudents} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} user={user!} feeStructure={feeStructure} onUpdateFeeStructure={handleUpdateFeeStructure} />}</PrivateRoute>} />
                     
                     {/* Staff */}
-                    <Route path="/staff" element={<PrivateRoute user={user}><ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={handleAddStaff} onEdit={handleEditStaff} onDelete={() => {}} user={user!} /></PrivateRoute>} />
+                    <Route path="/staff" element={<PrivateRoute user={user}><ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={handleAddStaff} onEdit={handleEditStaff} onDelete={setDeletingStaff} user={user!} /></PrivateRoute>} />
                     <Route path="/staff/:staffId" element={<PrivateRoute user={user}><StaffDetailPage staff={staff} onEdit={handleEditStaff} gradeDefinitions={gradeDefinitions} /></PrivateRoute>} />
                     <Route path="/staff/attendance" element={<PrivateRoute user={user}><StaffAttendancePage user={user!} staff={staff} attendance={staffAttendance[new Date().toISOString().split('T')[0]]} onMarkAttendance={handleUpdateStaffAttendance} fetchStaffAttendanceForMonth={fetchStaffAttendanceForMonth} academicYear={academicYear!} /></PrivateRoute>} />
                     <Route path="/staff/certificates" element={<PrivateRoute user={user}><StaffDocumentsPage serviceCertificateRecords={serviceCertRecords} user={user!} /></PrivateRoute>} />
@@ -455,6 +550,15 @@ const App: React.FC = () => {
                     <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
             </main>
+            <StaffFormModal isOpen={isStaffFormOpen} onClose={() => { setIsStaffFormOpen(false); setEditingStaff(null); }} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions} />
+            <ConfirmationModal
+                isOpen={!!deletingStaff}
+                onClose={() => setDeletingStaff(null)}
+                onConfirm={() => { if(deletingStaff) handleDeleteStaff(deletingStaff); }}
+                title="Confirm Staff Deletion"
+            >
+                <p>Are you sure you want to delete <span className="font-bold">{deletingStaff?.firstName} {deletingStaff?.lastName}</span>? This action cannot be undone.</p>
+            </ConfirmationModal>
         </div>
     );
 };
