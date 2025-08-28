@@ -14,6 +14,7 @@ interface ClassStudentsPageProps {
   staff: Staff[];
   gradeDefinitions: Record<Grade, GradeDefinition>;
   onUpdateGradeDefinition: (grade: Grade, newDefinition: GradeDefinition) => void;
+  onUpdateClassTeacher: (grade: Grade, teacherId: string | undefined) => void;
   academicYear: string;
   onOpenImportModal: (grade: Grade | null) => void;
   onOpenTransferModal: (student: Student) => void;
@@ -50,7 +51,7 @@ const PhotoThumbnail: React.FC<{ student: Student }> = ({ student }) => {
     );
 };
 
-const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal, onOpenTransferModal, onDelete, user, assignedGrade, onAddStudentToClass, onUpdateBulkFeePayments, feeStructure }) => {
+const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, onUpdateClassTeacher, academicYear, onOpenImportModal, onOpenTransferModal, onDelete, user, assignedGrade, onAddStudentToClass, onUpdateBulkFeePayments, feeStructure }) => {
   const { grade } = useParams<{ grade: string }>();
   const navigate = useNavigate();
   const decodedGrade = grade ? decodeURIComponent(grade) as Grade : '' as Grade;
@@ -103,11 +104,8 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
         return;
     }
 
-    // Update the current grade with the new teacher ID.
-    onUpdateGradeDefinition(decodedGrade, {
-        ...gradeDef,
-        classTeacherId: newTeacherId,
-    });
+    // Update the current grade with the new teacher ID safely.
+    onUpdateClassTeacher(decodedGrade, newTeacherId);
 
     // If the newly assigned teacher was previously assigned to another class, unassign them.
     if (newTeacherId) {
@@ -115,8 +113,8 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
             ([g, def]) => g !== decodedGrade && def.classTeacherId === newTeacherId
         );
         if (previouslyAssignedEntry) {
-            const [oldGrade, oldDef] = previouslyAssignedEntry;
-            onUpdateGradeDefinition(oldGrade as Grade, { ...oldDef, classTeacherId: undefined });
+            const [oldGrade] = previouslyAssignedEntry;
+            onUpdateClassTeacher(oldGrade as Grade, undefined);
         }
     }
       

@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 interface LoginPageProps {
   onLogin: (email: string, pass: string) => Promise<void>;
@@ -10,12 +11,23 @@ interface LoginPageProps {
 const LoginPage: React.FC<LoginPageProps> = ({
   onLogin,
   error: authError,
-  notification,
+  notification: propNotification,
 }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState("");
+  const [notification, setNotification] = useState("");
   const [loading, setLoading] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    const messageFromState = location.state?.message;
+    if (messageFromState) {
+        setNotification(messageFromState);
+    } else {
+        setNotification(propNotification);
+    }
+  }, [propNotification, location.state]);
 
   useEffect(() => {
     setFormError(authError);
@@ -28,6 +40,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
+    setNotification("");
     setLoading(true);
     try {
       await onLogin(email, password);

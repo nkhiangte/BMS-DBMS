@@ -211,7 +211,9 @@ const App: React.FC = () => {
     };
 
     const handleLogout = () => {
-        auth.signOut();
+        auth.signOut().then(() => {
+            navigate('/login', { replace: true, state: { message: "You have been logged out." } });
+        });
         setNotification('');
         setAuthError('');
     };
@@ -262,8 +264,8 @@ const App: React.FC = () => {
             const credential = firebase.auth.EmailAuthProvider.credential(firebaseUser.email, current);
             await firebaseUser.reauthenticateWithCredential(credential);
             await firebaseUser.updatePassword(newPass);
-            setNotification('Password changed successfully. Please log in again.');
-            await auth.signOut(); // Security best practice
+            await auth.signOut();
+            navigate('/login', { replace: true, state: { message: 'Password changed successfully. Please log in again.' } });
             return { success: true };
         } catch (error: any) {
             let message = 'An error occurred while changing the password.';
@@ -279,15 +281,25 @@ const App: React.FC = () => {
     
     const handleUpdateGradeDefinition = async (grade: Grade, newDefinition: GradeDefinition) => {
         try {
-             const gradeUpdate: { [key: string]: any } = { ...newDefinition };
-             if (!newDefinition.classTeacherId) {
-                gradeUpdate.classTeacherId = firebase.firestore.FieldValue.delete();
-             }
-             await db.collection('config').doc('gradeDefinitions').set({ [grade]: gradeUpdate }, { merge: true });
+             await db.collection('config').doc('gradeDefinitions').set({ [grade]: newDefinition }, { merge: true });
             addNotification(`Updated definition for ${grade}.`, 'success');
         } catch (error) {
             console.error(`Error updating grade definition for ${grade}:`, error);
             addNotification(`Failed to update definition for ${grade}.`, 'error');
+        }
+    };
+
+    const handleUpdateClassTeacher = async (grade: Grade, teacherId: string | undefined) => {
+        try {
+            const updateData = {
+                [`${grade}.classTeacherId`]: teacherId || firebase.firestore.FieldValue.delete()
+            };
+            await db.collection('config').doc('gradeDefinitions').set(updateData, { merge: true });
+            // Notification will be shown by handleStaffFormSubmit
+        } catch (error) {
+            console.error(`Error updating class teacher for ${grade}:`, error);
+            addNotification(`Failed to update class teacher for ${grade}.`, 'error');
+            throw error; // Re-throw to be caught by the calling function
         }
     };
 
@@ -314,19 +326,15 @@ const App: React.FC = () => {
                 // Update existing staff
                 await db.collection('staff').doc(editingStaff.id).update(dataToSave);
 
-                // Handle class teacher assignment changes
+                // Handle class teacher assignment changes safely
                 const oldAssignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === editingStaff.id) as Grade | undefined;
 
                 if (oldAssignedGradeKey !== assignedGradeKey) {
-                    // Unassign from old class if it exists
                     if (oldAssignedGradeKey) {
-                        const oldGradeDef = { ...gradeDefinitions[oldAssignedGradeKey], classTeacherId: undefined };
-                        await handleUpdateGradeDefinition(oldAssignedGradeKey, oldGradeDef);
+                        await handleUpdateClassTeacher(oldAssignedGradeKey, undefined);
                     }
-                    // Assign to new class if selected
                     if (assignedGradeKey) {
-                        const newGradeDef = { ...gradeDefinitions[assignedGradeKey], classTeacherId: editingStaff.id };
-                        await handleUpdateGradeDefinition(assignedGradeKey, newGradeDef);
+                        await handleUpdateClassTeacher(assignedGradeKey, editingStaff.id);
                     }
                 }
                 addNotification("Staff details updated successfully!", "success");
@@ -334,8 +342,7 @@ const App: React.FC = () => {
                 // Add new staff
                 const newStaffRef = await db.collection('staff').add(dataToSave);
                 if (assignedGradeKey) {
-                    const newGradeDef = { ...gradeDefinitions[assignedGradeKey], classTeacherId: newStaffRef.id };
-                    await handleUpdateGradeDefinition(assignedGradeKey, newGradeDef);
+                    await handleUpdateClassTeacher(assignedGradeKey, newStaffRef.id);
                 }
                 addNotification("New staff member added successfully!", "success");
             }
@@ -353,8 +360,7 @@ const App: React.FC = () => {
             // Unassign as class teacher if they are one
             const assignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === staffMember.id) as Grade | undefined;
             if (assignedGradeKey) {
-                const gradeDefUpdate = { ...gradeDefinitions[assignedGradeKey], classTeacherId: undefined };
-                await handleUpdateGradeDefinition(assignedGradeKey, gradeDefUpdate);
+                await handleUpdateClassTeacher(assignedGradeKey, undefined);
             }
             await db.collection('staff').doc(staffMember.id).delete();
             addNotification("Staff member deleted successfully.", "success");
@@ -445,16 +451,16 @@ const App: React.FC = () => {
         unsubscribers.push(db.collection('users').onSnapshot(snapshot => setAllUsers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User)))));
         unsubscribers.push(db.collection('config').doc('gradeDefinitions').onSnapshot(doc => {
             if (doc.exists) {
-                const remoteDefinitions = doc.data() as Record<string, GradeDefinition>;
-                const merged = { ...GRADE_DEFINITIONS };
-                for (const grade in remoteDefinitions) {
-                    if (merged[grade as Grade]) {
-                        merged[grade as Grade] = { ...merged[grade as Grade], ...remoteDefinitions[grade as Grade] };
-                    } else {
-                        merged[grade as Grade] = remoteDefinitions[grade];
+                const remoteDefinitions = doc.data() as Record<string, Partial<GradeDefinition>>;
+                const newDefinitions: Record<Grade, GradeDefinition> = JSON.parse(JSON.stringify(GRADE_DEFINITIONS));
+
+                for (const gradeKey in newDefinitions) {
+                    const grade = gradeKey as Grade;
+                    if (remoteDefinitions[grade]) {
+                        newDefinitions[grade] = { ...newDefinitions[grade], ...remoteDefinitions[grade] };
                     }
                 }
-                setGradeDefinitions(merged);
+                setGradeDefinitions(newDefinitions);
             } else {
                 db.collection('config').doc('gradeDefinitions').set(GRADE_DEFINITIONS);
             }
@@ -497,7 +503,7 @@ const App: React.FC = () => {
                     <Route path="/student/:studentId" element={<PrivateRoute user={user}>{feeStructure && <StudentDetailPage students={students} onEdit={handleEditStudent} academicYear={academicYear!} user={user!} assignedGrade={assignedGrade} feeStructure={feeStructure} />}</PrivateRoute>} />
                     <Route path="/student/:studentId/academics" element={<PrivateRoute user={user}><AcademicPerformancePage students={students} onUpdateAcademic={handleUpdateAcademic} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} user={user!} assignedGrade={assignedGrade}/></PrivateRoute>} />
                     <Route path="/classes" element={<PrivateRoute user={user}><ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={handleOpenImportModal} user={user!} /></PrivateRoute>} />
-                    <Route path="/classes/:grade" element={<PrivateRoute user={user}>{feeStructure && <ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} academicYear={academicYear!} onOpenImportModal={handleOpenImportModal} onOpenTransferModal={handleOpenTransferModal} onDelete={() => {}} user={user!} assignedGrade={assignedGrade} onAddStudentToClass={handleAddStudentToClass} onUpdateBulkFeePayments={handleUpdateBulkFeePayments} feeStructure={feeStructure} />}</PrivateRoute>} />
+                    <Route path="/classes/:grade" element={<PrivateRoute user={user}>{feeStructure && <ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} onUpdateClassTeacher={handleUpdateClassTeacher} academicYear={academicYear!} onOpenImportModal={handleOpenImportModal} onOpenTransferModal={handleOpenTransferModal} onDelete={() => {}} user={user!} assignedGrade={assignedGrade} onAddStudentToClass={handleAddStudentToClass} onUpdateBulkFeePayments={handleUpdateBulkFeePayments} feeStructure={feeStructure} />}</PrivateRoute>} />
                     <Route path="/classes/:grade/attendance" element={<PrivateRoute user={user}><StudentAttendancePage students={students} allAttendance={studentAttendance} onUpdateAttendance={handleUpdateStudentAttendance} user={user!} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} academicYear={academicYear!} assignedGrade={assignedGrade} /></PrivateRoute>} />
 
                     {/* Fees */}
