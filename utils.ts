@@ -289,30 +289,28 @@ export const calculateRanks = (
 ): Map<string, number | 'NA'> => {
   const ranks = new Map<string, number | 'NA'>();
 
-  // Filter out failed students and sort by marks descending
-  const passedStudents = studentScores
-    .filter(s => s.result !== 'FAIL')
+  // Filter for students who passed and sort them by marks
+  const passedAndRankableStudents = studentScores
+    .filter(s => s.result === 'PASS')
     .sort((a, b) => b.totalMarks - a.totalMarks);
 
-  // Assign 'NA' to all failed students first
+  // Set rank to 'NA' for everyone who didn't pass
   studentScores.forEach(s => {
-    if (s.result === 'FAIL') {
+    if (s.result !== 'PASS') {
       ranks.set(s.studentId, 'NA');
     }
   });
-
-  // Assign ranks to passed students, handling ties
-  if (passedStudents.length > 0) {
+  
+  // Assign ranks to the passed students, handling ties
+  if (passedAndRankableStudents.length > 0) {
       let rank = 1;
-      ranks.set(passedStudents[0].studentId, rank);
-      for (let i = 1; i < passedStudents.length; i++) {
-          // If the current student has the same score as the previous one, give them the same rank
-          if (passedStudents[i].totalMarks === passedStudents[i - 1].totalMarks) {
-              ranks.set(passedStudents[i].studentId, rank);
+      ranks.set(passedAndRankableStudents[0].studentId, rank);
+      for (let i = 1; i < passedAndRankableStudents.length; i++) {
+          if (passedAndRankableStudents[i].totalMarks === passedAndRankableStudents[i - 1].totalMarks) {
+              ranks.set(passedAndRankableStudents[i].studentId, rank);
           } else {
-              // Otherwise, the new rank is the current position (i + 1)
               rank = i + 1;
-              ranks.set(passedStudents[i].studentId, rank);
+              ranks.set(passedAndRankableStudents[i].studentId, rank);
           }
       }
   }

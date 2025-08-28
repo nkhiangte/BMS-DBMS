@@ -158,7 +158,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
             });
             
             const percentage = totalMaxMarks > 0 ? (totalMarks / totalMaxMarks) * 100 : 0;
-            const { finalResult } = calculateStudentResult(results, gradeDef, student.grade);
+            const { finalResult, failedSubjects } = calculateStudentResult(results, gradeDef, student.grade);
 
             return {
                 student,
@@ -168,7 +168,8 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                 percentage,
                 result: finalResult,
                 division: getDivision(percentage, finalResult),
-                grade: getGradeLetter(percentage, finalResult)
+                grade: getGradeLetter(percentage, finalResult),
+                failedSubjects
             };
         });
     }, [classStudents, examId, gradeDef, grade, hasActivitiesForThisGrade]);
@@ -225,262 +226,195 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                 }
 
                 const newPerformance: Exam[] = JSON.parse(JSON.stringify(student.academicPerformance || []));
-                let examData = newPerformance.find(e => e.id === examId);
-
-                if (!examData) {
-                    examData = { id: examId!, name: examDetails.name, results: [] };
-                    newPerformance.push(examData);
+                let exam = newPerformance.find(e => e.id === examId);
+                if (!exam) {
+                    exam = { id: examId, name: examDetails.name, results: [] };
+                    newPerformance.push(exam);
                 }
-                
-                let hasUpdate = false;
-                gradeDef.subjects.forEach(subject => {
-                    const useSplitMarks = hasActivitiesForThisGrade && subject.activityFullMarks > 0;
-                    const examHeader = useSplitMarks ? `${subject.name} (Exam)` : subject.name;
-                    const activityHeader = useSplitMarks ? `${subject.name} (Activity)` : null;
+
+                const newResults: SubjectMark[] = [];
+                gradeDef.subjects.forEach(subjectDef => {
+                    const newResult: SubjectMark = { subject: subjectDef.name };
+                    const useSplitMarks = hasActivitiesForThisGrade && subjectDef.activityFullMarks > 0;
                     
-                    const examValue = row[examHeader];
-                    const activityValue = activityHeader ? row[activityHeader] : undefined;
+                    if (useSplitMarks) {
+                        const examMark = row[`${subjectDef.name} (Exam)`];
+                        const activityMark = row[`${subjectDef.name} (Activity)`];
+                        if (examMark !== undefined) newResult.examMarks = Number(examMark);
+                        if (activityMark !== undefined) newResult.activityMarks = Number(activityMark);
+                    } else {
+                        const mark = row[subjectDef.name];
+                        if (mark !== undefined) newResult.marks = Number(mark);
+                    }
 
-                    if (examValue !== undefined || activityValue !== undefined) {
-                        let subjectResult = examData!.results.find(r => r.subject === subject.name);
-                        if (!subjectResult) {
-                            subjectResult = { subject: subject.name };
-                            examData!.results.push(subjectResult);
-                        }
-
-                        const processMark = (value: any, max: number, type: string) => {
-                            if (value === undefined || value === null || String(value).trim() === '') return undefined;
-                            const mark = Number(value);
-                            if (!isNaN(mark) && mark >= 0 && mark <= max) {
-                                hasUpdate = true;
-                                return mark;
-                            } else {
-                                errors.push(`Row ${index + 2} (${student.name}): Invalid ${type} mark for ${subject.name}.`);
-                                return undefined;
-                            }
-                        };
-                        
-                        if (useSplitMarks) {
-                            const newExamMark = processMark(examValue, subject.examFullMarks, 'Exam');
-                            const newActivityMark = processMark(activityValue, subject.activityFullMarks, 'Activity');
-                            if(newExamMark !== undefined) subjectResult.examMarks = newExamMark;
-                            if(newActivityMark !== undefined) subjectResult.activityMarks = newActivityMark;
-                        } else {
-                            const newMark = processMark(examValue, subject.examFullMarks, 'Total');
-                            if(newMark !== undefined) subjectResult.marks = newMark;
-                        }
+                    if(Object.keys(newResult).length > 1) { // has more than just subject name
+                        newResults.push(newResult);
                     }
                 });
-
-                if (hasUpdate) {
-                    updates.push({ studentId: student.id, performance: newPerformance });
-                }
+                exam.results = newResults;
+                updates.push({ studentId: student.id, performance: newPerformance });
             });
-
             setImportData({ updates, errors });
-
-        } catch (err) {
-            setImportData({ updates: [], errors: ['Failed to read the file. Please ensure it is a valid XLSX or CSV file and matches the template.'] });
-            console.error(err);
+        } catch (error) {
+            console.error("Error processing Excel file:", error);
+            setImportData({ updates: [], errors: ["Failed to process the file."] });
         } finally {
             setIsProcessingFile(false);
-            if (e.target) e.target.value = '';
         }
     };
-
+    
     const handleConfirmImport = async () => {
-        if (importData && importData.updates.length > 0) {
-            setIsSavingImport(true);
-            await onUpdateClassMarks(importData.updates);
-            setIsSavingImport(false);
-        }
+        if (!importData || importData.updates.length === 0) return;
+        setIsSavingImport(true);
+        await onUpdateClassMarks(importData.updates);
+        setIsSavingImport(false);
         setImportData(null);
     };
 
-
     if (!grade || !examDetails || !gradeDef) {
-        return (
-            <div className="text-center bg-white p-10 rounded-xl shadow-lg">
-                <h2 className="text-2xl font-bold text-red-600">Data Not Found</h2>
-                <p className="text-slate-500 mt-2">Could not load mark statement. The grade or exam ID is invalid.</p>
-            </div>
-        );
+        return <div>Loading or invalid parameters...</div>;
     }
-
-    if (!isAllowed) {
-        return (
-            <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-                <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
-                <p className="text-slate-700 mt-2">You do not have permission to view the mark statement for this class.</p>
-                <button onClick={() => navigate('/')} className="mt-6 flex items-center mx-auto justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 transition">
-                    Return to Dashboard
-                </button>
-            </div>
-        );
-    }
-
+    
     return (
-        <div className="printable-area">
-            <div className="mb-6 flex justify-between items-center print:hidden">
-                <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-800">
-                    <BackIcon className="w-5 h-5" /> Back
-                </button>
-                <div className="flex items-center gap-4">
+        <>
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
+                <div className="mb-6 flex justify-between items-center print:hidden">
+                    <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-800">
+                        <BackIcon className="w-5 h-5" /> Back
+                    </button>
                     <Link to="/" className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-800" title="Go to Home">
                         <HomeIcon className="w-5 h-5" /> <span>Home</span>
                     </Link>
-                     {isAllowed && (
-                        <div className="flex items-center gap-2">
-                             <button onClick={() => setIsMarksEntryModalOpen(true)} className="btn btn-secondary" disabled={isProcessingFile}>
-                                <EditIcon className="w-5 h-5" />
-                                <span>Main Marks Entry</span>
-                            </button>
-                            <button onClick={() => fileInputRef.current?.click()} className="btn btn-secondary" disabled={isProcessingFile}>
-                                {isProcessingFile ? <SpinnerIcon className="w-5 h-5"/> : <InboxArrowDownIcon className="w-5 h-5" />}
-                                <span>{isProcessingFile ? 'Processing...' : 'Import Marks'}</span>
-                            </button>
-                            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
-                            <button onClick={handleDownloadTemplate} className="btn btn-secondary">
-                                Download Template
-                            </button>
+                </div>
+
+                <div className="text-center mb-6">
+                    <h1 className="text-3xl font-bold text-slate-800">Statement of Marks</h1>
+                    <p className="text-xl font-semibold text-slate-600">{examDetails.name} - {grade}</p>
+                    <p className="text-slate-500">{academicYear}</p>
+                </div>
+                
+                {isAllowed && (
+                    <div className="my-6 p-4 bg-slate-50 border rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4 print:hidden">
+                        <div>
+                            <h3 className="font-bold text-slate-800">Marks Entry Options</h3>
+                            <p className="text-sm text-slate-600">Enter or update marks individually, in bulk, or by importing a file.</p>
                         </div>
-                    )}
-                    <button onClick={() => window.print()} className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 flex items-center">
-                        <PrinterIcon className="w-5 h-5" /><span className="ml-2">Print</span>
+                        <div className="flex flex-wrap gap-3">
+                            <button onClick={() => setIsMarksEntryModalOpen(true)} className="btn btn-secondary"><EditIcon className="w-5 h-5"/> Quick Entry</button>
+                            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls" className="hidden"/>
+                            <button onClick={() => fileInputRef.current?.click()} disabled={isProcessingFile} className="btn btn-secondary disabled:opacity-70">
+                                {isProcessingFile ? <SpinnerIcon className="w-5 h-5"/> : <InboxArrowDownIcon className="w-5 h-5"/>}
+                                {isProcessingFile ? 'Processing...' : 'Import from Excel'}
+                            </button>
+                            <button onClick={handleDownloadTemplate} className="text-xs font-semibold text-sky-700 hover:underline px-2">Download Template</button>
+                        </div>
+                    </div>
+                )}
+
+
+                <div className="overflow-x-auto" id="mark-statement-table">
+                    <table className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300">
+                        <thead className="bg-slate-100">
+                            <tr>
+                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Roll No</th>
+                                <th rowSpan={2} className="px-2 py-2 text-left text-xs font-bold text-slate-800 uppercase border">Student Name</th>
+                                {gradeDef.subjects.map(subject => (
+                                    <th key={subject.name} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">{subject.name}</th>
+                                ))}
+                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Total</th>
+                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Max</th>
+                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">%</th>
+                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Div</th>
+                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Grade</th>
+                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Result</th>
+                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Rank</th>
+                            </tr>
+                            <tr>
+                               {gradeDef.subjects.map(subject => {
+                                    const useSplitMarks = hasActivitiesForThisGrade && subject.activityFullMarks > 0;
+                                    const maxMarks = subject.examFullMarks + (useSplitMarks ? subject.activityFullMarks : 0);
+                                    return <th key={subject.name} className="px-2 py-1 text-center text-xs font-semibold text-slate-700 border">({maxMarks})</th>;
+                               })}
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-slate-200">
+                            {statementData.map(({ student, results, totalMarks, totalMaxMarks, percentage, result, division, grade: gradeLetter, failedSubjects }, index) => {
+                                const studentRank = ranks.get(student.id);
+                                return (
+                                    <tr key={student.id} className="hover:bg-slate-50">
+                                        <td className="px-2 py-2 whitespace-nowrap text-center text-sm font-semibold text-slate-800 border">{student.rollNo}</td>
+                                        <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-slate-800 text-left border">
+                                            <Link to={`/student/${student.id}`} className="hover:underline text-sky-700">{student.name}</Link>
+                                        </td>
+                                        {gradeDef.subjects.map(subject => {
+                                            const studentResult = results.find(r => r.subject === subject.name);
+                                            const useSplitMarks = hasActivitiesForThisGrade && subject.activityFullMarks > 0;
+                                            const obtainedMarks = useSplitMarks
+                                                ? ((studentResult?.examMarks ?? 0) + (studentResult?.activityMarks ?? 0))
+                                                : (studentResult?.marks ?? (studentResult?.examMarks ?? 0) + (studentResult?.activityMarks ?? 0));
+                                            const isFailed = failedSubjects.includes(subject.name);
+                                            
+                                            return (
+                                                <td key={subject.name} className={`px-2 py-2 text-center text-sm font-semibold border ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>
+                                                    {obtainedMarks}
+                                                </td>
+                                            );
+                                        })}
+                                        <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{totalMarks}</td>
+                                        <td className="px-2 py-2 text-center text-sm font-semibold text-slate-800 border">{totalMaxMarks}</td>
+                                        <td className="px-2 py-2 text-center text-sm font-semibold text-slate-800 border">{percentage.toFixed(2)}%</td>
+                                        <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{division}</td>
+                                        <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{gradeLetter}</td>
+                                        <td className={`px-2 py-2 text-center text-sm font-bold border ${result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}`}>{result}</td>
+                                        <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{isLoadingExtraData ? '...' : studentRank}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+                 <div className="mt-6 flex justify-end print:hidden">
+                    <button onClick={() => window.print()} className="btn btn-primary">
+                        <PrinterIcon className="w-5 h-5" />
+                        Print Statement
                     </button>
                 </div>
             </div>
             
-            <div className="bg-white p-8 rounded-xl shadow-lg print:shadow-none print:rounded-none" id="mark-statement">
-                 <style>{`
-                    @page { 
-                        size: A4 landscape; 
-                        margin: 1.5cm;
-                    }
-                    @media print {
-                        #mark-statement {
-                            font-size: 10pt;
-                        }
-                    }
-                `}</style>
-                <header className="text-center mb-6">
-                    <h1 className="text-3xl font-bold text-slate-800">Bethel Mission School</h1>
-                    <h2 className="text-xl font-semibold text-slate-700">Statement of Marks - {examDetails.name}</h2>
-                    <p className="text-lg text-slate-600">Class: {grade} | Academic Year: {academicYear}</p>
-                </header>
-
-                <div className="overflow-x-auto">
-                    <table className="min-w-full border-collapse border border-slate-400 text-xs">
-                        <thead className="bg-slate-100 font-semibold text-slate-800">
-                            <tr>
-                                <th rowSpan={2} className="border border-slate-300 p-1 align-bottom">Roll</th>
-                                <th rowSpan={2} className="border border-slate-300 p-1 align-bottom text-left">Student Name</th>
-                                {gradeDef.subjects.map(subject => (
-                                    <th key={subject.name} colSpan={hasActivitiesForThisGrade && subject.activityFullMarks > 0 ? 3 : 1} className="border border-slate-300 p-1">
-                                        {subject.name}
-                                    </th>
-                                ))}
-                                <th colSpan={4} className="border border-slate-300 p-1">Grand Total</th>
-                                <th rowSpan={2} className="border border-slate-300 p-1 align-middle text-center">Rank</th>
-                                <th rowSpan={2} className="border border-slate-300 p-1 align-middle text-center">Attendance %</th>
-                                {isAllowed && <th rowSpan={2} className="border border-slate-300 p-1 align-middle text-center print:hidden">Actions</th>}
-                            </tr>
-                            <tr>
-                                {gradeDef.subjects.flatMap(subject => {
-                                    const useSplitMarks = hasActivitiesForThisGrade && subject.activityFullMarks > 0;
-                                    return useSplitMarks ? (
-                                        <React.Fragment key={subject.name}>
-                                            <th className="border border-slate-300 p-1 font-normal">Exam ({subject.examFullMarks})</th>
-                                            <th className="border border-slate-300 p-1 font-normal">Act ({subject.activityFullMarks})</th>
-                                            <th className="border border-slate-300 p-1 font-semibold">Total ({subject.examFullMarks + subject.activityFullMarks})</th>
-                                        </React.Fragment>
-                                    ) : (
-                                        <th key={subject.name} className="border border-slate-300 p-1 font-semibold">Marks ({subject.examFullMarks})</th>
-                                    )
-                                })}
-                                <th className="border border-slate-300 p-1 font-semibold">Total Marks</th>
-                                <th className="border border-slate-300 p-1 font-semibold">%</th>
-                                <th className="border border-slate-300 p-1 font-semibold">Result</th>
-                                <th className="border border-slate-300 p-1 font-semibold">Division</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {statementData.map(({ student, results, totalMarks, totalMaxMarks, percentage, result, division }) => (
-                                <tr key={student.id}>
-                                    <td className="border border-slate-300 p-1 text-center font-semibold">{student.rollNo}</td>
-                                    <td className="border border-slate-300 p-1 text-left font-medium">{student.name}</td>
-                                    {gradeDef.subjects.map(subject => {
-                                        const mark = results.find(r => r.subject === subject.name);
-                                        const useSplitMarks = hasActivitiesForThisGrade && subject.activityFullMarks > 0;
-                                        return useSplitMarks ? (
-                                            <React.Fragment key={subject.name}>
-                                                <td className="border border-slate-300 p-1 text-center">{mark?.examMarks ?? '-'}</td>
-                                                <td className="border border-slate-300 p-1 text-center">{mark?.activityMarks ?? '-'}</td>
-                                                <td className="border border-slate-300 p-1 text-center font-semibold bg-slate-50">{(mark?.examMarks ?? 0) + (mark?.activityMarks ?? 0)}</td>
-                                            </React.Fragment>
-                                        ) : (
-                                            <td key={subject.name} className="border border-slate-300 p-1 text-center font-semibold bg-slate-50">{(mark?.marks ?? (mark?.examMarks ?? 0) + (mark?.activityMarks ?? 0)) || '-'}</td>
-                                        );
-                                    })}
-                                    <td className="border border-slate-300 p-1 text-center font-bold">{totalMarks} / {totalMaxMarks}</td>
-                                    <td className="border border-slate-300 p-1 text-center font-bold">{percentage.toFixed(2)}%</td>
-                                    <td className={`border border-slate-300 p-1 text-center font-bold ${result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}`}>{result}</td>
-                                    <td className="border border-slate-300 p-1 text-center font-bold">{division}</td>
-                                    <td className="border border-slate-300 p-1 text-center font-bold">{isLoadingExtraData ? '...' : (ranks.get(student.id) ?? '-')}</td>
-                                    <td className="border border-slate-300 p-1 text-center font-bold">
-                                        {isLoadingExtraData ? '...' : (attendanceData.get(student.id) !== null ? `${attendanceData.get(student.id)?.toFixed(2)}%` : 'N/A')}
-                                    </td>
-                                    {isAllowed && (
-                                        <td className="border border-slate-300 p-1 text-center print:hidden">
-                                            <Link
-                                                to={`/student/${student.id}/academics`}
-                                                className="inline-block p-1.5 text-sky-600 hover:bg-sky-100 rounded-full transition-colors"
-                                                title={`Enter/Edit marks for ${student.name}`}
-                                            >
-                                                <EditIcon className="w-5 h-5" />
-                                            </Link>
-                                        </td>
-                                    )}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
              <ConfirmationModal
                 isOpen={!!importData}
                 onClose={() => setImportData(null)}
                 onConfirm={handleConfirmImport}
-                title="Confirm Mark Import"
-                confirmDisabled={isSavingImport}
+                title="Confirm Marks Import"
+                confirmDisabled={isSavingImport || (importData && importData.updates.length === 0)}
             >
                 {importData && (
                     <div>
-                        <p className="mb-2">Found <span className="font-bold text-emerald-600">{importData.updates.length} students</span> with valid marks to update.</p>
+                        <p>Found <span className="font-bold">{importData.updates.length}</span> students with new marks to update.</p>
                         {importData.errors.length > 0 && (
-                            <div className="mt-4">
-                                <p className="font-bold text-red-600">{importData.errors.length} errors found:</p>
-                                <ul className="list-disc list-inside text-sm text-red-700 max-h-40 overflow-y-auto bg-red-50 p-2 rounded">
+                            <div className="mt-4 bg-red-50 p-3 rounded-lg">
+                                <p className="font-bold text-red-800">{importData.errors.length} errors found:</p>
+                                <ul className="list-disc list-inside text-sm text-red-700 max-h-32 overflow-y-auto">
                                     {importData.errors.map((err, i) => <li key={i}>{err}</li>)}
                                 </ul>
                             </div>
                         )}
-                        <p className="mt-4 font-semibold">Do you want to proceed with importing the valid records?</p>
-                        {isSavingImport && <div className="mt-2 flex items-center gap-2 text-sky-600 font-semibold"><SpinnerIcon className="w-5 h-5" /><span>Saving... Please wait.</span></div>}
+                        <p className="mt-4">Are you sure you want to proceed and save these changes?</p>
                     </div>
                 )}
             </ConfirmationModal>
-             <MarksEntryModal
+            
+            <MarksEntryModal 
                 isOpen={isMarksEntryModalOpen}
                 onClose={() => setIsMarksEntryModalOpen(false)}
                 onSave={onUpdateClassMarks}
                 students={classStudents}
                 gradeDef={gradeDef}
-                examId={examId!}
+                examId={examId}
                 examName={examDetails.name}
                 grade={grade}
             />
-        </div>
+        </>
     );
 };
 
