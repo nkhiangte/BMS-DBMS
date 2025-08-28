@@ -141,10 +141,11 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
               .forEach(subject => {
                 const result = results.find(r => r.subject === subject.name);
                 if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
-                    totalExamMarks += result?.examMarks ?? 0;
-                    totalActivityMarks += result?.activityMarks ?? 0;
+                    totalExamMarks += Number(result?.examMarks) || 0;
+                    totalActivityMarks += Number(result?.activityMarks) || 0;
                 } else {
-                    totalExamMarks += result?.marks ?? ((result?.examMarks ?? 0) + (result?.activityMarks ?? 0));
+                    const marks = result?.marks ?? ((result?.examMarks ?? 0) + (result?.activityMarks ?? 0));
+                    totalExamMarks += Number(marks) || 0;
                 }
             });
             
@@ -319,7 +320,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                     <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Roll</th>
                                     <th rowSpan={2} className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom">Student Name</th>
                                     {gradeDef.subjects.map(subject => (
-                                        <th key={subject.name} colSpan={subject.gradingSystem === 'OABC' ? 1 : 2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase">{subject.name}</th>
+                                        <th key={subject.name} colSpan={subject.activityFullMarks > 0 ? 2 : 1} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase">{subject.name}</th>
                                     ))}
                                     <th colSpan={3} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase">Totals</th>
                                     <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">%</th>
@@ -330,13 +331,13 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                 </tr>
                                 <tr>
                                     {gradeDef.subjects.flatMap(subject => {
-                                        if (subject.gradingSystem === 'OABC') {
-                                            return <th key={`${subject.name}-grade`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">Grade</th>;
+                                        if (subject.activityFullMarks > 0) {
+                                            return [
+                                                <th key={`${subject.name}-exam`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">E({subject.examFullMarks})</th>,
+                                                <th key={`${subject.name}-activity`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">A({subject.activityFullMarks})</th>
+                                            ];
                                         }
-                                        return [
-                                            <th key={`${subject.name}-exam`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">E({subject.examFullMarks})</th>,
-                                            <th key={`${subject.name}-activity`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">A({subject.activityFullMarks})</th>
-                                        ];
+                                        return <th key={`${subject.name}-grade`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">Grade</th>;
                                     })}
                                     <th className="border px-1 py-1 font-semibold text-slate-700 text-xs">Exam ({totalMaxExamMarks})</th>
                                     <th className="border px-1 py-1 font-semibold text-slate-700 text-xs">Activity ({totalMaxActivityMarks})</th>
@@ -354,16 +355,16 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                             </td>
                                             {gradeDef.subjects.flatMap(subject => {
                                                 const studentResult = results.find(r => r.subject === subject.name);
-                                                if (subject.gradingSystem === 'OABC') {
-                                                    return [<td key={subject.name} className="border px-2 py-1 text-center font-bold text-lg">{studentResult?.grade ?? '-'}</td>];
+                                                if (subject.activityFullMarks > 0) {
+                                                    const examMarks = studentResult?.examMarks ?? '-';
+                                                    const activityMarks = studentResult?.activityMarks ?? '-';
+                                                    const isFailed = failedSubjects.includes(subject.name);
+                                                    return [
+                                                        <td key={`${subject.name}-exam`} className={`border px-2 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{examMarks}</td>,
+                                                        <td key={`${subject.name}-activity`} className={`border px-2 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{activityMarks}</td>
+                                                    ];
                                                 }
-                                                const examMarks = studentResult?.examMarks ?? '-';
-                                                const activityMarks = studentResult?.activityMarks ?? '-';
-                                                const isFailed = failedSubjects.includes(subject.name);
-                                                return [
-                                                    <td key={`${subject.name}-exam`} className={`border px-2 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{examMarks}</td>,
-                                                    <td key={`${subject.name}-activity`} className={`border px-2 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{activityMarks}</td>
-                                                ];
+                                                return [<td key={subject.name} className="border px-2 py-1 text-center font-bold text-lg">{studentResult?.grade ?? '-'}</td>];
                                             })}
                                             <td className="border px-2 py-1 text-center font-bold">{totalExamMarks}</td>
                                             <td className="border px-2 py-1 text-center font-bold">{totalActivityMarks}</td>
