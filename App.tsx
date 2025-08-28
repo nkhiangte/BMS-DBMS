@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType, FeeStructure, FeeSet } from './types';
@@ -291,12 +292,30 @@ const App: React.FC = () => {
     };
 
     const handleUpdateClassTeacher = async (grade: Grade, teacherId: string | undefined) => {
+        const docRef = db.collection('config').doc('gradeDefinitions');
         try {
-            const updateData = {
-                [`${grade}.classTeacherId`]: teacherId || firebase.firestore.FieldValue.delete()
-            };
-            await db.collection('config').doc('gradeDefinitions').set(updateData, { merge: true });
-            // Notification will be shown by handleStaffFormSubmit
+            await db.runTransaction(async (transaction) => {
+                const doc = await transaction.get(docRef);
+                if (!doc.exists) {
+                    const newDef = { ...GRADE_DEFINITIONS[grade], classTeacherId: teacherId };
+                    transaction.set(docRef, { [grade]: newDef }, { merge: true });
+                } else {
+                    const remoteData = doc.data() as Record<string, GradeDefinition>;
+                    const currentGradeDef = remoteData[grade] || GRADE_DEFINITIONS[grade];
+                    
+                    const newGradeDef = { ...currentGradeDef };
+                    if (teacherId) {
+                        newGradeDef.classTeacherId = teacherId;
+                    } else {
+                        delete newGradeDef.classTeacherId;
+                    }
+                    
+                    // Using direct field update with dot notation is safer inside a transaction
+                    // if the object might not exist. However, since we are setting the whole object,
+                    // it's fine. We use update to avoid creating the doc if it doesn't exist.
+                    transaction.update(docRef, { [grade]: newGradeDef });
+                }
+            });
         } catch (error) {
             console.error(`Error updating class teacher for ${grade}:`, error);
             addNotification(`Failed to update class teacher for ${grade}.`, 'error');
@@ -452,18 +471,25 @@ const App: React.FC = () => {
         unsubscribers.push(db.collection('users').onSnapshot(snapshot => setAllUsers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User)))));
         unsubscribers.push(db.collection('config').doc('gradeDefinitions').onSnapshot(doc => {
             if (doc.exists) {
-                const remoteDefinitions = doc.data() as Record<string, Partial<GradeDefinition>>;
-                const newDefinitions: Record<Grade, GradeDefinition> = JSON.parse(JSON.stringify(GRADE_DEFINITIONS));
-
-                for (const gradeKey in newDefinitions) {
-                    const grade = gradeKey as Grade;
-                    if (remoteDefinitions[grade]) {
-                        newDefinitions[grade] = { ...newDefinitions[grade], ...remoteDefinitions[grade] };
+                const remoteData = doc.data() as Record<string, Partial<GradeDefinition>> | undefined;
+                const definitions = JSON.parse(JSON.stringify(GRADE_DEFINITIONS));
+                
+                if (remoteData) {
+                    for (const gradeKey in remoteData) {
+                        if (definitions.hasOwnProperty(gradeKey)) {
+                            const grade = gradeKey as Grade;
+                            definitions[grade] = {
+                                ...definitions[grade],
+                                ...remoteData[grade],
+                            };
+                        }
                     }
                 }
-                setGradeDefinitions(newDefinitions);
+                
+                setGradeDefinitions(definitions);
             } else {
                 db.collection('config').doc('gradeDefinitions').set(GRADE_DEFINITIONS);
+                setGradeDefinitions(GRADE_DEFINITIONS);
             }
         }));
         // ... other data listeners for inventory, tc, etc.
