@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, SubjectMark, GradeDefinition, SubjectDefinition, User, StudentStatus, StudentAttendanceRecord, StudentAttendanceStatus } from '../types';
 import { BackIcon, UserIcon, HomeIcon, PrinterIcon, SpinnerIcon } from '../components/Icons';
-import { formatStudentId, formatDateForDisplay, calculateStudentResult, calculateRanks, getPerformanceGrade, getRemarks, getMonthsForTerm } from '../utils';
+import { formatStudentId, formatDateForDisplay, calculateStudentResult, calculateRanks, getPerformanceGrade, getRemarks, getMonthsForTerm, isSubjectNumeric } from '../utils';
 import { GRADES_WITH_NO_ACTIVITIES, TERMINAL_EXAMS } from '../constants';
 
 const PhotoWithFallback: React.FC<{src?: string, alt: string}> = ({ src, alt }) => {
@@ -82,7 +82,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                 
                 let totalMarks = 0;
                 if (sGradeDef) {
-                    sGradeDef.subjects.filter(sub => sub.gradingSystem !== 'OABC').forEach(sub => {
+                    sGradeDef.subjects.filter(sub => isSubjectNumeric(sub, s.grade)).forEach(sub => {
                         const res = sResults.find(r => r.subject === sub.name);
                         totalMarks += (res?.marks ?? (res?.examMarks ?? 0) + (res?.activityMarks ?? 0));
                     });
@@ -132,7 +132,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
         let maxGrandTotal = 0;
         
         gradeDef.subjects
-          .filter(subjectDef => subjectDef.gradingSystem !== 'OABC')
+          .filter(subjectDef => isSubjectNumeric(subjectDef, student.grade))
           .forEach(subjectDef => {
             const result = termResults.find(r => r.subject === subjectDef.name);
             const marks = result?.marks ?? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0);

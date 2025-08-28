@@ -1,4 +1,4 @@
-import { Student, Staff, Grade, FeePayments, SubjectMark, GradeDefinition, StaffAttendanceRecord, StudentAttendanceRecord, AttendanceStatus, StudentAttendanceStatus } from './types';
+import { Student, Staff, Grade, FeePayments, SubjectMark, GradeDefinition, StaffAttendanceRecord, StudentAttendanceRecord, AttendanceStatus, StudentAttendanceStatus, SubjectDefinition } from './types';
 import { FEE_STRUCTURE, academicMonths, GRADES_LIST } from './constants';
 
 const getGradeCode = (grade: Grade): string => {
@@ -84,6 +84,24 @@ export const createDefaultFeePayments = (): FeePayments => ({
     examFeesPaid: { terminal1: false, terminal2: false, terminal3: false },
 });
 
+export const isSubjectNumeric = (subjectDef: SubjectDefinition, grade: Grade): boolean => {
+    // Explicitly marked as grade-based
+    if (subjectDef.gradingSystem === 'OABC') {
+        return false;
+    }
+    // Effectively grade-based if it has no marks
+    if (subjectDef.examFullMarks === 0 && subjectDef.activityFullMarks === 0) {
+        return false;
+    }
+    // Special override for Cursive & Drawing in Class I & II
+    if ((grade === Grade.I || grade === Grade.II) && (subjectDef.name === 'Cursive' || subjectDef.name === 'Drawing')) {
+        return false;
+    }
+    // Otherwise, it's numeric
+    return true;
+};
+
+
 export const calculateStudentResult = (
     finalTermResults: SubjectMark[],
     gradeDef: GradeDefinition,
@@ -100,7 +118,7 @@ export const calculateStudentResult = (
         : 'III-VIII';
 
     gradeDef.subjects
-      .filter(s => s.gradingSystem !== 'OABC')
+      .filter(subject => isSubjectNumeric(subject, grade))
       .forEach(subject => {
         const result = finalTermResults.find(r => r.subject === subject.name);
         const examMarks = result?.examMarks ?? 0;

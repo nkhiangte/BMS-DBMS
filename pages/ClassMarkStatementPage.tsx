@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, StudentStatus, Exam, SubjectMark, User, StudentAttendanceRecord, StudentAttendanceStatus } from '../types';
 import { BackIcon, HomeIcon, PrinterIcon, EditIcon, InboxArrowDownIcon, SpinnerIcon } from '../components/Icons';
 import { TERMINAL_EXAMS, GRADES_WITH_NO_ACTIVITIES, OABC_GRADES } from '../constants';
-import { formatStudentId, calculateStudentResult, calculateRanks, getMonthsForTerm, getPerformanceGrade, getRemarks } from '../utils';
+import { formatStudentId, calculateStudentResult, calculateRanks, getMonthsForTerm, getPerformanceGrade, getRemarks, isSubjectNumeric } from '../utils';
 import * as XLSX from 'xlsx';
 import ConfirmationModal from '../components/ConfirmationModal';
 import MarksEntryModal from '../components/MarksEntryModal';
@@ -56,7 +56,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
         let maxExam = 0;
         let maxActivity = 0;
         def.subjects
-          .filter(s => s.gradingSystem !== 'OABC')
+          .filter(s => isSubjectNumeric(s, grade))
           .forEach(subject => {
             maxExam += subject.examFullMarks;
             if (hasActivities && subject.activityFullMarks > 0) {
@@ -83,7 +83,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
             let totalActivityMarks = 0;
 
             gradeDef.subjects
-              .filter(s => s.gradingSystem !== 'OABC')
+              .filter(s => isSubjectNumeric(s, student.grade))
               .forEach(subject => {
                 const result = results.find(r => r.subject === subject.name);
                 if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {

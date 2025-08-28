@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, StudentStatus, StudentAttendanceRecord, StudentAttendanceStatus, SubjectMark, SubjectDefinition } from '../types';
 import { BackIcon, UserIcon, HomeIcon, PrinterIcon, SpinnerIcon } from '../components/Icons';
-import { formatStudentId, formatDateForDisplay, calculateStudentResult, calculateRanks, getPerformanceGrade, getRemarks, getMonthsForTerm } from '../utils';
+import { formatStudentId, formatDateForDisplay, calculateStudentResult, calculateRanks, getPerformanceGrade, getRemarks, getMonthsForTerm, isSubjectNumeric } from '../utils';
 import { GRADES_WITH_NO_ACTIVITIES, TERMINAL_EXAMS } from '../constants';
 
 // --- Reusable Components (also used in single PrintableReportCardPage) ---
@@ -182,7 +182,7 @@ const PrintableBulkReportCardPage: React.FC<PrintableBulkReportCardPageProps> = 
                 const sExam = s.academicPerformance?.find(e => e.id === examId);
                 const sResults = sExam?.results || [];
                 let totalMarks = 0;
-                gradeDef.subjects.filter(sub => sub.gradingSystem !== 'OABC').forEach(sub => {
+                gradeDef.subjects.filter(sub => isSubjectNumeric(sub, s.grade)).forEach(sub => {
                     const res = sResults.find(r => r.subject === sub.name);
                     totalMarks += (res?.marks ?? (res?.examMarks ?? 0) + (res?.activityMarks ?? 0));
                 });
@@ -220,7 +220,7 @@ const PrintableBulkReportCardPage: React.FC<PrintableBulkReportCardPageProps> = 
                 
                 let grandTotal = 0;
                 let maxGrandTotal = 0;
-                gradeDef.subjects.filter(sub => sub.gradingSystem !== 'OABC').forEach(sub => {
+                gradeDef.subjects.filter(sub => isSubjectNumeric(sub, student.grade)).forEach(sub => {
                     const res = termResults.find(r => r.subject === sub.name);
                     grandTotal += (res?.marks ?? (res?.examMarks ?? 0) + (res?.activityMarks ?? 0));
                     maxGrandTotal += sub.examFullMarks + (hasActivities ? sub.activityFullMarks : 0);
