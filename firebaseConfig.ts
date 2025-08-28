@@ -1,10 +1,10 @@
 // src/firebaseConfig.ts
-// Fix: Use compat imports for v9 SDK with v8 syntax
+// FIX: Switched to Firebase compat imports to match usage in the app.
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 
-// Your Firebase configuration
+// 🔑 Your Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyBp4xXM_52Lu4W8NyxTn1aGo9US_JKF4XA",
   authDomain: "bmsdb-b39a2.firebaseapp.com",
@@ -14,35 +14,16 @@ const firebaseConfig = {
   appId: "1:58518396073:web:c42ce146d444ba38f5ddb8",
 };
 
-// Initialize Firebase - check if it's already initialized to avoid errors
+// 🚀 Initialize Firebase
+// FIX: Use compat initialization syntax and check if already initialized to prevent errors on hot-reload.
 if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
 }
 
-// Initialize and export services using the compat syntax
-const auth = firebase.auth();
-const db = firebase.firestore();
+// 🔐 Auth & Database
+// FIX: Export auth and db instances from compat firebase
+export const auth = firebase.auth();
+export const db = firebase.firestore();
 
-// --- Enable Offline Persistence ---
-// This allows the app to work offline by caching data.
-// It should be enabled before any other Firestore operations.
-db.enablePersistence()
-  .then(() => {
-    console.log("Firestore persistence enabled successfully. The app can now work offline.");
-  })
-  .catch((err) => {
-    if (err.code === 'failed-precondition') {
-        // This can happen if you have multiple tabs open, as persistence can only be
-        // enabled in one tab at a time.
-        console.warn('Firestore persistence failed: multiple tabs open.');
-    } else if (err.code === 'unimplemented') {
-        // The current browser does not support all of the features required to enable persistence.
-        console.warn('Firestore persistence is not available in this browser.');
-    } else {
-        console.error("Firestore persistence failed with an unexpected error: ", err);
-    }
-});
-
-
-// Export for use in your app
-export { auth, db, firebaseConfig, firebase };
+// Export the firebase object itself for compat syntax usage
+export { firebase, firebaseConfig };

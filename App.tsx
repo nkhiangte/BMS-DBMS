@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType, FeeStructure, FeeSet } from './types';
@@ -176,12 +177,106 @@ const App: React.FC = () => {
         setNotifications(prev => [...prev, { id, message }]);
     }, []);
 
+    // Auth Handlers
+    const handleLogin = async (email: string, pass: string) => {
+        setAuthError('');
+        setNotification('');
+        try {
+            await auth.signInWithEmailAndPassword(email, pass);
+            // onAuthStateChanged will handle redirect
+        } catch (error: any) {
+            let message = 'An unknown error occurred.';
+            switch (error.code) {
+                case 'auth/user-not-found':
+                    message = 'No user found with this email address.';
+                    break;
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential':
+                    message = 'Incorrect password. Please try again.';
+                    break;
+                case 'auth/invalid-email':
+                    message = 'The email address is not valid.';
+                    break;
+                case 'auth/user-disabled':
+                    message = 'This user account has been disabled.';
+                    break;
+                default:
+                    message = 'Login failed. Please check your credentials.';
+                    console.error(error);
+            }
+            setAuthError(message);
+            throw new Error(message); // Propagate error to the login form
+        }
+    };
+
+    const handleLogout = () => {
+        auth.signOut();
+        setNotification('');
+        setAuthError('');
+    };
+
+    const handleSignUp = async (name: string, email: string, pass: string) => {
+        try {
+            const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
+            const firebaseUser = userCredential.user;
+            if (firebaseUser) {
+                await firebaseUser.updateProfile({ displayName: name });
+                // Firestore document will be created by onAuthStateChanged listener,
+                // which handles both sign-up and first-time sign-in cases.
+            }
+            return { success: true, message: "Sign up successful! Please wait for an administrator to approve your account." };
+        } catch (error: any) {
+            let message = 'An unknown error occurred.';
+            if (error.code === 'auth/email-already-in-use') {
+                message = 'This email address is already in use by another account.';
+            } else if (error.code === 'auth/weak-password') {
+                message = 'The password is too weak. Please use at least 6 characters.';
+            }
+            console.error('Sign up error:', error);
+            return { success: false, message };
+        }
+    };
+
+    const handleForgotPassword = async (email: string) => {
+        try {
+            await auth.sendPasswordResetEmail(email);
+            return { success: true, message: "Password reset link sent! Please check your email." };
+        } catch (error: any) {
+            let message = 'An error occurred while sending the reset email.';
+            if (error.code === 'auth/user-not-found') {
+                message = 'No user found with this email address.';
+            }
+            console.error('Forgot password error:', error);
+            return { success: false, message };
+        }
+    };
+
+    const handleChangePassword = async (current: string, newPass: string) => {
+        const firebaseUser = auth.currentUser;
+        if (!firebaseUser || !firebaseUser.email) {
+            return { success: false, message: "No user is currently signed in." };
+        }
+
+        try {
+            const credential = firebase.auth.EmailAuthProvider.credential(firebaseUser.email, current);
+            await firebaseUser.reauthenticateWithCredential(credential);
+            await firebaseUser.updatePassword(newPass);
+            setNotification('Password changed successfully. Please log in again.');
+            await auth.signOut(); // Security best practice
+            return { success: true };
+        } catch (error: any) {
+            let message = 'An error occurred while changing the password.';
+            if (error.code === 'auth/wrong-password') {
+                message = 'Your current password is incorrect.';
+            } else if (error.code === 'auth/weak-password') {
+                message = 'The new password is too weak.';
+            }
+            console.error('Change password error:', error);
+            return { success: false, message };
+        }
+    };
+    
     // Placeholder Handlers
-    const handleLogin = async (email: string, pass: string) => { /* ... */ };
-    const handleLogout = () => auth.signOut();
-    const handleSignUp = async (name: string, email: string, pass: string) => { return { success: true, message: "Please wait for admin approval." }; };
-    const handleForgotPassword = async (email: string) => { return { success: true, message: "Password reset link sent." }; };
-    const handleChangePassword = async (current: string, newPass: string) => { return { success: true, message: "Password changed." }; };
     const handleAddStudent = () => { setIsStudentFormOpen(true); };
     const handleEditStudent = (student: Student) => { setEditingStudent(student); setIsStudentFormOpen(true); };
     const handleStudentFormSubmit = async (studentData: Omit<Student, 'id'>) => { console.log('submitting student', studentData); };
