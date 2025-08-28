@@ -225,32 +225,30 @@ const TcRegistrationPage: React.FC<TcRegistrationPageProps> = ({ students, onSav
       <p className="text-slate-700 mb-8">Enter a student's ID to fetch their details and generate a new TC.</p>
 
       {/* Student Selector */}
-      <fieldset disabled={user.role !== 'admin'}>
-        <div className="mb-8 max-w-lg">
-          <label htmlFor="student-id-input" className="block text-sm font-bold text-slate-800 mb-2">Enter Student ID</label>
-          <div className="flex gap-2 items-start">
-              <div className="flex-grow">
-                  <input
-                      id="student-id-input"
-                      type="text"
-                      placeholder="e.g., BMS250501"
-                      value={studentIdInput}
-                      onChange={e => setStudentIdInput(e.target.value.toUpperCase())}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleStudentSearch(); }}}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
-                  />
-                  {searchError && <p className="text-red-500 text-sm mt-1">{searchError}</p>}
-              </div>
-              <button
-                  type="button"
-                  onClick={handleStudentSearch}
-                  className="px-6 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 h-[42px]"
-              >
-                  Find
-              </button>
-          </div>
+      <div className="mb-8 max-w-lg">
+        <label htmlFor="student-id-input" className="block text-sm font-bold text-slate-800 mb-2">Enter Student ID</label>
+        <div className="flex gap-2 items-start">
+            <div className="flex-grow">
+                <input
+                    id="student-id-input"
+                    type="text"
+                    placeholder="e.g., BMS250501"
+                    value={studentIdInput}
+                    onChange={e => setStudentIdInput(e.target.value.toUpperCase())}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleStudentSearch(); }}}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
+                />
+                {searchError && <p className="text-red-500 text-sm mt-1">{searchError}</p>}
+            </div>
+            <button
+                type="button"
+                onClick={handleStudentSearch}
+                className="px-6 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 h-[42px]"
+            >
+                Find
+            </button>
         </div>
-      </fieldset>
+      </div>
 
       {student && (
         <form onSubmit={handleSubmit}>
@@ -333,24 +331,23 @@ const TcRegistrationPage: React.FC<TcRegistrationPageProps> = ({ students, onSav
                 </fieldset>
             </div>
             
-            {user.role === 'admin' && (
-              <div className="mt-8 flex justify-end gap-3">
-                  <button
-                      type="button"
-                      onClick={() => navigate('/transfers')}
-                      className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition"
-                  >
-                      Cancel
-                  </button>
-                  <button
-                      type="submit"
-                      className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition flex items-center gap-2"
-                  >
-                      <DocumentPlusIcon className="w-5 h-5" />
-                      Generate & Save TC
-                  </button>
-              </div>
-            )}
+            <div className="mt-8 flex justify-end gap-3">
+                <button
+                    type="button"
+                    onClick={() => navigate('/transfers')}
+                    className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="submit"
+                    disabled={user.role !== 'admin'}
+                    className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition flex items-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                >
+                    <DocumentPlusIcon className="w-5 h-5" />
+                    Generate & Save TC
+                </button>
+            </div>
           </fieldset>
         </form>
       )}

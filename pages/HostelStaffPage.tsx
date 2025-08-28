@@ -36,16 +36,14 @@ const StaffCard: React.FC<{
                     <p className="text-sm font-semibold text-sky-700">{staffMember.role}</p>
                     <p className="text-sm text-slate-600">{staffMember.dutyShift}</p>
                 </div>
-                {user.role === 'admin' && (
-                  <div className="flex flex-col gap-1">
-                      <button onClick={() => onEdit(staffMember)} className="p-2 text-slate-500 hover:bg-slate-200 rounded-full" title="Edit Staff">
-                          <EditIcon className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => onDelete(staffMember)} className="p-2 text-red-500 hover:bg-red-100 rounded-full" title="Delete Staff">
-                          <TrashIcon className="w-4 h-4" />
-                      </button>
-                  </div>
-                )}
+                <div className="flex flex-col gap-1">
+                    <button onClick={() => onEdit(staffMember)} disabled={user.role !== 'admin'} className="p-2 text-slate-500 hover:bg-slate-200 rounded-full disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed" title="Edit Staff">
+                        <EditIcon className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => onDelete(staffMember)} disabled={user.role !== 'admin'} className="p-2 text-red-500 hover:bg-red-100 rounded-full disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed" title="Delete Staff">
+                        <TrashIcon className="w-4 h-4" />
+                    </button>
+                </div>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-200 space-y-2 text-sm flex-grow">
                 <div className="flex items-center gap-2 text-slate-700">
@@ -101,12 +99,14 @@ const HostelStaffPage: React.FC<HostelStaffPageProps> = ({ staff, onAdd, onEdit,
                         <p className="text-slate-600 mt-1">Manage records for wardens, mess staff, and their duties.</p>
                     </div>
                  </div>
-                 {user.role === 'admin' && (
-                    <button onClick={onAdd} className="btn btn-primary">
-                        <PlusIcon className="w-5 h-5" />
-                        Add New Staff
-                    </button>
-                 )}
+                 <button
+                    onClick={onAdd}
+                    disabled={user.role !== 'admin'}
+                    className="btn btn-primary disabled:bg-slate-400 disabled:cursor-not-allowed"
+                 >
+                    <PlusIcon className="w-5 h-5" />
+                    Add New Staff
+                </button>
             </div>
 
             <div className="space-y-10">

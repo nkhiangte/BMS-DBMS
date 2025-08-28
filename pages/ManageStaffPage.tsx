@@ -53,24 +53,24 @@ const StaffCard: React.FC<{
                         {status}
                     </div>
                 </div>
-                {user.role === 'admin' && (
-                  <div className="flex flex-col items-center gap-2 z-10">
-                      <button 
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(staffMember); }} 
-                          className="p-2 text-slate-600 hover:bg-slate-100 rounded-full flex-shrink-0" 
-                          title="Edit Staff Details"
-                      >
-                          <EditIcon className="w-5 h-5"/>
-                      </button>
-                      <button 
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(staffMember); }} 
-                          className="p-2 text-red-600 hover:bg-red-100 rounded-full flex-shrink-0" 
-                          title="Remove Staff"
-                      >
-                          <TrashIcon className="w-5 h-5"/>
-                      </button>
-                  </div>
-                )}
+                <div className="flex flex-col items-center gap-2 z-10">
+                    <button 
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(staffMember); }} 
+                        className="p-2 text-slate-600 hover:bg-slate-100 rounded-full flex-shrink-0 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed" 
+                        title="Edit Staff Details"
+                        disabled={user.role !== 'admin'}
+                    >
+                        <EditIcon className="w-5 h-5"/>
+                    </button>
+                    <button 
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(staffMember); }} 
+                        className="p-2 text-red-600 hover:bg-red-100 rounded-full flex-shrink-0 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed" 
+                        title="Remove Staff"
+                        disabled={user.role !== 'admin'}
+                    >
+                        <TrashIcon className="w-5 h-5"/>
+                    </button>
+                </div>
             </div>
             <div className="mt-4 space-y-2 text-sm text-slate-800 flex-grow">
                 <div className="flex items-center gap-2">
@@ -246,24 +246,20 @@ const ManageStaffPage: React.FC<ManageStaffPageProps> = ({ staff, gradeDefinitio
                         </div>
                         <input type="text" placeholder="Search by name..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition placeholder:text-slate-600" aria-label="Search staff by name" />
                     </div>
-                    {user.role === 'admin' && (
-                      <>
-                        <Link
-                            to="/staff/certificates"
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition"
-                        >
-                            <DocumentReportIcon className="h-5 h-5" />
-                            Service Certificates
-                        </Link>
-                        <button onClick={handleDownloadCsv} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition">
-                            <InboxArrowDownIcon className="h-5 h-5" />
-                            Download CSV
-                        </button>
-                        <button onClick={onAdd} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition">
-                            <PlusIcon className="h-5 h-5" /> Add Staff
-                        </button>
-                      </>
-                    )}
+                    <Link
+                        to="/staff/certificates"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition"
+                    >
+                        <DocumentReportIcon className="h-5 h-5" />
+                        Service Certificates
+                    </Link>
+                    <button onClick={handleDownloadCsv} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition">
+                        <InboxArrowDownIcon className="h-5 h-5" />
+                        Download CSV
+                    </button>
+                    <button onClick={onAdd} disabled={user.role !== 'admin'} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition disabled:bg-slate-400 disabled:cursor-not-allowed">
+                        <PlusIcon className="h-5 h-5" /> Add Staff
+                    </button>
                 </div>
             </div>
             

@@ -101,15 +101,14 @@ const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onAdd, onEdit,
           </select>
 
           {/* Add Item Button */}
-          {user.role === 'admin' && (
-            <button
-              onClick={onAdd}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition"
-            >
-              <PlusIcon className="h-5 w-5" />
-              Add Item
-            </button>
-          )}
+          <button
+            onClick={onAdd}
+            disabled={user.role !== 'admin'}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition disabled:bg-slate-400 disabled:cursor-not-allowed"
+          >
+            <PlusIcon className="h-5 w-5" />
+            Add Item
+          </button>
         </div>
       </div>
       <InventoryTable

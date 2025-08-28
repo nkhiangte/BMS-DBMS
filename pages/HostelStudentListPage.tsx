@@ -49,12 +49,14 @@ const HostelStudentListPage: React.FC<HostelStudentListPageProps> = ({ residents
                         <p className="text-slate-600 mt-1">List of all registered students in the hostel.</p>
                     </div>
                 </div>
-                {user.role === 'admin' && (
-                    <button onClick={onAdd} className="btn btn-primary">
-                        <PlusIcon className="w-5 h-5" />
-                        Add Inmate
-                    </button>
-                )}
+                <button 
+                    onClick={onAdd} 
+                    disabled={user.role !== 'admin'}
+                    className="btn btn-primary disabled:bg-slate-400 disabled:cursor-not-allowed"
+                >
+                    <PlusIcon className="w-5 h-5" />
+                    Add Inmate
+                </button>
             </div>
 
             {residentDetails.length === 0 ? (

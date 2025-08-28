@@ -70,15 +70,6 @@ const CommunicationPage: React.FC<CommunicationPageProps> = ({ students, user })
         setMessage('');
     };
 
-    if (user.role !== 'admin') {
-        return (
-             <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-                <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
-                <p className="text-slate-700 mt-2">You do not have permission to access this page.</p>
-             </div>
-        )
-    }
-
     return (
         <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
             <div className="mb-6 flex justify-between items-center">
@@ -158,7 +149,7 @@ const CommunicationPage: React.FC<CommunicationPageProps> = ({ students, user })
             <div className="mt-8 flex justify-end">
                 <button
                     onClick={handleSend}
-                    disabled={isSending || recipients.length === 0 || !message}
+                    disabled={isSending || recipients.length === 0 || !message || user.role !== 'admin'}
                     className="btn btn-primary text-base px-6 py-3 disabled:bg-slate-400 disabled:cursor-not-allowed"
                 >
                     {isSending ? (

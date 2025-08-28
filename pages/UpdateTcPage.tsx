@@ -216,24 +216,23 @@ const UpdateTcPage: React.FC<UpdateTcPageProps> = ({ tcRecords, onUpdate, user }
                 </fieldset>
             </div>
             
-            {user.role === 'admin' && (
-              <div className="mt-8 flex justify-end gap-3">
-                  <button
-                      type="button"
-                      onClick={() => { setFoundRecord(null); setSearchError(''); }}
-                      className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition"
-                  >
-                      Cancel Edit
-                  </button>
-                  <button
-                      type="submit"
-                      className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition flex items-center gap-2"
-                  >
-                      <CheckIcon className="w-5 h-5" />
-                      Update & Save TC
-                  </button>
-              </div>
-            )}
+            <div className="mt-8 flex justify-end gap-3">
+                <button
+                    type="button"
+                    onClick={() => { setFoundRecord(null); setSearchError(''); }}
+                    className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 transition"
+                >
+                    Cancel Edit
+                </button>
+                <button
+                    type="submit"
+                    disabled={user.role !== 'admin'}
+                    className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition flex items-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                >
+                    <CheckIcon className="w-5 h-5" />
+                    Update & Save TC
+                </button>
+            </div>
           </fieldset>
         </form>
       )}

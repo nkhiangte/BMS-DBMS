@@ -40,24 +40,24 @@ const ClassListPage: React.FC<ClassListPageProps> = ({ gradeDefinitions, staff, 
                     <p className="text-slate-600 mt-1">Select a class to view all students enrolled in it.</p>
                 </div>
                  <div className="flex items-center gap-3">
-                     {user.role === 'admin' && (
-                        <>
-                            <button
-                                onClick={() => onOpenImportModal(null)}
-                                className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition hover:-translate-y-0.5"
-                            >
-                                <ArrowUpOnSquareIcon className="w-5 h-5" />
-                                Import Students
-                            </button>
-                            <Link
-                                to="/subjects"
-                                className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition hover:-translate-y-0.5"
-                            >
-                                <CogIcon className="w-5 h-5" />
-                                Manage Subjects
-                            </Link>
-                        </>
-                     )}
+                    <button
+                        onClick={() => onOpenImportModal(null)}
+                        disabled={user.role !== 'admin'}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition hover:-translate-y-0.5 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                        title={user.role !== 'admin' ? "Admin access required" : ""}
+                    >
+                        <ArrowUpOnSquareIcon className="w-5 h-5" />
+                        Import Students
+                    </button>
+                    <button
+                        onClick={() => navigate("/subjects")}
+                        disabled={user.role !== 'admin'}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition hover:-translate-y-0.5 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                        title={user.role !== 'admin' ? "Admin access required" : ""}
+                    >
+                        <CogIcon className="w-5 h-5" />
+                        Manage Subjects
+                    </button>
                 </div>
             </div>
             

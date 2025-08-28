@@ -71,16 +71,15 @@ const ManageSubjectsPage: React.FC<ManageSubjectsPageProps> = ({ gradeDefinition
                                         <BookOpenIcon className="w-6 h-6 text-sky-600" />
                                         {grade}
                                     </h2>
-                                    {user.role === 'admin' && (
-                                        <button
-                                            onClick={() => handleEditClick(grade)}
-                                            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1 text-xs bg-white border border-slate-300 text-slate-700 font-semibold rounded-md shadow-sm hover:bg-slate-100"
-                                            title={`Edit curriculum for ${grade}`}
-                                        >
-                                            <EditIcon className="w-4 h-4" />
-                                            Edit
-                                        </button>
-                                    )}
+                                    <button
+                                        onClick={() => handleEditClick(grade)}
+                                        disabled={user.role !== 'admin'}
+                                        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1 text-xs bg-white border border-slate-300 text-slate-700 font-semibold rounded-md shadow-sm hover:bg-slate-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                        title={`Edit curriculum for ${grade}`}
+                                    >
+                                        <EditIcon className="w-4 h-4" />
+                                        Edit
+                                    </button>
                                 </div>
                                 <ul className="text-slate-700 space-y-1 text-sm flex-grow">
                                     {(gradeDef.subjects || []).length > 0 ? (

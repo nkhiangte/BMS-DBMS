@@ -118,15 +118,15 @@ const StudentListPage: React.FC<StudentListPageProps> = ({ students, onAdd, onEd
           </select>
 
           {/* Add Student Button */}
-          {user.role === 'admin' && (
-            <button
-              onClick={onAdd}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition hover:-translate-y-0.5"
-            >
-              <PlusIcon className="h-5 w-5" />
-              Add Student
-            </button>
-          )}
+          <button
+            onClick={onAdd}
+            disabled={user.role !== 'admin'}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition hover:-translate-y-0.5 disabled:bg-slate-400 disabled:cursor-not-allowed disabled:transform-none"
+            title={user.role !== 'admin' ? "Admin access required" : "Add a new student"}
+          >
+            <PlusIcon className="h-5 w-5" />
+            Add Student
+          </button>
         </div>
       </div>
       <StudentTable

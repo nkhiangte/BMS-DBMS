@@ -25,13 +25,13 @@ const DashboardCard: React.FC<{
   color?: 'sky' | 'emerald' | 'indigo' | 'amber' | 'rose' | 'violet' | 'teal';
 }> = ({ title, description, icon, action, count, color = 'sky' }) => {
     const colors = {
-        sky: { gradient: 'from-sky-400 to-sky-600', button: 'bg-sky-600 hover:bg-sky-700 focus:ring-sky-500', count: 'text-sky-600' },
-        emerald: { gradient: 'from-emerald-400 to-emerald-600', button: 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500', count: 'text-emerald-600' },
-        indigo: { gradient: 'from-indigo-400 to-indigo-600', button: 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500', count: 'text-indigo-600' },
-        amber: { gradient: 'from-amber-400 to-amber-600', button: 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500', count: 'text-amber-600' },
-        rose: { gradient: 'from-rose-400 to-rose-600', button: 'bg-rose-600 hover:bg-rose-700 focus:ring-rose-500', count: 'text-rose-600' },
-        violet: { gradient: 'from-violet-400 to-violet-600', button: 'bg-violet-600 hover:bg-violet-700 focus:ring-violet-500', count: 'text-violet-600' },
-        teal: { gradient: 'from-teal-400 to-teal-600', button: 'bg-teal-600 hover:bg-teal-700 focus:ring-teal-500', count: 'text-teal-600' },
+        sky: { gradient: 'from-sky-400 to-sky-600', button: 'bg-sky-600 hover:bg-sky-700 focus:ring-sky-500 disabled:bg-sky-400', count: 'text-sky-600' },
+        emerald: { gradient: 'from-emerald-400 to-emerald-600', button: 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500 disabled:bg-emerald-400', count: 'text-emerald-600' },
+        indigo: { gradient: 'from-indigo-400 to-indigo-600', button: 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 disabled:bg-indigo-400', count: 'text-indigo-600' },
+        amber: { gradient: 'from-amber-400 to-amber-600', button: 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500 disabled:bg-amber-400', count: 'text-amber-600' },
+        rose: { gradient: 'from-rose-400 to-rose-600', button: 'bg-rose-600 hover:bg-rose-700 focus:ring-rose-500 disabled:bg-rose-400', count: 'text-rose-600' },
+        violet: { gradient: 'from-violet-400 to-violet-600', button: 'bg-violet-600 hover:bg-violet-700 focus:ring-violet-500 disabled:bg-violet-400', count: 'text-violet-600' },
+        teal: { gradient: 'from-teal-400 to-teal-600', button: 'bg-teal-600 hover:bg-teal-700 focus:ring-teal-500 disabled:bg-teal-400', count: 'text-teal-600' },
     };
     const selectedColor = colors[color] || colors.sky;
 
@@ -51,7 +51,7 @@ const DashboardCard: React.FC<{
             </div>
             <div className="mt-auto pt-6">
                 {React.cloneElement<any>(action, {
-                    className: `w-full text-center block px-4 py-2 text-white font-semibold rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition ${selectedColor.button} group-hover:-translate-y-0.5 transform-gpu`
+                    className: `w-full text-center block px-4 py-2 text-white font-semibold rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition ${selectedColor.button} group-hover:-translate-y-0.5 transform-gpu disabled:cursor-not-allowed`
                 })}
             </div>
         </div>
@@ -82,7 +82,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Cards for All Users */}
              <DashboardCard
-                title={isAdmin ? "Manage Students" : "View All Students"}
+                title={isAdmin ? "Manage Students" : "View Students"}
                 description={isAdmin ? "View, edit, or delete student records." : "Browse all active students in the school."}
                 icon={<UsersIcon className="w-7 h-7" />}
                 count={studentCount}
@@ -116,37 +116,76 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
                 action={<Link to="/staff/attendance">Mark Attendance</Link>}
             />
             
+            <DashboardCard
+                title="Register New Student"
+                description="Add a new student to the database."
+                icon={<PlusIcon className="w-7 h-7" />}
+                color="emerald"
+                action={<button onClick={onAddStudent} disabled={!isAdmin}>Add New Student</button>}
+            />
+            <DashboardCard
+                title="Manage Classes"
+                description="Browse students by their class."
+                icon={<BookOpenIcon className="w-7 h-7" />}
+                color="indigo"
+                action={<Link to="/classes">Browse Classes</Link>}
+            />
+            <DashboardCard
+                title="Academic Performance"
+                description="Enter and update student examination marks."
+                icon={<AcademicCapIcon className="w-7 h-7" />}
+                color="amber"
+                action={<Link to="/reports/search">Enter/View Marks</Link>}
+            />
+                <DashboardCard
+                title="Communication"
+                description="Send bulk SMS or WhatsApp to parents."
+                icon={<MegaphoneIcon className="w-7 h-7" />}
+                color="teal"
+                action={<Link to="/communication">{isAdmin ? 'Send Messages' : 'View Communication'}</Link>}
+            />
+             <DashboardCard
+                title="Fee Management"
+                description="Track payments and manage student fees."
+                icon={<CurrencyDollarIcon className="w-7 h-7" />}
+                color="violet"
+                action={<Link to="/fees">{isAdmin ? 'Manage Fees' : 'View Fees'}</Link>}
+            />
+
+            <DashboardCard
+                title="Inventory"
+                description="Track and manage all school assets."
+                icon={<ArchiveBoxIcon className="w-7 h-7" />}
+                color="violet"
+                action={<Link to="/inventory">{isAdmin ? 'Manage Inventory' : 'View Inventory'}</Link>}
+            />
+
+            <DashboardCard
+                title="Hostel Management"
+                description="Manage hostel rooms, students, and staff."
+                icon={<BuildingOfficeIcon className="w-7 h-7" />}
+                color="rose"
+                action={<Link to="/hostel">{isAdmin ? 'Manage Hostel' : 'View Hostel'}</Link>}
+            />
+        
+            <DashboardCard
+                title={isAdmin ? "Manage Staff" : "View Staff"}
+                description={isAdmin ? "Add, view, and manage staff profiles." : "View all staff profiles."}
+                icon={<BriefcaseIcon className="w-7 h-7" />}
+                color="sky"
+                action={<Link to="/staff">{isAdmin ? "Manage Staff" : "View Staff"}</Link>}
+            />
+            <DashboardCard
+                title="Transfer Management"
+                description="Manage student transfers and TCs."
+                icon={<TransferIcon className="w-7 h-7" />}
+                color="amber"
+                action={<Link to="/transfers">Go to Transfers</Link>}
+            />
+
             {/* Admin-only cards */}
             {isAdmin && (
                 <>
-                    <DashboardCard
-                        title="Register New Student"
-                        description="Add a new student to the database."
-                        icon={<PlusIcon className="w-7 h-7" />}
-                        color="emerald"
-                        action={<button onClick={onAddStudent}>Add New Student</button>}
-                    />
-                    <DashboardCard
-                        title="Manage Classes"
-                        description="Browse students by their class."
-                        icon={<BookOpenIcon className="w-7 h-7" />}
-                        color="indigo"
-                        action={<Link to="/classes">Browse Classes</Link>}
-                    />
-                    <DashboardCard
-                        title="Academic Performance"
-                        description="Enter and update student examination marks."
-                        icon={<AcademicCapIcon className="w-7 h-7" />}
-                        color="amber"
-                        action={<Link to="/reports/search">Enter Marks</Link>}
-                    />
-                     <DashboardCard
-                        title="Communication"
-                        description="Send bulk SMS or WhatsApp to parents."
-                        icon={<MegaphoneIcon className="w-7 h-7" />}
-                        color="teal"
-                        action={<Link to="/communication">Send Messages</Link>}
-                    />
                     <DashboardCard
                         title="User Management"
                         description="Approve new user registrations."
@@ -154,44 +193,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
                         count={pendingUserCount}
                         color="teal"
                         action={<Link to="/users">Manage Users</Link>}
-                    />
-                    <DashboardCard
-                        title="Fee Management"
-                        description="Track payments and manage student fees."
-                        icon={<CurrencyDollarIcon className="w-7 h-7" />}
-                        color="violet"
-                        action={<Link to="/fees">Manage Fees</Link>}
-                    />
-
-                    <DashboardCard
-                        title="Inventory"
-                        description="Track and manage all school assets."
-                        icon={<ArchiveBoxIcon className="w-7 h-7" />}
-                        color="violet"
-                        action={<Link to="/inventory">Manage Inventory</Link>}
-                    />
-
-                    <DashboardCard
-                        title="Hostel Management"
-                        description="Manage hostel rooms, students, and staff."
-                        icon={<BuildingOfficeIcon className="w-7 h-7" />}
-                        color="rose"
-                        action={<Link to="/hostel">Manage Hostel</Link>}
-                    />
-                
-                    <DashboardCard
-                        title="Manage Staff"
-                        description="Add, view, and manage staff profiles."
-                        icon={<BriefcaseIcon className="w-7 h-7" />}
-                        color="sky"
-                        action={<Link to="/staff">Manage Staff</Link>}
-                    />
-                    <DashboardCard
-                        title="Transfer Management"
-                        description="Manage student transfers and TCs."
-                        icon={<TransferIcon className="w-7 h-7" />}
-                        color="amber"
-                        action={<Link to="/transfers">Go to Transfers</Link>}
                     />
                     <DashboardCard
                         title="Promote Students"
