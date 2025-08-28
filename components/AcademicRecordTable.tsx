@@ -13,27 +13,32 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
   
   const handleMarksChange = (subjectName: string, field: 'examMarks' | 'activityMarks' | 'marks', value: string, max: number) => {
     const newMark = parseInt(value, 10);
+    // When input is cleared, value is '', newMark is NaN, validatedMark becomes undefined. This is correct.
     const validatedMark = isNaN(newMark) ? undefined : Math.max(0, Math.min(newMark, max));
 
-    let existingResult = results.find(r => r.subject === subjectName);
-    if (!existingResult) {
-      existingResult = { subject: subjectName };
-    }
+    let subjectFound = false;
+    const newResults = results.map(r => {
+      if (r.subject === subjectName) {
+        subjectFound = true;
+        // Create a new object for the updated result to ensure state immutability
+        return {
+          ...r,
+          [field]: validatedMark,
+        };
+      }
+      return r;
+    });
 
-    const updatedResult: SubjectMark = { 
-      ...existingResult, 
-      [field]: validatedMark,
-    };
+    // If the subject did not exist in the results array, it means this is the first mark
+    // being entered for this subject in this exam. We need to add a new result object.
+    if (!subjectFound) {
+      const newResult: SubjectMark = { subject: subjectName };
+      // TypeScript needs a little help here to dynamically assign the property
+      (newResult as any)[field] = validatedMark;
+      newResults.push(newResult);
+    }
     
-    // Ensure other mark type is preserved
-    if (field === 'examMarks') {
-      updatedResult.activityMarks = existingResult.activityMarks;
-    } else if (field === 'activityMarks') {
-      updatedResult.examMarks = existingResult.examMarks;
-    }
-
-    const otherResults = results.filter(r => r.subject !== subjectName);
-    onUpdate([...otherResults, updatedResult]);
+    onUpdate(newResults);
   };
   
   return (
