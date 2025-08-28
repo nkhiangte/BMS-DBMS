@@ -87,7 +87,14 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
               subjectDefinitions.map((subjectDef) => {
                 const result = results.find(r => r.subject === subjectDef.name) || { subject: subjectDef.name };
                 const isEffectivelyGradeBased = subjectDef.examFullMarks === 0 && subjectDef.activityFullMarks === 0;
-                const isGradeBased = subjectDef.gradingSystem === 'OABC' || isEffectivelyGradeBased;
+                const isGradeBasedOverride = (grade === Grade.I || grade === Grade.II) && (subjectDef.name === 'Cursive' || subjectDef.name === 'Drawing');
+                const isGradeBased = subjectDef.gradingSystem === 'OABC' || isEffectivelyGradeBased || isGradeBasedOverride;
+                
+                const totalMarks = (result.examMarks === undefined && result.activityMarks === undefined)
+                  ? undefined
+                  : (result.examMarks || 0) + (result.activityMarks || 0);
+
+                const singleMark = result.marks ?? totalMarks;
 
                 return (
                   <tr key={subjectDef.name}>
@@ -119,7 +126,7 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
                             {/* Total Column */}
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900">
                                 {isGradeBased ? <span className="font-bold text-lg">{result.grade || '-'}</span> :
-                                (((result.examMarks || 0) + (result.activityMarks || 0)) || '-')
+                                (totalMarks ?? '-')
                                 }
                             </td>
                         </>
@@ -131,10 +138,10 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
                                 isGradeBased ? (
                                 <input type="text" value={result.grade ?? ''} onChange={(e) => { const val = e.target.value.toUpperCase(); if (/^[OABC]?$/.test(val)) { handleMarksChange(subjectDef.name, 'grade', val); }}} className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm text-center font-bold" maxLength={1} />
                                 ) : (
-                                <input type="number" value={result.marks ?? (result.examMarks ?? '')} onChange={(e) => handleMarksChange(subjectDef.name, 'marks', e.target.value, subjectDef.examFullMarks)} className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm" placeholder={`/ ${subjectDef.examFullMarks}`} max={subjectDef.examFullMarks}/>
+                                <input type="number" value={singleMark ?? ''} onChange={(e) => handleMarksChange(subjectDef.name, 'marks', e.target.value, subjectDef.examFullMarks)} className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm" placeholder={`/ ${subjectDef.examFullMarks}`} max={subjectDef.examFullMarks}/>
                                 )
                             ) : (
-                                isGradeBased ? <span className="font-bold text-lg">{result.grade || '-'}</span> : ((result.marks ?? ((result.examMarks ?? 0) + (result.activityMarks ?? 0))) || '-')
+                                isGradeBased ? <span className="font-bold text-lg">{result.grade || '-'}</span> : (singleMark ?? '-')
                             )}
                             </td>
                         </>

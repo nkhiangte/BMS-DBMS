@@ -163,7 +163,8 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                 const processGrade = (val: any) => val === '' || val == null ? undefined : val;
                 
                 const isEffectivelyGradeBased = subjectDef.examFullMarks === 0 && subjectDef.activityFullMarks === 0;
-                const isGradeBased = subjectDef.gradingSystem === 'OABC' || isEffectivelyGradeBased;
+                const isGradeBasedOverride = (grade === Grade.I || grade === Grade.II) && (subjectDef.name === 'Cursive' || subjectDef.name === 'Drawing');
+                const isGradeBased = subjectDef.gradingSystem === 'OABC' || isEffectivelyGradeBased || isGradeBasedOverride;
 
                 if(isGradeBased) {
                     newResult.grade = processGrade(subjectMarks.grade);
@@ -220,7 +221,8 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                 <th className="border p-2"></th>
                                 {gradeDef.subjects.flatMap(subject => {
                                     const isEffectivelyGradeBased = subject.examFullMarks === 0 && subject.activityFullMarks === 0;
-                                    const isGradeBased = subject.gradingSystem === 'OABC' || isEffectivelyGradeBased;
+                                    const isGradeBasedOverride = (grade === Grade.I || grade === Grade.II) && (subject.name === 'Cursive' || subject.name === 'Drawing');
+                                    const isGradeBased = subject.gradingSystem === 'OABC' || isEffectivelyGradeBased || isGradeBasedOverride;
                                     
                                     if (isGradeBased) {
                                         return [<th key={subject.name} className="border p-2 font-semibold text-slate-700">Grade</th>];
@@ -244,7 +246,8 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                         const marks = marksData[student.id]?.[subject.name] || {};
                                         
                                         const isEffectivelyGradeBased = subject.examFullMarks === 0 && subject.activityFullMarks === 0;
-                                        const isGradeBased = subject.gradingSystem === 'OABC' || isEffectivelyGradeBased;
+                                        const isGradeBasedOverride = (grade === Grade.I || grade === Grade.II) && (subject.name === 'Cursive' || subject.name === 'Drawing');
+                                        const isGradeBased = subject.gradingSystem === 'OABC' || isEffectivelyGradeBased || isGradeBasedOverride;
 
                                         if (isGradeBased) {
                                             return [

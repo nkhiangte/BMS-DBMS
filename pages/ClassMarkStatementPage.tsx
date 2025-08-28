@@ -338,8 +338,9 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                             </tr>
                             <tr>
                                 {gradeDef.subjects.flatMap(subject => {
-                                    if (subject.gradingSystem === 'OABC') {
-                                        return [<th key={`${subject.name}-grade`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">Grade</th>];
+                                    const isGradeBasedSubject = (grade === Grade.I || grade === Grade.II) && (subject.name === 'Cursive' || subject.name === 'Drawing');
+                                    if (subject.gradingSystem === 'OABC' || isGradeBasedSubject) {
+                                         return [<th key={`${subject.name}-grade`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">Grade</th>];
                                     } else if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
                                         return [
                                             <th key={`${subject.name}-exam`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">E({subject.examFullMarks})</th>,
@@ -373,7 +374,9 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                         {gradeDef.subjects.flatMap(subject => {
                                             const studentResult = results.find(r => r.subject === subject.name);
                                             const isFailed = failedSubjects.includes(subject.name);
-                                            if (subject.gradingSystem === 'OABC') {
+                                            const isGradeBasedSubject = (grade === Grade.I || grade === Grade.II) && (subject.name === 'Cursive' || subject.name === 'Drawing');
+
+                                            if (subject.gradingSystem === 'OABC' || isGradeBasedSubject) {
                                                 return [<td key={subject.name} className="border px-2 py-1 text-center font-bold text-lg">{studentResult?.grade ?? '-'}</td>];
                                             } else if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
                                                 const examMarks = studentResult?.examMarks ?? '-';
@@ -383,8 +386,17 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                                     <td key={`${subject.name}-activity`} className={`border px-2 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{activityMarks}</td>
                                                 ];
                                             }
-                                            const marks = studentResult?.marks ?? (studentResult?.examMarks ?? 0) + (studentResult?.activityMarks ?? 0);
-                                            return [<td key={subject.name} className={`border px-2 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{marks}</td>]
+                                            
+                                            let marks: number | string | undefined = studentResult?.marks;
+                                            if (marks === undefined) {
+                                                const examMarks = studentResult?.examMarks;
+                                                const activityMarks = studentResult?.activityMarks;
+                                                if (examMarks !== undefined || activityMarks !== undefined) {
+                                                    marks = (examMarks ?? 0) + (activityMarks ?? 0);
+                                                }
+                                            }
+                                            
+                                            return [<td key={subject.name} className={`border px-2 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{marks ?? '-'}</td>]
                                         })}
 
                                         {hasActivitiesForThisGrade ? (
