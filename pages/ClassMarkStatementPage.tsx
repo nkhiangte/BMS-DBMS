@@ -87,46 +87,6 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
         };
     }, [grade, gradeDefinitions]);
 
-
-    useEffect(() => {
-        const calculateExtraData = async () => {
-            if (!grade || !academicYear || classStudents.length === 0 || !examId) {
-                setIsLoadingExtraData(false);
-                return;
-            }
-            setIsLoadingExtraData(true);
-
-            // --- Calculate Ranks based on the current examId ---
-            const studentScores = classStudents.map(student => {
-                const exam = student.academicPerformance?.find(e => e.id === examId);
-                const results = exam?.results || [];
-                const studentGradeDef = gradeDefinitions[student.grade];
-                
-                let totalMarks = 0;
-                if (studentGradeDef) {
-                     const hasActivities = !GRADES_WITH_NO_ACTIVITIES.includes(student.grade);
-                     studentGradeDef.subjects
-                        .filter(s => s.gradingSystem !== 'OABC')
-                        .forEach(subject => {
-                        const result = results.find(r => r.subject === subject.name);
-                        const useSplitMarks = hasActivities && subject.activityFullMarks > 0;
-                        const obtainedMarks = useSplitMarks
-                            ? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0) 
-                            : (result?.marks ?? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0));
-                        totalMarks += obtainedMarks;
-                    });
-                }
-
-                const { finalResult } = calculateStudentResult(results, studentGradeDef, student.grade);
-                return { studentId: student.id, totalMarks, result: finalResult };
-            });
-            setRanks(calculateRanks(studentScores));
-            setIsLoadingExtraData(false);
-        };
-
-        calculateExtraData();
-    }, [classStudents, grade, academicYear, gradeDefinitions, examId]);
-
     const statementData = useMemo(() => {
         if (!gradeDef || !grade) return [];
         return classStudents.map(student => {
@@ -168,6 +128,21 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
         });
     }, [classStudents, examId, gradeDef, grade, hasActivitiesForThisGrade, totalMaxMarks]);
 
+    useEffect(() => {
+        if (!statementData || statementData.length === 0) {
+            setRanks(new Map());
+            setIsLoadingExtraData(false);
+            return;
+        }
+        setIsLoadingExtraData(true);
+        const studentScores = statementData.map(data => ({
+            studentId: data.student.id,
+            totalMarks: data.totalMarks,
+            result: data.result,
+        }));
+        setRanks(calculateRanks(studentScores));
+        setIsLoadingExtraData(false);
+    }, [statementData]);
 
     const handleDownloadTemplate = () => {
         if (!gradeDef || !examDetails) return;

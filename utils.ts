@@ -296,30 +296,27 @@ export const calculateRanks = (
 ): Map<string, number | 'NA'> => {
   const ranks = new Map<string, number | 'NA'>();
 
-  // Set rank to 'NA' for students who failed
+  // Filter for rankable students and sort them by total marks in descending order.
+  const passedStudents = studentScores
+    .filter(s => s.result === 'PASS' || s.result === 'SIMPLE PASS')
+    .sort((a, b) => b.totalMarks - a.totalMarks);
+
+  // Assign ranks, handling ties using standard competition ranking (1, 2, 2, 4).
+  let rank = 1;
+  for (let i = 0; i < passedStudents.length; i++) {
+    // If not the first student and has a lower score than the previous, update rank.
+    if (i > 0 && passedStudents[i].totalMarks < passedStudents[i - 1].totalMarks) {
+      rank = i + 1;
+    }
+    ranks.set(passedStudents[i].studentId, rank);
+  }
+
+  // Set rank to 'NA' for students who failed.
   studentScores.forEach(s => {
     if (s.result === 'FAIL') {
       ranks.set(s.studentId, 'NA');
     }
   });
 
-  // Filter for rankable students and get unique scores in descending order
-  const passedStudents = studentScores.filter(s => s.result === 'PASS' || s.result === 'SIMPLE PASS');
-  const uniqueScores = [...new Set(passedStudents.map(s => s.totalMarks))].sort((a, b) => b - a);
-  
-  // Create a map of score to rank
-  const scoreToRankMap = new Map<number, number>();
-  uniqueScores.forEach((score, index) => {
-    scoreToRankMap.set(score, index + 1);
-  });
-  
-  // Assign rank to each passed student
-  passedStudents.forEach(student => {
-    const rank = scoreToRankMap.get(student.totalMarks);
-    if(rank !== undefined) {
-      ranks.set(student.studentId, rank);
-    }
-  });
-  
   return ranks;
 };
