@@ -45,6 +45,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
           marks: existingResult?.marks,
           examMarks: existingResult?.examMarks,
           activityMarks: existingResult?.activityMarks,
+          grade: existingResult?.grade,
         };
       });
 
@@ -74,7 +75,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
       // Filter out results that are completely empty to avoid saving blank records
       const cleanedPerformanceData = performanceData.map(exam => ({
         ...exam,
-        results: exam.results.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null),
+        results: exam.results.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null || r.grade != null),
         teacherRemarks: exam.teacherRemarks?.trim() || undefined,
       }));
       onUpdateAcademic(student.id, cleanedPerformanceData);
