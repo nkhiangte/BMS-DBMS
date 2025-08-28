@@ -1,7 +1,4 @@
 
-
-
-
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType, FeeStructure, FeeSet } from './types';
@@ -186,7 +183,7 @@ const App: React.FC = () => {
         setNotification('');
         try {
             await auth.signInWithEmailAndPassword(email, pass);
-            // onAuthStateChanged will handle redirect
+            // onAuthStateChanged will handle setting the user state, and routing logic will redirect.
         } catch (error: any) {
             let message = 'An unknown error occurred.';
             switch (error.code) {
@@ -226,8 +223,14 @@ const App: React.FC = () => {
             const firebaseUser = userCredential.user;
             if (firebaseUser) {
                 await firebaseUser.updateProfile({ displayName: name });
-                // Firestore document will be created by onAuthStateChanged listener,
-                // which handles both sign-up and first-time sign-in cases.
+                const newUserDoc: User = {
+                    uid: firebaseUser.uid,
+                    displayName: name,
+                    email: firebaseUser.email,
+                    photoURL: firebaseUser.photoURL,
+                    role: 'pending',
+                };
+                await db.collection('users').doc(firebaseUser.uid).set(newUserDoc);
             }
             return { success: true, message: "Sign up successful! Please wait for an administrator to approve your account." };
         } catch (error: any) {
@@ -309,17 +312,13 @@ const App: React.FC = () => {
                     } else {
                         delete newGradeDef.classTeacherId;
                     }
-                    
-                    // Using direct field update with dot notation is safer inside a transaction
-                    // if the object might not exist. However, since we are setting the whole object,
-                    // it's fine. We use update to avoid creating the doc if it doesn't exist.
                     transaction.update(docRef, { [grade]: newGradeDef });
                 }
             });
         } catch (error) {
             console.error(`Error updating class teacher for ${grade}:`, error);
             addNotification(`Failed to update class teacher for ${grade}.`, 'error');
-            throw error; // Re-throw to be caught by the calling function
+            throw error;
         }
     };
 
@@ -343,10 +342,8 @@ const App: React.FC = () => {
             const dataToSave = { ...staffData, photographUrl };
 
             if (editingStaff) {
-                // Update existing staff
                 await db.collection('staff').doc(editingStaff.id).update(dataToSave);
 
-                // Handle class teacher assignment changes safely
                 const oldAssignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === editingStaff.id) as Grade | undefined;
 
                 if (oldAssignedGradeKey !== assignedGradeKey) {
@@ -359,7 +356,6 @@ const App: React.FC = () => {
                 }
                 addNotification("Staff details updated successfully!", "success");
             } else {
-                // Add new staff
                 const newStaffRef = await db.collection('staff').add(dataToSave);
                 if (assignedGradeKey) {
                     await handleUpdateClassTeacher(assignedGradeKey, newStaffRef.id);
@@ -377,7 +373,6 @@ const App: React.FC = () => {
     const handleDeleteStaff = async (staffMember: Staff) => {
         if (!staffMember) return;
         try {
-            // Unassign as class teacher if they are one
             const assignedGradeKey = Object.keys(gradeDefinitions).find(g => gradeDefinitions[g as Grade]?.classTeacherId === staffMember.id) as Grade | undefined;
             if (assignedGradeKey) {
                 await handleUpdateClassTeacher(assignedGradeKey, undefined);
@@ -443,13 +438,19 @@ const App: React.FC = () => {
                     const userData = userDoc.data() as User;
                     setUser({
                         uid: firebaseUser.uid,
-                        displayName: firebaseUser.displayName,
+                        displayName: userData.displayName,
                         email: firebaseUser.email,
-                        photoURL: firebaseUser.photoURL,
+                        photoURL: userData.photoURL || firebaseUser.photoURL,
                         role: userData.role,
                     });
                 } else {
-                    const newUser: User = { uid: firebaseUser.uid, displayName: firebaseUser.displayName, email: firebaseUser.email, photoURL: firebaseUser.photoURL, role: 'pending' };
+                    const newUser: User = { 
+                        uid: firebaseUser.uid, 
+                        displayName: firebaseUser.displayName, 
+                        email: firebaseUser.email, 
+                        photoURL: firebaseUser.photoURL, 
+                        role: 'pending' 
+                    };
                     await userDocRef.set(newUser);
                     setUser(newUser);
                 }
@@ -506,9 +507,9 @@ const App: React.FC = () => {
             <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
                 <Routes>
                     {/* Auth */}
-                    <Route path="/login" element={<LoginPage onLogin={handleLogin} error={authError} notification={notification} />} />
-                    <Route path="/signup" element={<SignUpPage onSignUp={handleSignUp} />} />
-                    <Route path="/forgot-password" element={<ForgotPasswordPage onForgotPassword={handleForgotPassword} />} />
+                    <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage onLogin={handleLogin} error={authError} notification={notification} />} />
+                    <Route path="/signup" element={user ? <Navigate to="/" replace /> : <SignUpPage onSignUp={handleSignUp} />} />
+                    <Route path="/forgot-password" element={user ? <Navigate to="/" replace /> : <ForgotPasswordPage onForgotPassword={handleForgotPassword} />} />
                     <Route path="/change-password" element={<PrivateRoute user={user}><ChangePasswordPage onChangePassword={handleChangePassword} /></PrivateRoute>} />
                     <Route path="/users" element={<PrivateRoute user={user}><UserManagementPage allUsers={allUsers} currentUser={user!} onUpdateUserRole={handleUpdateUserRole} onDeleteUser={handleDeleteUser} /></PrivateRoute>} />
 
@@ -517,6 +518,7 @@ const App: React.FC = () => {
                     <Route path="/students" element={<PrivateRoute user={user}><StudentListPage students={activeStudents} onAdd={handleAddStudent} onEdit={handleEditStudent} academicYear={academicYear!} user={user!} assignedGrade={assignedGrade} /></PrivateRoute>} />
                     <Route path="/student/:studentId" element={<PrivateRoute user={user}>{feeStructure && <StudentDetailPage students={students} onEdit={handleEditStudent} academicYear={academicYear!} user={user!} assignedGrade={assignedGrade} feeStructure={feeStructure} />}</PrivateRoute>} />
                     <Route path="/student/:studentId/academics" element={<PrivateRoute user={user}><AcademicPerformancePage students={students} onUpdateAcademic={handleUpdateAcademic} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} user={user!} assignedGrade={assignedGrade}/></PrivateRoute>} />
+                    {/* Fix: Changed onOpenImportModal to handleOpenImportModal */}
                     <Route path="/classes" element={<PrivateRoute user={user}><ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={handleOpenImportModal} user={user!} /></PrivateRoute>} />
                     <Route path="/classes/:grade" element={<PrivateRoute user={user}>{feeStructure && <ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} onUpdateClassTeacher={handleUpdateClassTeacher} academicYear={academicYear!} onOpenImportModal={handleOpenImportModal} onOpenTransferModal={handleOpenTransferModal} onDelete={() => {}} user={user!} assignedGrade={assignedGrade} onAddStudentToClass={handleAddStudentToClass} onUpdateBulkFeePayments={handleUpdateBulkFeePayments} feeStructure={feeStructure} />}</PrivateRoute>} />
                     <Route path="/classes/:grade/attendance" element={<PrivateRoute user={user}><StudentAttendancePage students={students} allAttendance={studentAttendance} onUpdateAttendance={handleUpdateStudentAttendance} user={user!} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} academicYear={academicYear!} assignedGrade={assignedGrade} /></PrivateRoute>} />
