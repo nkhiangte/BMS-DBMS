@@ -35,9 +35,16 @@ const EditSubjectsModal: React.FC<EditSubjectsModalProps> = ({ isOpen, onClose, 
     setSubjects(newSubjects);
   };
 
+  const hasActivity = ![Grade.NURSERY, Grade.KINDERGARTEN, Grade.I, Grade.II, Grade.IX, Grade.X].includes(grade);
+
   const handleAddSubject = () => {
-    // Add a new subject with default marks
-    setSubjects(prev => [...prev, { name: '', examFullMarks: 60, activityFullMarks: 40 }]);
+    // Add a new subject with default marks based on whether the grade has activities
+    const newSubject: SubjectDefinition = { 
+        name: '', 
+        examFullMarks: hasActivity ? 60 : 100, 
+        activityFullMarks: hasActivity ? 40 : 0 
+    };
+    setSubjects(prev => [...prev, newSubject]);
   };
 
   const handleRemoveSubject = (index: number) => {
@@ -51,8 +58,6 @@ const EditSubjectsModal: React.FC<EditSubjectsModalProps> = ({ isOpen, onClose, 
   };
 
   if (!isOpen) return null;
-  
-  const hasActivity = ![Grade.NURSERY, Grade.KINDERGARTEN, Grade.I, Grade.II, Grade.IX, Grade.X].includes(grade);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4" onClick={onClose}>
