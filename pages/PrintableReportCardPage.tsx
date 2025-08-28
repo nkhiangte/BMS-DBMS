@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, SubjectMark, GradeDefinition, SubjectDefinition, User, StudentStatus, StudentAttendanceRecord, StudentAttendanceStatus } from '../types';
 import { BackIcon, UserIcon, HomeIcon, PrinterIcon } from '../components/Icons';
-import { formatStudentId, formatDateForDisplay, calculateStudentResult, calculateRanks } from '../utils';
+import { formatStudentId, formatDateForDisplay, calculateStudentResult, calculateRanks, getPerformanceGrade, getRemarks } from '../utils';
 import { GRADES_WITH_NO_ACTIVITIES, TERMINAL_EXAMS } from '../constants';
 
 const PhotoWithFallback: React.FC<{src?: string, alt: string}> = ({ src, alt }) => {
@@ -47,6 +47,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
     const [isLoadingExtraData, setIsLoadingExtraData] = useState(true);
 
     const student = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
+    const isHighSchool = student?.grade === Grade.IX || student?.grade === Grade.X;
 
     const isFinalTerm = examId === 'terminal3';
     const examDetails = useMemo(() => TERMINAL_EXAMS.find(e => e.id === examId), [examId]);
@@ -226,18 +227,12 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
         
         const { finalResult } = calculateStudentResult(finalTermResults, gradeDef, student.grade);
         
-        const getRemarks = (p: number, res: string) => {
-            if (res === 'FAIL') return 'Requires serious attention';
-            if (p >= 90) return 'Outstanding'; if (p >= 80) return 'Excellent'; if (p >= 70) return 'Very Good';
-            if (p >= 60) return 'Good'; if (p >= 50) return 'Satisfactory';
-            return 'Needs Improvement';
-        };
-        
         return {
             grandTotal,
             maxGrandTotal,
             percentage: percentage.toFixed(2),
             result: finalResult,
+            performanceGrade: getPerformanceGrade(percentage, finalResult, student.grade),
             remarks: getRemarks(percentage, finalResult),
         };
     }, [student, allExamsData, gradeDef, getSplitMarks]);
@@ -421,7 +416,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
 
              {isFinalTerm && summaryData && (
                  <section>
-                    <h3 className="text-xl font-bold text-slate-700 mb-4 text-center">Annual Result Summary (Based on Final Term)</h3>
+                    <h3 className="text-xl font-bold text-slate-700 mb-4 text-center">Final Term Result Summary</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <SummaryItem label="Final Term Total" value={`${summaryData.grandTotal} / ${summaryData.maxGrandTotal}`} />
                         <SummaryItem label="Final Term Percentage" value={`${summaryData.percentage}%`} />
@@ -430,9 +425,10 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                             value={summaryData.result} 
                             color={summaryData.result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}
                         />
-                        <SummaryItem label="Annual Rank" value={isLoadingExtraData ? '...' : (rank ?? '--')} />
-                        <SummaryItem label="Annual Attendance" value={isLoadingExtraData ? '...' : (annualAttendance !== null ? `${annualAttendance.toFixed(2)}%` : '--')} />
-                        <div className="col-span-full md:col-span-3">
+                        <SummaryItem label={isHighSchool ? 'Final Division' : 'Final Grade'} value={summaryData.performanceGrade} />
+                        <SummaryItem label="Rank in Class" value={isLoadingExtraData ? '...' : (rank ?? '--')} />
+                        <SummaryItem label="Overall Attendance" value={isLoadingExtraData ? '...' : (annualAttendance !== null ? `${annualAttendance.toFixed(2)}%` : '--')} />
+                        <div className="col-span-full md:col-span-2">
                             <SummaryItem label="Remarks" value={summaryData.remarks} />
                         </div>
                     </div>

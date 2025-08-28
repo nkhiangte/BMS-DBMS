@@ -3,26 +3,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, StudentStatus, Exam, SubjectMark, User, StudentAttendanceRecord, StudentAttendanceStatus } from '../types';
 import { BackIcon, HomeIcon, PrinterIcon, EditIcon, InboxArrowDownIcon, SpinnerIcon } from '../components/Icons';
 import { TERMINAL_EXAMS, GRADES_WITH_NO_ACTIVITIES, OABC_GRADES } from '../constants';
-import { formatStudentId, calculateStudentResult, calculateRanks } from '../utils';
+import { formatStudentId, calculateStudentResult, calculateRanks, getMonthsForTerm, getPerformanceGrade, getRemarks } from '../utils';
 import * as XLSX from 'xlsx';
 import ConfirmationModal from '../components/ConfirmationModal';
 import MarksEntryModal from '../components/MarksEntryModal';
-
-
-// Helper functions for result calculation
-const getGradeLetter = (p: number, res: string) => {
-    if (res === 'FAIL') return 'D';
-    if (p >= 90) return 'A+'; if (p >= 80) return 'A'; if (p >= 70) return 'B+';
-    if (p >= 60) return 'B'; if (p >= 50) return 'C+';
-    return 'C';
-};
-
-const getDivision = (p: number, res: string) => {
-    if (res === 'FAIL') return 'Fail';
-    if (p >= 60) return 'First';
-    if (p >= 45) return 'Second';
-    return 'Third';
-};
 
 interface ClassMarkStatementPageProps {
     students: Student[];
@@ -45,11 +29,13 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
     const fileInputRef = useRef<HTMLInputElement>(null);
     
     const [ranks, setRanks] = useState<Map<string, number | 'NA' | null>>(new Map());
+    const [attendanceData, setAttendanceData] = useState<Record<string, { present: number; total: number }>>({});
     const [isLoadingExtraData, setIsLoadingExtraData] = useState(true);
 
     const grade = useMemo(() => encodedGrade ? decodeURIComponent(encodedGrade) as Grade : null, [encodedGrade]);
     const examDetails = useMemo(() => TERMINAL_EXAMS.find(e => e.id === examId), [examId]);
     const isAllowed = user.role === 'admin' || grade === assignedGrade;
+    const isHighSchool = grade === Grade.IX || grade === Grade.X;
 
     const classStudents = useMemo(() => {
         if (!grade) return [];
@@ -121,28 +107,63 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                 totalMarks,
                 percentage,
                 result: finalResult,
-                division: getDivision(percentage, finalResult),
-                grade: getGradeLetter(percentage, finalResult),
+                performanceGrade: getPerformanceGrade(percentage, finalResult, student.grade),
+                remarks: getRemarks(percentage, finalResult),
                 failedSubjects
             };
         });
     }, [classStudents, examId, gradeDef, grade, hasActivitiesForThisGrade, totalMaxMarks]);
 
     useEffect(() => {
-        if (!statementData || statementData.length === 0) {
-            setRanks(new Map());
+        const calculateExtraData = async () => {
+            setIsLoadingExtraData(true);
+            if (!statementData || statementData.length === 0 || !grade || !examId) {
+                setRanks(new Map());
+                setAttendanceData({});
+                setIsLoadingExtraData(false);
+                return;
+            }
+            
+            // Calculate Ranks
+            const studentScores = statementData.map(data => ({
+                studentId: data.student.id,
+                totalMarks: data.totalMarks,
+                result: data.result,
+            }));
+            setRanks(calculateRanks(studentScores));
+
+            // Fetch Attendance
+            const termMonths = getMonthsForTerm(examId);
+            const [startYearStr] = academicYear.split('-');
+            const startYear = parseInt(startYearStr, 10);
+            const studentAttendanceMap: Record<string, { present: number; absent: number }> = {};
+            classStudents.forEach(s => { studentAttendanceMap[s.id] = { present: 0, absent: 0 }; });
+
+            for (const { month, yearOffset } of termMonths) {
+                const year = startYear + yearOffset;
+                try {
+                    const monthlyData = await fetchStudentAttendanceForMonth(grade, year, month + 1);
+                    Object.values(monthlyData).forEach(dailyRecord => {
+                        classStudents.forEach(student => {
+                            const status = dailyRecord[student.id];
+                            if (status === StudentAttendanceStatus.PRESENT) studentAttendanceMap[student.id].present++;
+                            else if (status === StudentAttendanceStatus.ABSENT) studentAttendanceMap[student.id].absent++;
+                        });
+                    });
+                } catch (error) { console.error(`Could not fetch attendance for ${month + 1}/${year}:`, error); }
+            }
+            const finalAttendanceData: Record<string, { present: number; total: number }> = {};
+            Object.keys(studentAttendanceMap).forEach(studentId => {
+                const { present, absent } = studentAttendanceMap[studentId];
+                finalAttendanceData[studentId] = { present, total: present + absent };
+            });
+            setAttendanceData(finalAttendanceData);
+
             setIsLoadingExtraData(false);
-            return;
-        }
-        setIsLoadingExtraData(true);
-        const studentScores = statementData.map(data => ({
-            studentId: data.student.id,
-            totalMarks: data.totalMarks,
-            result: data.result,
-        }));
-        setRanks(calculateRanks(studentScores));
-        setIsLoadingExtraData(false);
-    }, [statementData]);
+        };
+        calculateExtraData();
+    }, [statementData, grade, examId, classStudents, academicYear, fetchStudentAttendanceForMonth]);
+
 
     const handleDownloadTemplate = () => {
         if (!gradeDef || !examDetails) return;
@@ -299,129 +320,93 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
 
 
                 <div className="overflow-x-auto" id="mark-statement-table">
-                    {hasActivitiesForThisGrade ? (
-                         <table className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300 text-sm">
-                            <thead className="bg-slate-100">
-                                <tr>
-                                    <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Roll</th>
-                                    <th rowSpan={2} className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom">Student Name</th>
-                                    {gradeDef.subjects.map(subject => (
-                                        <th key={subject.name} colSpan={subject.activityFullMarks > 0 ? 2 : 1} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase">{subject.name}</th>
-                                    ))}
-                                    <th colSpan={3} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase">Totals</th>
-                                    <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">%</th>
-                                    <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Div</th>
-                                    <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Grade</th>
-                                    <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Result</th>
-                                    <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Rank</th>
-                                </tr>
-                                <tr>
-                                    {gradeDef.subjects.flatMap(subject => {
-                                        if (subject.activityFullMarks > 0) {
-                                            return [
-                                                <th key={`${subject.name}-exam`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">E({subject.examFullMarks})</th>,
-                                                <th key={`${subject.name}-activity`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">A({subject.activityFullMarks})</th>
-                                            ];
-                                        }
-                                        return <th key={`${subject.name}-grade`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">Grade</th>;
-                                    })}
+                    <table className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300 text-sm">
+                        <thead className="bg-slate-100">
+                            <tr>
+                                <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Roll</th>
+                                <th rowSpan={2} className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom">Student Name</th>
+                                {gradeDef.subjects.map(subject => (
+                                    <th key={subject.name} colSpan={hasActivitiesForThisGrade && subject.activityFullMarks > 0 ? 2 : 1} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase">{subject.name}</th>
+                                ))}
+                                <th colSpan={hasActivitiesForThisGrade ? 3 : 1} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase">Totals</th>
+                                <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">%</th>
+                                <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">{isHighSchool ? 'Division' : 'Grade'}</th>
+                                <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Result</th>
+                                <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Rank</th>
+                                <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Attendance %</th>
+                                <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Remarks</th>
+                            </tr>
+                            <tr>
+                                {gradeDef.subjects.flatMap(subject => {
+                                    if (subject.gradingSystem === 'OABC') {
+                                        return [<th key={`${subject.name}-grade`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">Grade</th>];
+                                    } else if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
+                                        return [
+                                            <th key={`${subject.name}-exam`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">E({subject.examFullMarks})</th>,
+                                            <th key={`${subject.name}-activity`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">A({subject.activityFullMarks})</th>
+                                        ];
+                                    }
+                                    return [<th key={`${subject.name}-marks`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">Marks({subject.examFullMarks})</th>]
+                                })}
+                                {hasActivitiesForThisGrade ? (
+                                <>
                                     <th className="border px-1 py-1 font-semibold text-slate-700 text-xs">Exam ({totalMaxExamMarks})</th>
                                     <th className="border px-1 py-1 font-semibold text-slate-700 text-xs">Activity ({totalMaxActivityMarks})</th>
                                     <th className="border px-1 py-1 font-semibold text-slate-700 text-xs">Grand ({totalMaxMarks})</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-slate-200">
-                                {statementData.map(({ student, results, totalExamMarks, totalActivityMarks, totalMarks, percentage, result, division, grade: gradeLetter, failedSubjects }) => {
-                                    const studentRank = ranks.get(student.id);
-                                    return (
-                                        <tr key={student.id} className="hover:bg-slate-50">
-                                            <td className="border px-2 py-1 text-center font-semibold">{student.rollNo}</td>
-                                            <td className="border px-2 py-1 text-left font-medium">
-                                                <Link to={`/student/${student.id}`} className="hover:underline text-sky-700">{student.name}</Link>
-                                            </td>
-                                            {gradeDef.subjects.flatMap(subject => {
-                                                const studentResult = results.find(r => r.subject === subject.name);
-                                                if (subject.activityFullMarks > 0) {
-                                                    const examMarks = studentResult?.examMarks ?? '-';
-                                                    const activityMarks = studentResult?.activityMarks ?? '-';
-                                                    const isFailed = failedSubjects.includes(subject.name);
-                                                    return [
-                                                        <td key={`${subject.name}-exam`} className={`border px-2 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{examMarks}</td>,
-                                                        <td key={`${subject.name}-activity`} className={`border px-2 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{activityMarks}</td>
-                                                    ];
-                                                }
+                                </>
+                                ) : (
+                                    <th className="border px-1 py-1 font-semibold text-slate-700 text-xs">Total ({totalMaxMarks})</th>
+                                )}
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-slate-200">
+                            {statementData.map(({ student, results, totalExamMarks, totalActivityMarks, totalMarks, percentage, result, performanceGrade, remarks, failedSubjects }) => {
+                                const studentRank = ranks.get(student.id);
+                                const attendance = attendanceData[student.id];
+                                const attPercentage = attendance && attendance.total > 0 ? ((attendance.present / attendance.total) * 100).toFixed(1) : '-';
+                                return (
+                                    <tr key={student.id} className="hover:bg-slate-50">
+                                        <td className="border px-2 py-1 text-center font-semibold">{student.rollNo}</td>
+                                        <td className="border px-2 py-1 text-left font-medium">
+                                            <Link to={`/student/${student.id}`} className="hover:underline text-sky-700">{student.name}</Link>
+                                        </td>
+                                        {gradeDef.subjects.flatMap(subject => {
+                                            const studentResult = results.find(r => r.subject === subject.name);
+                                            const isFailed = failedSubjects.includes(subject.name);
+                                            if (subject.gradingSystem === 'OABC') {
                                                 return [<td key={subject.name} className="border px-2 py-1 text-center font-bold text-lg">{studentResult?.grade ?? '-'}</td>];
-                                            })}
+                                            } else if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
+                                                const examMarks = studentResult?.examMarks ?? '-';
+                                                const activityMarks = studentResult?.activityMarks ?? '-';
+                                                return [
+                                                    <td key={`${subject.name}-exam`} className={`border px-2 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{examMarks}</td>,
+                                                    <td key={`${subject.name}-activity`} className={`border px-2 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{activityMarks}</td>
+                                                ];
+                                            }
+                                            const marks = studentResult?.marks ?? (studentResult?.examMarks ?? 0) + (studentResult?.activityMarks ?? 0);
+                                            return [<td key={subject.name} className={`border px-2 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{marks}</td>]
+                                        })}
+
+                                        {hasActivitiesForThisGrade ? (
+                                        <>
                                             <td className="border px-2 py-1 text-center font-bold">{totalExamMarks}</td>
                                             <td className="border px-2 py-1 text-center font-bold">{totalActivityMarks}</td>
                                             <td className="border px-2 py-1 text-center font-bold text-slate-900">{totalMarks}</td>
-                                            <td className="border px-2 py-1 text-center font-semibold">{percentage.toFixed(2)}%</td>
-                                            <td className="border px-2 py-1 text-center font-bold">{division}</td>
-                                            <td className="border px-2 py-1 text-center font-bold">{gradeLetter}</td>
-                                            <td className={`border px-2 py-1 text-center font-bold ${result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}`}>{result}</td>
-                                            <td className="border px-2 py-1 text-center font-bold">{isLoadingExtraData ? '...' : studentRank}</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <table className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300">
-                            <thead className="bg-slate-100">
-                                <tr>
-                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Roll No</th>
-                                    <th rowSpan={2} className="px-2 py-2 text-left text-xs font-bold text-slate-800 uppercase border">Student Name</th>
-                                    {gradeDef.subjects.map(subject => (
-                                        <th key={subject.name} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">{subject.name}</th>
-                                    ))}
-                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Total</th>
-                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Max</th>
-                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">%</th>
-                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Div</th>
-                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Grade</th>
-                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Result</th>
-                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Rank</th>
-                                </tr>
-                                <tr>
-                                {gradeDef.subjects.map(subject => {
-                                        const maxMarks = subject.examFullMarks;
-                                        return <th key={subject.name} className="px-2 py-1 text-center text-xs font-semibold text-slate-700 border">({maxMarks})</th>;
-                                })}
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-slate-200">
-                                {statementData.map(({ student, results, totalMarks, percentage, result, division, grade: gradeLetter, failedSubjects }) => {
-                                    const studentRank = ranks.get(student.id);
-                                    return (
-                                        <tr key={student.id} className="hover:bg-slate-50">
-                                            <td className="px-2 py-2 whitespace-nowrap text-center text-sm font-semibold text-slate-800 border">{student.rollNo}</td>
-                                            <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-slate-800 text-left border">
-                                                <Link to={`/student/${student.id}`} className="hover:underline text-sky-700">{student.name}</Link>
-                                            </td>
-                                            {gradeDef.subjects.map(subject => {
-                                                const studentResult = results.find(r => r.subject === subject.name);
-                                                const obtainedMarks = (studentResult?.marks ?? (studentResult?.examMarks ?? 0) + (studentResult?.activityMarks ?? 0));
-                                                const isFailed = failedSubjects.includes(subject.name);
-                                                
-                                                return (
-                                                    <td key={subject.name} className={`px-2 py-2 text-center text-sm font-semibold border ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>
-                                                        {obtainedMarks}
-                                                    </td>
-                                                );
-                                            })}
-                                            <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{totalMarks}</td>
-                                            <td className="px-2 py-2 text-center text-sm font-semibold text-slate-800 border">{totalMaxMarks}</td>
-                                            <td className="px-2 py-2 text-center text-sm font-semibold text-slate-800 border">{percentage.toFixed(2)}%</td>
-                                            <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{division}</td>
-                                            <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{gradeLetter}</td>
-                                            <td className={`px-2 py-2 text-center text-sm font-bold border ${result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}`}>{result}</td>
-                                            <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{isLoadingExtraData ? '...' : studentRank}</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    )}
+                                        </>
+                                        ) : (
+                                            <td className="border px-2 py-1 text-center font-bold text-slate-900">{totalMarks}</td>
+                                        )}
+                                        <td className="border px-2 py-1 text-center font-semibold">{percentage.toFixed(2)}%</td>
+                                        <td className="border px-2 py-1 text-center font-bold">{performanceGrade}</td>
+                                        <td className={`border px-2 py-1 text-center font-bold ${result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}`}>{result}</td>
+                                        <td className="border px-2 py-1 text-center font-bold">{isLoadingExtraData ? '...' : studentRank}</td>
+                                        <td className="border px-2 py-1 text-center font-semibold">{isLoadingExtraData ? '...' : `${attPercentage}%`}</td>
+                                        <td className="border px-2 py-1 text-center text-xs">{remarks}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
                 </div>
                  <div className="mt-6 flex justify-end print:hidden">
                     <button onClick={() => window.print()} className="btn btn-primary">

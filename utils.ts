@@ -304,14 +304,15 @@ export const calculateRanks = (
   // Assign ranks, handling ties using dense ranking (e.g., 1, 2, 2, 3).
   if (passedStudents.length > 0) {
     let rank = 1;
-    ranks.set(passedStudents[0].studentId, rank);
+    let currentRank = 1;
+    ranks.set(passedStudents[0].studentId, currentRank);
     for (let i = 1; i < passedStudents.length; i++) {
-      // If score is lower than the previous student, increment the rank.
-      // Otherwise, it's a tie, so they get the same rank.
-      if (passedStudents[i].totalMarks < passedStudents[i - 1].totalMarks) {
         rank++;
+      // If score is lower than the previous student, the rank is the current index + 1
+      if (passedStudents[i].totalMarks < passedStudents[i - 1].totalMarks) {
+        currentRank = rank;
       }
-      ranks.set(passedStudents[i].studentId, rank);
+      ranks.set(passedStudents[i].studentId, currentRank);
     }
   }
 
@@ -323,4 +324,47 @@ export const calculateRanks = (
   });
 
   return ranks;
+};
+
+export const getMonthsForTerm = (examId: string): { month: number, yearOffset: 0 | 1 }[] => {
+    switch(examId) {
+        case 'terminal1': // Apr, May, Jun, Jul
+            return [ { month: 3, yearOffset: 0 }, { month: 4, yearOffset: 0 }, { month: 5, yearOffset: 0 }, { month: 6, yearOffset: 0 } ];
+        case 'terminal2': // Aug, Sep, Oct
+            return [ { month: 7, yearOffset: 0 }, { month: 8, yearOffset: 0 }, { month: 9, yearOffset: 0 } ];
+        case 'terminal3': // Nov, Dec, Jan, Feb, Mar
+            return [ { month: 10, yearOffset: 0 }, { month: 11, yearOffset: 0 }, { month: 0, yearOffset: 1 }, { month: 1, yearOffset: 1 }, { month: 2, yearOffset: 1 } ];
+        default:
+            return [];
+    }
+}
+
+export const getPerformanceGrade = (percentage: number, result: string, grade: Grade): string => {
+    if (result === 'FAIL') {
+        return grade === Grade.IX || grade === Grade.X ? 'FAIL' : 'D';
+    }
+
+    if (grade === Grade.IX || grade === Grade.X) {
+        if (percentage >= 75) return 'D';
+        if (percentage >= 60) return 'I';
+        if (percentage >= 50) return 'II';
+        return 'III';
+    }
+
+    if (percentage >= 90) return 'A+';
+    if (percentage >= 80) return 'A';
+    if (percentage >= 70) return 'B+';
+    if (percentage >= 60) return 'B';
+    if (percentage >= 50) return 'C+';
+    return 'C';
+};
+
+export const getRemarks = (percentage: number, result: string): string => {
+    if (result === 'FAIL') return 'Requires serious attention';
+    if (percentage >= 90) return 'Outstanding';
+    if (percentage >= 80) return 'Excellent';
+    if (percentage >= 70) return 'Very Good';
+    if (percentage >= 60) return 'Good';
+    if (percentage >= 50) return 'Satisfactory';
+    return 'Needs Improvement';
 };
