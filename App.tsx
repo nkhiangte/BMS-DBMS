@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType, FeeStructure, FeeSet } from './types';
@@ -471,18 +472,6 @@ const App: React.FC = () => {
 
     if (loading) {
         return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-    }
-
-    const isAuthPage = ['/login', '/signup', '/forgot-password'].includes(location.pathname);
-    if (user && !academicYear && !isAuthPage) {
-        return (
-             <div className="min-h-screen flex flex-col">
-                <Header user={user} onLogout={handleLogout} className="print-hidden" />
-                <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
-                    <AcademicYearForm onSetAcademicYear={(year) => { localStorage.setItem('academicYear', year); setAcademicYear(year); }} />
-                </main>
-            </div>
-        );
     }
 
     return (
