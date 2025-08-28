@@ -99,7 +99,9 @@ export const calculateStudentResult = (
         : [Grade.NURSERY, Grade.KINDERGARTEN, Grade.I, Grade.II].includes(grade) ? 'NUR-II'
         : 'III-VIII';
 
-    gradeDef.subjects.forEach(subject => {
+    gradeDef.subjects
+      .filter(s => s.gradingSystem !== 'OABC')
+      .forEach(subject => {
         const result = finalTermResults.find(r => r.subject === subject.name);
         const examMarks = result?.examMarks ?? 0;
         const singleMark = result?.marks ?? 0;

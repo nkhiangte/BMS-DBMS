@@ -1,6 +1,6 @@
 import React from 'react';
 import { SubjectMark, SubjectDefinition, Grade } from '../types';
-import { GRADES_WITH_NO_ACTIVITIES } from '../constants';
+import { GRADES_WITH_NO_ACTIVITIES, OABC_GRADES } from '../constants';
 
 interface AcademicRecordTableProps {
   examName: string;
@@ -15,39 +15,40 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
   
   const hasActivitiesForThisGrade = !GRADES_WITH_NO_ACTIVITIES.includes(grade);
 
-  const handleMarksChange = (subjectName: string, field: 'examMarks' | 'activityMarks' | 'marks', value: string, max: number) => {
-    const newMark = parseInt(value, 10);
-    // When input is cleared, value is '', newMark is NaN, validatedMark becomes undefined. This is correct.
-    const validatedMark = isNaN(newMark) ? undefined : Math.max(0, Math.min(newMark, max));
-
+  const handleMarksChange = (subjectName: string, field: 'examMarks' | 'activityMarks' | 'marks' | 'grade', value: string, max?: number) => {
     let subjectFound = false;
     const newResults = results.map(r => {
       if (r.subject === subjectName) {
         subjectFound = true;
-        // Create a new object for the updated result to ensure state immutability
-        const updatedResult = { ...r };
+        const updatedResult: SubjectMark = { ...r };
         
-        // When switching to a single mark system, consolidate old marks and clear split ones.
-        if (field === 'marks') {
-            updatedResult.marks = validatedMark;
+        if (field === 'grade') {
+            updatedResult.grade = value as any;
+            delete updatedResult.marks;
             delete updatedResult.examMarks;
             delete updatedResult.activityMarks;
         } else {
-            (updatedResult as any)[field] = validatedMark;
-            delete updatedResult.marks;
+            const newMark = parseInt(value, 10);
+            const validatedMark = isNaN(newMark) ? undefined : Math.max(0, Math.min(newMark, max || 100));
+            if (field === 'marks') {
+                updatedResult.marks = validatedMark;
+            } else {
+                (updatedResult as any)[field] = validatedMark;
+            }
+            delete updatedResult.grade;
         }
         return updatedResult;
       }
       return r;
     });
 
-    // If the subject did not exist in the results array, it means this is the first mark
-    // being entered for this subject in this exam. We need to add a new result object.
     if (!subjectFound) {
       const newResult: SubjectMark = { subject: subjectName };
-      if (field === 'marks') {
-        newResult.marks = validatedMark;
+      if (field === 'grade') {
+        newResult.grade = value as any;
       } else {
+        const newMark = parseInt(value, 10);
+        const validatedMark = isNaN(newMark) ? undefined : Math.max(0, Math.min(newMark, max || 100));
         (newResult as any)[field] = validatedMark;
       }
       newResults.push(newResult);
@@ -64,7 +65,7 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
           <thead className="bg-slate-50">
             <tr>
               <th scope="col" className="w-1/3 px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Subject</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Exam Marks</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Exam / Grade</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Activity Marks</th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Total</th>
             </tr>
@@ -80,6 +81,7 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
               subjectDefinitions.map((subjectDef) => {
                 const result = results.find(r => r.subject === subjectDef.name) || { subject: subjectDef.name };
                 const useSplitMarks = hasActivitiesForThisGrade && subjectDef.activityFullMarks > 0;
+                const isGradeBased = subjectDef.gradingSystem === 'OABC';
                 
                 return (
                   <tr key={subjectDef.name}>
@@ -87,45 +89,60 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
                        {subjectDef.name}
                     </td>
 
-                    {/* Exam / Main Marks Column */}
+                    {/* Exam / Main Marks / Grade Column */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800">
                       {isEditing ? (
-                        <input 
-                          type="number"
-                          value={useSplitMarks ? (result.examMarks ?? '') : (result.marks ?? (result.examMarks ?? ''))}
-                          onChange={(e) => handleMarksChange(subjectDef.name, useSplitMarks ? 'examMarks' : 'marks', e.target.value, subjectDef.examFullMarks)}
-                          className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
-                          placeholder={`/ ${subjectDef.examFullMarks}`}
-                          max={subjectDef.examFullMarks}
-                        />
+                        isGradeBased ? (
+                            <select 
+                                value={result.grade ?? ''}
+                                onChange={(e) => handleMarksChange(subjectDef.name, 'grade', e.target.value)}
+                                className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                            >
+                                <option value="">--</option>
+                                {OABC_GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                            </select>
+                        ) : (
+                            <input 
+                                type="number"
+                                value={useSplitMarks ? (result.examMarks ?? '') : (result.marks ?? (result.examMarks ?? ''))}
+                                onChange={(e) => handleMarksChange(subjectDef.name, useSplitMarks ? 'examMarks' : 'marks', e.target.value, subjectDef.examFullMarks)}
+                                className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                                placeholder={`/ ${subjectDef.examFullMarks}`}
+                                max={subjectDef.examFullMarks}
+                            />
+                        )
                       ) : (
-                        useSplitMarks ? (result.examMarks ?? '-') : ((result.marks ?? ((result.examMarks ?? 0) + (result.activityMarks ?? 0))) || '-')
+                        isGradeBased ? <span className="font-bold text-lg">{result.grade || '-'}</span> :
+                        (useSplitMarks ? (result.examMarks ?? '-') : ((result.marks ?? ((result.examMarks ?? 0) + (result.activityMarks ?? 0))) || '-'))
                       )}
                     </td>
 
                     {/* Activity Marks Column */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800">
-                      {useSplitMarks ? (
-                        isEditing ? (
-                          <input 
-                            type="number"
-                            value={result.activityMarks ?? ''}
-                            onChange={(e) => handleMarksChange(subjectDef.name, 'activityMarks', e.target.value, subjectDef.activityFullMarks)}
-                            className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
-                            placeholder={`/ ${subjectDef.activityFullMarks}`}
-                            max={subjectDef.activityFullMarks}
-                          />
+                      {isGradeBased ? <span className="text-slate-600 font-semibold">N/A</span> :
+                        useSplitMarks ? (
+                            isEditing ? (
+                            <input 
+                                type="number"
+                                value={result.activityMarks ?? ''}
+                                onChange={(e) => handleMarksChange(subjectDef.name, 'activityMarks', e.target.value, subjectDef.activityFullMarks)}
+                                className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                                placeholder={`/ ${subjectDef.activityFullMarks}`}
+                                max={subjectDef.activityFullMarks}
+                            />
+                            ) : (
+                            result.activityMarks ?? '-'
+                            )
                         ) : (
-                          result.activityMarks ?? '-'
+                            <span className="text-slate-600 font-semibold">N/A</span>
                         )
-                      ) : (
-                        <span className="text-slate-600 font-semibold">N/A</span>
-                      )}
+                      }
                     </td>
 
                     {/* Total Column */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900">
-                      {useSplitMarks
+                      {isGradeBased ? <span className="font-bold text-lg">{result.grade || '-'}</span> :
+                       useSplitMarks
                         ? (((result.examMarks || 0) + (result.activityMarks || 0)) || '-')
                         : ((result.marks ?? ((result.examMarks ?? 0) + (result.activityMarks ?? 0))) || '-')
                       }

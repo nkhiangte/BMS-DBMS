@@ -25,9 +25,10 @@ const EditSubjectsModal: React.FC<EditSubjectsModalProps> = ({ isOpen, onClose, 
     const newSubjects = [...subjects];
     const subjectToUpdate = { ...newSubjects[index] };
 
+    // FIX: Explicitly check for numeric fields to avoid type error with `gradingSystem`.
     if (field === 'name') {
       subjectToUpdate.name = value;
-    } else {
+    } else if (field === 'examFullMarks' || field === 'activityFullMarks') {
       const numValue = parseInt(value, 10);
       subjectToUpdate[field] = isNaN(numValue) ? 0 : numValue;
     }

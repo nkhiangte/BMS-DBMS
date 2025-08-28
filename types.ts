@@ -167,6 +167,7 @@ export interface SubjectDefinition {
   name: string;
   examFullMarks: number;
   activityFullMarks: number;
+  gradingSystem?: 'OABC' | 'numeric';
 }
 
 // UPDATED: GradeDefinition now contains subjects and an optional class teacher ID.
@@ -181,6 +182,7 @@ export interface SubjectMark {
   marks?: number; // For grades without split marks
   examMarks?: number; // For grades with split marks
   activityMarks?: number; // For grades with split marks
+  grade?: 'O' | 'A' | 'B' | 'C';
 }
 
 export interface Exam {

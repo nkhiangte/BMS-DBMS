@@ -73,7 +73,9 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                 let totalMarks = 0;
                 if (studentGradeDef) {
                     const hasActivities = !GRADES_WITH_NO_ACTIVITIES.includes(s.grade);
-                    studentGradeDef.subjects.forEach(subject => {
+                    studentGradeDef.subjects
+                      .filter(subject => subject.gradingSystem !== 'OABC')
+                      .forEach(subject => {
                         const result = results.find(r => r.subject === subject.name);
                         const useSplitMarks = hasActivities && subject.activityFullMarks > 0;
                         const obtainedMarks = useSplitMarks
@@ -128,8 +130,12 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
         const fullExam = subjectDef.examFullMarks;
         const fullActivity = useSplitMarks ? subjectDef.activityFullMarks : 0;
         const fullTotal = fullExam + fullActivity;
+        
+        if (subjectDef.gradingSystem === 'OABC') {
+            return { grade: result?.grade ?? null, exam: null, activity: null, total: null, fullExam, fullActivity, fullTotal };
+        }
 
-        if (!result) return { exam: null, activity: null, total: null, fullExam, fullActivity, fullTotal };
+        if (!result) return { grade: null, exam: null, activity: null, total: null, fullExam, fullActivity, fullTotal };
 
         if (useSplitMarks) {
             const examMarks = result.examMarks ?? null;
@@ -138,10 +144,10 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
             if (examMarks !== null || activityMarks !== null) {
                 total = (examMarks || 0) + (activityMarks || 0);
             }
-            return { exam: examMarks, activity: activityMarks, total, fullExam, fullActivity, fullTotal };
+            return { grade: null, exam: examMarks, activity: activityMarks, total, fullExam, fullActivity, fullTotal };
         } else {
             const totalFromMarks = result.marks ?? (result.examMarks ?? 0) + (result.activityMarks ?? 0);
-            return { exam: null, activity: null, total: totalFromMarks || null, fullExam: subjectDef.examFullMarks, fullActivity: 0, fullTotal: subjectDef.examFullMarks };
+            return { grade: null, exam: null, activity: null, total: totalFromMarks || null, fullExam: subjectDef.examFullMarks, fullActivity: 0, fullTotal: subjectDef.examFullMarks };
         }
     };
 
@@ -181,7 +187,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
         
         const getResultsForTerm = (termId: string): SubjectMark[] => {
             const exam = studentPerformance.find(e => e.id === termId);
-            return exam?.results.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null) || [];
+            return exam?.results.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null || r.grade != null) || [];
         };
 
         return {
@@ -205,7 +211,9 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
         
         const finalTermResults = allExamsData.term3;
 
-        gradeDef.subjects.forEach(subjectDef => {
+        gradeDef.subjects
+          .filter(subjectDef => subjectDef.gradingSystem !== 'OABC')
+          .forEach(subjectDef => {
             const finalTermMarks = getSplitMarks(subjectDef.name, finalTermResults, subjectDef);
             grandTotal += finalTermMarks.total ?? 0;
             maxGrandTotal += finalTermMarks.fullTotal ?? 0;
@@ -234,7 +242,9 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
     const termTotals = useMemo(() => {
         if (!gradeDef || !allExamsData) return { t1: 0, t2: 0, t3: 0, max: 0 };
         let t1 = 0, t2 = 0, t3 = 0, max = 0;
-        gradeDef.subjects.forEach(subjectDef => {
+        gradeDef.subjects
+          .filter(subjectDef => subjectDef.gradingSystem !== 'OABC')
+          .forEach(subjectDef => {
             const term1Marks = getSplitMarks(subjectDef.name, allExamsData.term1, subjectDef);
             const term2Marks = getSplitMarks(subjectDef.name, allExamsData.term2, subjectDef);
             const term3Marks = getSplitMarks(subjectDef.name, allExamsData.term3, subjectDef);
@@ -343,12 +353,13 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                             const term1 = getSplitMarks(subjectDef.name, allExamsData.term1, subjectDef);
                             const term2 = getSplitMarks(subjectDef.name, allExamsData.term2, subjectDef);
                             const term3 = getSplitMarks(subjectDef.name, allExamsData.term3, subjectDef);
+                            const isGradeBased = subjectDef.gradingSystem === 'OABC';
 
                             return (
                                 <tr key={subjectDef.name}>
                                     <td className="border border-slate-300 px-2 py-1 text-left text-slate-800">{subjectDef.name}</td>
                                     {/* Term 1 */}
-                                    {hasActivityMarks ? (
+                                    {isGradeBased ? <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center font-bold text-lg">{term1.grade ?? '-'}</td> : hasActivityMarks ? (
                                         <>
                                             <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term1.exam ?? '-'}</td>
                                             <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term1.activity ?? '-'}</td>
@@ -358,7 +369,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                                         <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term1.total ?? '-'}</td>
                                     )}
                                     {/* Term 2 */}
-                                     {hasActivityMarks ? (
+                                     {isGradeBased ? <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center font-bold text-lg">{term2.grade ?? '-'}</td> : hasActivityMarks ? (
                                         <>
                                             <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term2.exam ?? '-'}</td>
                                             <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term2.activity ?? '-'}</td>
@@ -368,7 +379,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                                         <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term2.total ?? '-'}</td>
                                     )}
                                     {/* Term 3 */}
-                                     {hasActivityMarks ? (
+                                     {isGradeBased ? <td colSpan={hasActivityMarks ? 3 : 1} className="border border-slate-300 px-2 py-1 text-center font-bold text-lg">{term3.grade ?? '-'}</td> : hasActivityMarks ? (
                                         <>
                                             <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term3.exam ?? '-'}</td>
                                             <td className="border border-slate-300 px-2 py-1 text-center text-slate-800">{term3.activity ?? '-'}</td>

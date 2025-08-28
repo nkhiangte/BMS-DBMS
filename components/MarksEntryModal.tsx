@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Student, GradeDefinition, Exam, SubjectMark, Grade } from '../types';
 import { SpinnerIcon, CheckIcon, XIcon } from './Icons';
+import { OABC_GRADES } from '../constants';
 
 interface MarksEntryModalProps {
     isOpen: boolean;
@@ -21,6 +22,7 @@ type MarksState = {
             marks?: number | string;
             examMarks?: number | string;
             activityMarks?: number | string;
+            grade?: string;
         }
     }
 };
@@ -37,6 +39,10 @@ const areResultsEqual = (res1: SubjectMark[], res2: SubjectMark[]): boolean => {
         const r2 = sorted2[i];
 
         if (r1.subject !== r2.subject) return false;
+        
+        const grade1 = r1.grade ?? null;
+        const grade2 = r2.grade ?? null;
+        if(grade1 !== grade2) return false;
 
         // Normalize undefined/null to null for comparison
         const marks1 = r1.marks ?? null;
@@ -72,6 +78,7 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                         marks: result?.marks ?? '',
                         examMarks: result?.examMarks ?? '',
                         activityMarks: result?.activityMarks ?? '',
+                        grade: result?.grade ?? '',
                     };
                 });
             });
@@ -79,23 +86,37 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
         }
     }, [isOpen, students, gradeDef, examId]);
 
-    const handleMarkChange = (studentId: string, subjectName: string, field: 'marks' | 'examMarks' | 'activityMarks', value: string, max: number) => {
-        const numericValue = value === '' ? '' : Math.max(0, Math.min(parseInt(value, 10), max));
-        if (value !== '' && isNaN(Number(numericValue))) return;
+    const handleMarkChange = (studentId: string, subjectName: string, field: 'marks' | 'examMarks' | 'activityMarks' | 'grade', value: string, max?: number) => {
+        let finalValue: string | number = value;
+        if (field !== 'grade') {
+            finalValue = value === '' ? '' : Math.max(0, Math.min(parseInt(value, 10), max || 100));
+            if (value !== '' && isNaN(Number(finalValue))) return;
+        }
 
-        setMarksData(prev => ({
-            ...prev,
-            [studentId]: {
-                ...prev[studentId],
-                [subjectName]: {
-                    ...prev[studentId]?.[subjectName],
-                    [field]: numericValue,
+        setMarksData(prev => {
+            const newStudentMarks = { ...prev[studentId]?.[subjectName] };
+            (newStudentMarks as any)[field] = finalValue;
+            
+            // Clear other mark types when one is set
+            if(field === 'grade' && finalValue !== '') {
+                delete newStudentMarks.marks;
+                delete newStudentMarks.examMarks;
+                delete newStudentMarks.activityMarks;
+            } else if (field !== 'grade') {
+                delete newStudentMarks.grade;
+            }
+
+            return {
+                ...prev,
+                [studentId]: {
+                    ...prev[studentId],
+                    [subjectName]: newStudentMarks,
                 }
             }
-        }));
+        });
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, studentIndex: number, subjectIndex: number, markTypeIndex: number) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>, studentIndex: number, subjectIndex: number, markTypeIndex: number) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             const nextStudentIndex = studentIndex + 1;
@@ -104,7 +125,9 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                 const nextInput = document.getElementById(nextInputId);
                 if (nextInput) {
                     nextInput.focus();
-                    (nextInput as HTMLInputElement).select();
+                    if (nextInput.tagName === 'INPUT') {
+                        (nextInput as HTMLInputElement).select();
+                    }
                 }
             }
         }
@@ -132,15 +155,18 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                 const newResult: SubjectMark = { subject: subjectDef.name };
 
                 const processMark = (val: any) => val === '' || val === null || val === undefined ? undefined : Number(val);
+                const processGrade = (val: any) => val === '' || val === null || val === undefined ? undefined : val;
 
-                if (subjectDef.activityFullMarks > 0) {
+                if(subjectDef.gradingSystem === 'OABC') {
+                    newResult.grade = processGrade(subjectMarks.grade);
+                } else if (subjectDef.activityFullMarks > 0) {
                     newResult.examMarks = processMark(subjectMarks.examMarks);
                     newResult.activityMarks = processMark(subjectMarks.activityMarks);
                 } else {
                     newResult.marks = processMark(subjectMarks.marks);
                 }
 
-                if (newResult.marks !== undefined || newResult.examMarks !== undefined || newResult.activityMarks !== undefined) {
+                if (newResult.marks !== undefined || newResult.examMarks !== undefined || newResult.activityMarks !== undefined || newResult.grade !== undefined) {
                     newResults.push(newResult);
                 }
             });
@@ -165,7 +191,7 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl flex flex-col h-full max-h-[95vh]" onClick={e => e.stopPropagation()}>
                 <div className="p-4 border-b flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-slate-800">Main Marks Entry: {grade} - {examName}</h2>
+                    <h2 className="text-xl font-bold text-slate-800">Quick Marks Entry: {grade} - {examName}</h2>
                     <button onClick={onClose} className="p-2 text-slate-600 hover:bg-slate-100 rounded-full"><XIcon className="w-5 h-5"/></button>
                 </div>
 
@@ -176,7 +202,7 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                 <th className="border p-2 text-left font-bold text-slate-800">Roll</th>
                                 <th className="border p-2 text-left font-bold text-slate-800">Student Name</th>
                                 {gradeDef.subjects.map(subject => (
-                                    <th key={subject.name} colSpan={subject.activityFullMarks > 0 ? 2 : 1} className="border p-2 text-center font-bold text-slate-800">
+                                    <th key={subject.name} colSpan={subject.gradingSystem === 'OABC' ? 1 : (subject.activityFullMarks > 0 ? 2 : 1)} className="border p-2 text-center font-bold text-slate-800">
                                         {subject.name}
                                     </th>
                                 ))}
@@ -185,7 +211,9 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                 <th className="border p-2"></th>
                                 <th className="border p-2"></th>
                                 {gradeDef.subjects.flatMap(subject => 
-                                    subject.activityFullMarks > 0 ? [
+                                    subject.gradingSystem === 'OABC' ? [
+                                        <th key={subject.name} className="border p-2 font-semibold text-slate-700">Grade</th>
+                                    ] : subject.activityFullMarks > 0 ? [
                                         <th key={`${subject.name}-exam`} className="border p-2 font-semibold text-slate-700">Exam ({subject.examFullMarks})</th>,
                                         <th key={`${subject.name}-activity`} className="border p-2 font-semibold text-slate-700">Act ({subject.activityFullMarks})</th>
                                     ] : [
@@ -201,7 +229,22 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                     <td className="border p-2 font-medium">{student.name}</td>
                                     {gradeDef.subjects.flatMap((subject, subjectIndex) => {
                                         const marks = marksData[student.id]?.[subject.name] || {};
-                                        if (subject.activityFullMarks > 0) {
+                                        if (subject.gradingSystem === 'OABC') {
+                                            return [
+                                                <td key={subject.name} className="border p-1">
+                                                    <select
+                                                        id={`marks-input-${studentIndex}-${subjectIndex}-0`}
+                                                        value={marks.grade ?? ''}
+                                                        onChange={e => handleMarkChange(student.id, subject.name, 'grade', e.target.value)}
+                                                        onKeyDown={e => handleKeyDown(e, studentIndex, subjectIndex, 0)}
+                                                        className="w-full text-center p-1 rounded-md border-slate-300"
+                                                    >
+                                                        <option value="">--</option>
+                                                        {OABC_GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                                                    </select>
+                                                </td>
+                                            ]
+                                        } else if (subject.activityFullMarks > 0) {
                                             return [
                                                 <td key={`${subject.name}-exam`} className="border p-1">
                                                     <input
