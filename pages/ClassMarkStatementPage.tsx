@@ -172,7 +172,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
         const useSplitMarks = hasActivitiesForThisGrade && gradeDef.subjects.some(s => s.activityFullMarks > 0);
 
         gradeDef.subjects.forEach(subject => {
-            const isGradeBasedOverride = (grade === Grade.I || grade === Grade.II) && (subject.name === 'Cursive' || subject.name === 'Drawing');
+            const isGradeBasedOverride = ([Grade.I, Grade.II, Grade.III, Grade.IV, Grade.V].includes(grade as Grade)) && (subject.name === 'Cursive' || subject.name === 'Drawing');
             const isGradeBased = subject.gradingSystem === 'OABC' || isGradeBasedOverride;
             
             if (isGradeBased) {
@@ -233,7 +233,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                     const newResult: SubjectMark = { subject: subjectDef.name };
                     const useSplitMarks = hasActivitiesForThisGrade && subjectDef.activityFullMarks > 0;
                     
-                    const isGradeBasedOverride = (grade === Grade.I || grade === Grade.II) && (subjectDef.name === 'Cursive' || subjectDef.name === 'Drawing');
+                    const isGradeBasedOverride = ([Grade.I, Grade.II, Grade.III, Grade.IV, Grade.V].includes(grade as Grade)) && (subjectDef.name === 'Cursive' || subjectDef.name === 'Drawing');
                     const isGradeBased = subjectDef.gradingSystem === 'OABC' || isGradeBasedOverride;
                     
                     if (isGradeBased) {
@@ -344,7 +344,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                             </tr>
                             <tr>
                                 {gradeDef.subjects.flatMap(subject => {
-                                    const isGradeBasedSubject = (grade === Grade.I || grade === Grade.II) && (subject.name === 'Cursive' || subject.name === 'Drawing');
+                                    const isGradeBasedSubject = ([Grade.I, Grade.II, Grade.III, Grade.IV, Grade.V].includes(grade as Grade)) && (subject.name === 'Cursive' || subject.name === 'Drawing');
                                     if (subject.gradingSystem === 'OABC' || isGradeBasedSubject) {
                                          return [<th key={`${subject.name}-grade`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">Grade</th>];
                                     } else if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
@@ -380,7 +380,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                         {gradeDef.subjects.flatMap(subject => {
                                             const studentResult = results.find(r => r.subject === subject.name);
                                             const isFailed = failedSubjects.includes(subject.name);
-                                            const isGradeBasedSubject = (grade === Grade.I || grade === Grade.II) && (subject.name === 'Cursive' || subject.name === 'Drawing');
+                                            const isGradeBasedSubject = ([Grade.I, Grade.II, Grade.III, Grade.IV, Grade.V].includes(grade as Grade)) && (subject.name === 'Cursive' || subject.name === 'Drawing');
 
                                             if (subject.gradingSystem === 'OABC' || isGradeBasedSubject) {
                                                 return [<td key={subject.name} className="border px-2 py-1 text-center font-bold text-lg">{studentResult?.grade ?? '-'}</td>];
