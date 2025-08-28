@@ -64,17 +64,16 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
 
     useEffect(() => {
         const calculateExtraData = async () => {
-            if (!grade || !academicYear || classStudents.length === 0) {
+            if (!grade || !academicYear || classStudents.length === 0 || !examId) {
                 setIsLoadingExtraData(false);
                 return;
             }
             setIsLoadingExtraData(true);
 
-            // --- 1. Calculate Ranks based on Final Term ---
-            const finalExamId = 'terminal3';
+            // --- 1. Calculate Ranks based on the current examId ---
             const studentScores = classStudents.map(student => {
-                const finalExam = student.academicPerformance?.find(e => e.id === finalExamId);
-                const results = finalExam?.results || [];
+                const exam = student.academicPerformance?.find(e => e.id === examId);
+                const results = exam?.results || [];
                 const studentGradeDef = gradeDefinitions[student.grade];
                 
                 let totalMarks = 0;
@@ -135,7 +134,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
         };
 
         calculateExtraData();
-    }, [classStudents, grade, academicYear, gradeDefinitions, fetchStudentAttendanceForMonth]);
+    }, [classStudents, grade, academicYear, gradeDefinitions, fetchStudentAttendanceForMonth, examId]);
 
     const statementData = useMemo(() => {
         if (!gradeDef || !grade) return [];
