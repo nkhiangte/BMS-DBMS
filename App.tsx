@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType, FeeStructure, FeeSet } from './types';
@@ -348,9 +349,10 @@ const App: React.FC = () => {
                            />
                         </PrivateRoute>
                     } />
+                     {/* FIX: Pass feeStructure to ClassStudentsPage to enable fee-related functionality on that page. */}
                      <Route path="/classes/:grade" element={
                         <PrivateRoute user={user}>
-                           <ClassStudentsPage 
+                           {feeStructure && <ClassStudentsPage 
                                 students={students}
                                 staff={staff}
                                 gradeDefinitions={gradeDefinitions}
@@ -363,7 +365,8 @@ const App: React.FC = () => {
                                 assignedGrade={assignedGrade}
                                 onAddStudentToClass={() => {}}
                                 onUpdateBulkFeePayments={async () => {}}
-                           />
+                                feeStructure={feeStructure}
+                           />}
                         </PrivateRoute>
                     } />
 

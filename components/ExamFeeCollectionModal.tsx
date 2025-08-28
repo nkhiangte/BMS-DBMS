@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Student, Grade, FeePayments } from '../types';
+import { Student, Grade, FeePayments, FeeStructure } from '../types';
 import { getFeeDetails } from '../utils';
 import { TERMINAL_EXAMS } from '../constants';
 import { SpinnerIcon, CheckIcon, XIcon, CurrencyDollarIcon } from './Icons';
@@ -10,12 +10,14 @@ interface ExamFeeCollectionModalProps {
     onSave: (updates: Array<{ studentId: string; payments: FeePayments }>) => Promise<void>;
     students: Student[];
     grade: Grade;
+    feeStructure: FeeStructure;
 }
 
-const ExamFeeCollectionModal: React.FC<ExamFeeCollectionModalProps> = ({ isOpen, onClose, onSave, students, grade }) => {
+const ExamFeeCollectionModal: React.FC<ExamFeeCollectionModalProps> = ({ isOpen, onClose, onSave, students, grade, feeStructure }) => {
     const [paymentData, setPaymentData] = useState<Record<string, FeePayments>>({});
     const [isSaving, setIsSaving] = useState(false);
-    const feeDetails = getFeeDetails(grade);
+    // FIX: Pass the feeStructure object to the getFeeDetails utility function as the second argument.
+    const feeDetails = getFeeDetails(grade, feeStructure);
 
     useEffect(() => {
         if (isOpen) {

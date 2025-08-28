@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, Grade, GradeDefinition, Staff, EmploymentStatus, User, FeePayments } from '../types';
+import { Student, Grade, GradeDefinition, Staff, EmploymentStatus, User, FeePayments, FeeStructure } from '../types';
 import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon, ClipboardDocumentCheckIcon, PlusIcon, MessageIcon, WhatsappIcon, UserIcon, DocumentReportIcon, CurrencyDollarIcon, PrinterIcon } from '../components/Icons';
 import { formatStudentId, calculateDues, formatPhoneNumberForWhatsApp } from '../utils';
 import EditSubjectsModal from '../components/EditSubjectsModal';
@@ -22,6 +22,7 @@ interface ClassStudentsPageProps {
   assignedGrade: Grade | null;
   onAddStudentToClass: (grade: Grade) => void;
   onUpdateBulkFeePayments: (updates: Array<{ studentId: string; payments: FeePayments }>) => Promise<void>;
+  feeStructure: FeeStructure;
 }
 
 const PhotoThumbnail: React.FC<{ student: Student }> = ({ student }) => {
@@ -49,7 +50,7 @@ const PhotoThumbnail: React.FC<{ student: Student }> = ({ student }) => {
     );
 };
 
-const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal, onOpenTransferModal, onDelete, user, assignedGrade, onAddStudentToClass, onUpdateBulkFeePayments }) => {
+const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, academicYear, onOpenImportModal, onOpenTransferModal, onDelete, user, assignedGrade, onAddStudentToClass, onUpdateBulkFeePayments, feeStructure }) => {
   const { grade } = useParams<{ grade: string }>();
   const navigate = useNavigate();
   const decodedGrade = grade ? decodeURIComponent(grade) as Grade : '' as Grade;
@@ -341,6 +342,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
         onSave={onUpdateBulkFeePayments}
         students={classStudents}
         grade={decodedGrade}
+        feeStructure={feeStructure}
       />
       <BulkPrintModal />
     </>
