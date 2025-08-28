@@ -33,9 +33,20 @@ export const GRADE_DEFINITIONS: Record<Grade, GradeDefinition> = {
     [Grade.NURSERY]: { classTeacherId: undefined, subjects: [{ name: 'Pre-Reading', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Pre-Writing', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Numbers', examFullMarks: 100, activityFullMarks: 0 }] },
     [Grade.KINDERGARTEN]: { classTeacherId: undefined, subjects: [{ name: 'English', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Mathematics', examFullMarks: 100, activityFullMarks: 0 }, { name: 'General Knowledge', examFullMarks: 100, activityFullMarks: 0 }] },
     [Grade.I]: { classTeacherId: undefined, subjects: [{ name: 'English', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Mathematics', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Environmental Science', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Mizo', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Drawing', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' }, { name: 'Cursive', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' }] },
-    [Grade.II]: { classTeacherId: undefined, subjects: [{ name: 'English', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Mathematics', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Environmental Science', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Mizo', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Drawing', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' }, { name: 'Cursive', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' }] },
+    [Grade.II]: { classTeacherId: undefined, subjects: [
+        { name: 'ENG-I', examFullMarks: 100, activityFullMarks: 0 },
+        { name: 'ENG-II', examFullMarks: 100, activityFullMarks: 0 },
+        { name: 'MIZO', examFullMarks: 100, activityFullMarks: 0 },
+        { name: 'MATH', examFullMarks: 100, activityFullMarks: 0 },
+        { name: 'Spellings', examFullMarks: 100, activityFullMarks: 0 },
+        { name: 'Hindi', examFullMarks: 100, activityFullMarks: 0 },
+        { name: 'EVS', examFullMarks: 100, activityFullMarks: 0 },
+        { name: 'Cursive', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' },
+        { name: 'Drawing', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' }
+    ]},
     [Grade.III]: { classTeacherId: undefined, subjects: [
         { name: 'ENG-I', examFullMarks: 60, activityFullMarks: 40 },
+        { name: 'ACT', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'ENG-II', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'MIZO', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'EVS', examFullMarks: 60, activityFullMarks: 40 },
@@ -46,6 +57,7 @@ export const GRADE_DEFINITIONS: Record<Grade, GradeDefinition> = {
     ]},
     [Grade.IV]: { classTeacherId: undefined, subjects: [
         { name: 'ENG-I', examFullMarks: 60, activityFullMarks: 40 },
+        { name: 'ACT', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'ENG-II', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'MIZO', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'EVS', examFullMarks: 60, activityFullMarks: 40 },
@@ -56,6 +68,7 @@ export const GRADE_DEFINITIONS: Record<Grade, GradeDefinition> = {
     ]},
     [Grade.V]: { classTeacherId: undefined, subjects: [
         { name: 'ENG-I', examFullMarks: 60, activityFullMarks: 40 },
+        { name: 'ACT', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'ENG-II', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'MIZO', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'EVS', examFullMarks: 60, activityFullMarks: 40 },
