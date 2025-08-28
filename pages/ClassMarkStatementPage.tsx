@@ -44,23 +44,47 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
     const [isMarksEntryModalOpen, setIsMarksEntryModalOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
-    const [attendanceData, setAttendanceData] = useState<Map<string, number | null>>(new Map());
     const [ranks, setRanks] = useState<Map<string, number | 'NA' | null>>(new Map());
     const [isLoadingExtraData, setIsLoadingExtraData] = useState(true);
 
     const grade = useMemo(() => encodedGrade ? decodeURIComponent(encodedGrade) as Grade : null, [encodedGrade]);
     const examDetails = useMemo(() => TERMINAL_EXAMS.find(e => e.id === examId), [examId]);
-    const gradeDef = useMemo(() => grade ? gradeDefinitions[grade] : null, [grade, gradeDefinitions]);
-    
     const isAllowed = user.role === 'admin' || grade === assignedGrade;
-    const hasActivitiesForThisGrade = useMemo(() => grade ? !GRADES_WITH_NO_ACTIVITIES.includes(grade) : false, [grade]);
-    
+
     const classStudents = useMemo(() => {
         if (!grade) return [];
         return students
             .filter(s => s.grade === grade && s.status === StudentStatus.ACTIVE)
             .sort((a, b) => a.rollNo - b.rollNo);
     }, [students, grade]);
+
+     // Combine gradeDef and max marks calculation
+    const { gradeDef, hasActivitiesForThisGrade, totalMaxExamMarks, totalMaxActivityMarks, totalMaxMarks } = useMemo(() => {
+        if (!grade) return { gradeDef: null, hasActivitiesForThisGrade: false, totalMaxExamMarks: 0, totalMaxActivityMarks: 0, totalMaxMarks: 0 };
+        
+        const def = gradeDefinitions[grade];
+        if (!def) return { gradeDef: null, hasActivitiesForThisGrade: false, totalMaxExamMarks: 0, totalMaxActivityMarks: 0, totalMaxMarks: 0 };
+        
+        const hasActivities = !GRADES_WITH_NO_ACTIVITIES.includes(grade);
+        
+        let maxExam = 0;
+        let maxActivity = 0;
+        def.subjects.forEach(subject => {
+            maxExam += subject.examFullMarks;
+            if (hasActivities && subject.activityFullMarks > 0) {
+                maxActivity += subject.activityFullMarks;
+            }
+        });
+        
+        return { 
+            gradeDef: def, 
+            hasActivitiesForThisGrade: hasActivities, 
+            totalMaxExamMarks: maxExam, 
+            totalMaxActivityMarks: maxActivity, 
+            totalMaxMarks: maxExam + maxActivity 
+        };
+    }, [grade, gradeDefinitions]);
+
 
     useEffect(() => {
         const calculateExtraData = async () => {
@@ -70,7 +94,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
             }
             setIsLoadingExtraData(true);
 
-            // --- 1. Calculate Ranks based on the current examId ---
+            // --- Calculate Ranks based on the current examId ---
             const studentScores = classStudents.map(student => {
                 const exam = student.academicPerformance?.find(e => e.id === examId);
                 const results = exam?.results || [];
@@ -93,48 +117,11 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                 return { studentId: student.id, totalMarks, result: finalResult };
             });
             setRanks(calculateRanks(studentScores));
-
-            // --- 2. Calculate Attendance ---
-            const attendanceMap = new Map<string, { present: number, absent: number }>();
-            classStudents.forEach(s => attendanceMap.set(s.id, { present: 0, absent: 0 }));
-
-            const [startYearStr] = academicYear.split('-');
-            const startYear = parseInt(startYearStr, 10);
-            const academicMonths = ["April", "May", "June", "July", "August", "September", "October", "November", "December", "January", "February", "March"];
-            const monthMap: { [key: string]: number } = { April: 3, May: 4, June: 5, July: 6, August: 7, September: 8, October: 9, November: 10, December: 11, January: 0, February: 1, March: 2 };
-            
-            for (const monthName of academicMonths) {
-                const monthIndex = monthMap[monthName];
-                const year = monthIndex >= 3 ? startYear : startYear + 1;
-                try {
-                    const monthlyData = await fetchStudentAttendanceForMonth(grade, year, monthIndex + 1);
-                    Object.values(monthlyData).forEach(dailyRecord => {
-                        classStudents.forEach(student => {
-                            const status = dailyRecord[student.id];
-                            if (status === StudentAttendanceStatus.PRESENT) {
-                                attendanceMap.get(student.id)!.present++;
-                            } else if (status === StudentAttendanceStatus.ABSENT) {
-                                attendanceMap.get(student.id)!.absent++;
-                            }
-                        });
-                    });
-                } catch (error) {
-                    console.error(`Could not fetch attendance for ${monthName} ${year}:`, error);
-                }
-            }
-            
-            const finalAttendanceData = new Map<string, number | null>();
-            attendanceMap.forEach((data, studentId) => {
-                const total = data.present + data.absent;
-                finalAttendanceData.set(studentId, total > 0 ? (data.present / total) * 100 : null);
-            });
-            setAttendanceData(finalAttendanceData);
-
             setIsLoadingExtraData(false);
         };
 
         calculateExtraData();
-    }, [classStudents, grade, academicYear, gradeDefinitions, fetchStudentAttendanceForMonth, examId]);
+    }, [classStudents, grade, academicYear, gradeDefinitions, examId]);
 
     const statementData = useMemo(() => {
         if (!gradeDef || !grade) return [];
@@ -142,29 +129,29 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
             const exam = student.academicPerformance?.find(e => e.id === examId);
             const results = exam?.results || [];
             
-            let totalMarks = 0;
-            let totalMaxMarks = 0;
+            let totalExamMarks = 0;
+            let totalActivityMarks = 0;
 
             gradeDef.subjects.forEach(subject => {
                 const result = results.find(r => r.subject === subject.name);
-                const useSplitMarks = hasActivitiesForThisGrade && subject.activityFullMarks > 0;
-                
-                const obtainedMarks = useSplitMarks
-                    ? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0) 
-                    : (result?.marks ?? (result?.examMarks ?? 0) + (result?.activityMarks ?? 0));
-                
-                totalMarks += obtainedMarks;
-                totalMaxMarks += subject.examFullMarks + (useSplitMarks ? subject.activityFullMarks : 0);
+                if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
+                    totalExamMarks += result?.examMarks ?? 0;
+                    totalActivityMarks += result?.activityMarks ?? 0;
+                } else {
+                    totalExamMarks += result?.marks ?? ((result?.examMarks ?? 0) + (result?.activityMarks ?? 0));
+                }
             });
             
+            const totalMarks = totalExamMarks + totalActivityMarks;
             const percentage = totalMaxMarks > 0 ? (totalMarks / totalMaxMarks) * 100 : 0;
             const { finalResult, failedSubjects } = calculateStudentResult(results, gradeDef, student.grade);
 
             return {
                 student,
                 results,
+                totalExamMarks,
+                totalActivityMarks,
                 totalMarks,
-                totalMaxMarks,
                 percentage,
                 result: finalResult,
                 division: getDivision(percentage, finalResult),
@@ -172,7 +159,8 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                 failedSubjects
             };
         });
-    }, [classStudents, examId, gradeDef, grade, hasActivitiesForThisGrade]);
+    }, [classStudents, examId, gradeDef, grade, hasActivitiesForThisGrade, totalMaxMarks]);
+
 
     const handleDownloadTemplate = () => {
         if (!gradeDef || !examDetails) return;
@@ -313,65 +301,121 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
 
 
                 <div className="overflow-x-auto" id="mark-statement-table">
-                    <table className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300">
-                        <thead className="bg-slate-100">
-                            <tr>
-                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Roll No</th>
-                                <th rowSpan={2} className="px-2 py-2 text-left text-xs font-bold text-slate-800 uppercase border">Student Name</th>
-                                {gradeDef.subjects.map(subject => (
-                                    <th key={subject.name} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">{subject.name}</th>
-                                ))}
-                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Total</th>
-                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Max</th>
-                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">%</th>
-                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Div</th>
-                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Grade</th>
-                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Result</th>
-                                <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Rank</th>
-                            </tr>
-                            <tr>
-                               {gradeDef.subjects.map(subject => {
-                                    const useSplitMarks = hasActivitiesForThisGrade && subject.activityFullMarks > 0;
-                                    const maxMarks = subject.examFullMarks + (useSplitMarks ? subject.activityFullMarks : 0);
-                                    return <th key={subject.name} className="px-2 py-1 text-center text-xs font-semibold text-slate-700 border">({maxMarks})</th>;
-                               })}
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-slate-200">
-                            {statementData.map(({ student, results, totalMarks, totalMaxMarks, percentage, result, division, grade: gradeLetter, failedSubjects }, index) => {
-                                const studentRank = ranks.get(student.id);
-                                return (
-                                    <tr key={student.id} className="hover:bg-slate-50">
-                                        <td className="px-2 py-2 whitespace-nowrap text-center text-sm font-semibold text-slate-800 border">{student.rollNo}</td>
-                                        <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-slate-800 text-left border">
-                                            <Link to={`/student/${student.id}`} className="hover:underline text-sky-700">{student.name}</Link>
-                                        </td>
-                                        {gradeDef.subjects.map(subject => {
-                                            const studentResult = results.find(r => r.subject === subject.name);
-                                            const useSplitMarks = hasActivitiesForThisGrade && subject.activityFullMarks > 0;
-                                            const obtainedMarks = useSplitMarks
-                                                ? ((studentResult?.examMarks ?? 0) + (studentResult?.activityMarks ?? 0))
-                                                : (studentResult?.marks ?? (studentResult?.examMarks ?? 0) + (studentResult?.activityMarks ?? 0));
-                                            const isFailed = failedSubjects.includes(subject.name);
-                                            
-                                            return (
-                                                <td key={subject.name} className={`px-2 py-2 text-center text-sm font-semibold border ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>
-                                                    {obtainedMarks}
-                                                </td>
-                                            );
-                                        })}
-                                        <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{totalMarks}</td>
-                                        <td className="px-2 py-2 text-center text-sm font-semibold text-slate-800 border">{totalMaxMarks}</td>
-                                        <td className="px-2 py-2 text-center text-sm font-semibold text-slate-800 border">{percentage.toFixed(2)}%</td>
-                                        <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{division}</td>
-                                        <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{gradeLetter}</td>
-                                        <td className={`px-2 py-2 text-center text-sm font-bold border ${result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}`}>{result}</td>
-                                        <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{isLoadingExtraData ? '...' : studentRank}</td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                    {hasActivitiesForThisGrade ? (
+                         <table className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300 text-sm">
+                            <thead className="bg-slate-100">
+                                <tr>
+                                    <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Roll</th>
+                                    <th rowSpan={2} className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom">Student Name</th>
+                                    {gradeDef.subjects.map(subject => (
+                                        <th key={subject.name} colSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase">{subject.name}</th>
+                                    ))}
+                                    <th colSpan={3} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase">Totals</th>
+                                    <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">%</th>
+                                    <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Div</th>
+                                    <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Grade</th>
+                                    <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Result</th>
+                                    <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Rank</th>
+                                </tr>
+                                <tr>
+                                    {gradeDef.subjects.flatMap(subject => [
+                                        <th key={`${subject.name}-exam`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">E({subject.examFullMarks})</th>,
+                                        <th key={`${subject.name}-activity`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">A({subject.activityFullMarks})</th>
+                                    ])}
+                                    <th className="border px-1 py-1 font-semibold text-slate-700 text-xs">Exam ({totalMaxExamMarks})</th>
+                                    <th className="border px-1 py-1 font-semibold text-slate-700 text-xs">Activity ({totalMaxActivityMarks})</th>
+                                    <th className="border px-1 py-1 font-semibold text-slate-700 text-xs">Grand ({totalMaxMarks})</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-slate-200">
+                                {statementData.map(({ student, results, totalExamMarks, totalActivityMarks, totalMarks, percentage, result, division, grade: gradeLetter, failedSubjects }) => {
+                                    const studentRank = ranks.get(student.id);
+                                    return (
+                                        <tr key={student.id} className="hover:bg-slate-50">
+                                            <td className="border px-2 py-1 text-center font-semibold">{student.rollNo}</td>
+                                            <td className="border px-2 py-1 text-left font-medium">
+                                                <Link to={`/student/${student.id}`} className="hover:underline text-sky-700">{student.name}</Link>
+                                            </td>
+                                            {gradeDef.subjects.map(subject => {
+                                                const studentResult = results.find(r => r.subject === subject.name);
+                                                const examMarks = studentResult?.examMarks ?? '-';
+                                                const activityMarks = studentResult?.activityMarks ?? '-';
+                                                const isFailed = failedSubjects.includes(subject.name);
+                                                return [
+                                                    <td key={`${subject.name}-exam`} className={`border px-2 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{examMarks}</td>,
+                                                    <td key={`${subject.name}-activity`} className={`border px-2 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{activityMarks}</td>
+                                                ];
+                                            })}
+                                            <td className="border px-2 py-1 text-center font-bold">{totalExamMarks}</td>
+                                            <td className="border px-2 py-1 text-center font-bold">{totalActivityMarks}</td>
+                                            <td className="border px-2 py-1 text-center font-bold text-slate-900">{totalMarks}</td>
+                                            <td className="border px-2 py-1 text-center font-semibold">{percentage.toFixed(2)}%</td>
+                                            <td className="border px-2 py-1 text-center font-bold">{division}</td>
+                                            <td className="border px-2 py-1 text-center font-bold">{gradeLetter}</td>
+                                            <td className={`border px-2 py-1 text-center font-bold ${result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}`}>{result}</td>
+                                            <td className="border px-2 py-1 text-center font-bold">{isLoadingExtraData ? '...' : studentRank}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <table className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300">
+                            <thead className="bg-slate-100">
+                                <tr>
+                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Roll No</th>
+                                    <th rowSpan={2} className="px-2 py-2 text-left text-xs font-bold text-slate-800 uppercase border">Student Name</th>
+                                    {gradeDef.subjects.map(subject => (
+                                        <th key={subject.name} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">{subject.name}</th>
+                                    ))}
+                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Total</th>
+                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Max</th>
+                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">%</th>
+                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Div</th>
+                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Grade</th>
+                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Result</th>
+                                    <th rowSpan={2} className="px-2 py-2 text-center text-xs font-bold text-slate-800 uppercase border">Rank</th>
+                                </tr>
+                                <tr>
+                                {gradeDef.subjects.map(subject => {
+                                        const maxMarks = subject.examFullMarks;
+                                        return <th key={subject.name} className="px-2 py-1 text-center text-xs font-semibold text-slate-700 border">({maxMarks})</th>;
+                                })}
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-slate-200">
+                                {statementData.map(({ student, results, totalMarks, percentage, result, division, grade: gradeLetter, failedSubjects }) => {
+                                    const studentRank = ranks.get(student.id);
+                                    return (
+                                        <tr key={student.id} className="hover:bg-slate-50">
+                                            <td className="px-2 py-2 whitespace-nowrap text-center text-sm font-semibold text-slate-800 border">{student.rollNo}</td>
+                                            <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-slate-800 text-left border">
+                                                <Link to={`/student/${student.id}`} className="hover:underline text-sky-700">{student.name}</Link>
+                                            </td>
+                                            {gradeDef.subjects.map(subject => {
+                                                const studentResult = results.find(r => r.subject === subject.name);
+                                                const obtainedMarks = (studentResult?.marks ?? (studentResult?.examMarks ?? 0) + (studentResult?.activityMarks ?? 0));
+                                                const isFailed = failedSubjects.includes(subject.name);
+                                                
+                                                return (
+                                                    <td key={subject.name} className={`px-2 py-2 text-center text-sm font-semibold border ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>
+                                                        {obtainedMarks}
+                                                    </td>
+                                                );
+                                            })}
+                                            <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{totalMarks}</td>
+                                            <td className="px-2 py-2 text-center text-sm font-semibold text-slate-800 border">{totalMaxMarks}</td>
+                                            <td className="px-2 py-2 text-center text-sm font-semibold text-slate-800 border">{percentage.toFixed(2)}%</td>
+                                            <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{division}</td>
+                                            <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{gradeLetter}</td>
+                                            <td className={`px-2 py-2 text-center text-sm font-bold border ${result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}`}>{result}</td>
+                                            <td className="px-2 py-2 text-center text-sm font-bold text-slate-800 border">{isLoadingExtraData ? '...' : studentRank}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
                  <div className="mt-6 flex justify-end print:hidden">
                     <button onClick={() => window.print()} className="btn btn-primary">
