@@ -46,7 +46,6 @@ export const GRADE_DEFINITIONS: Record<Grade, GradeDefinition> = {
     ]},
     [Grade.III]: { classTeacherId: undefined, subjects: [
         { name: 'ENG-I', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'ACT', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'ENG-II', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'MIZO', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'EVS', examFullMarks: 60, activityFullMarks: 40 },
@@ -57,7 +56,6 @@ export const GRADE_DEFINITIONS: Record<Grade, GradeDefinition> = {
     ]},
     [Grade.IV]: { classTeacherId: undefined, subjects: [
         { name: 'ENG-I', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'ACT', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'ENG-II', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'MIZO', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'EVS', examFullMarks: 60, activityFullMarks: 40 },
@@ -68,7 +66,6 @@ export const GRADE_DEFINITIONS: Record<Grade, GradeDefinition> = {
     ]},
     [Grade.V]: { classTeacherId: undefined, subjects: [
         { name: 'ENG-I', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'ACT', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'ENG-II', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'MIZO', examFullMarks: 60, activityFullMarks: 40 },
         { name: 'EVS', examFullMarks: 60, activityFullMarks: 40 },
