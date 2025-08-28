@@ -113,39 +113,19 @@ export const calculateStudentResult = (
 
     const failedSubjects: string[] = [];
     const hasActivityMarks = gradeDef.subjects.some(s => s.activityFullMarks > 0);
-    const gradeCategory = [Grade.IX, Grade.X].includes(grade) ? 'IX-X'
-        : [Grade.NURSERY, Grade.KINDERGARTEN, Grade.I, Grade.II].includes(grade) ? 'NUR-II'
-        : 'III-VIII';
 
     gradeDef.subjects
       .filter(subject => isSubjectNumeric(subject, grade))
       .forEach(subject => {
         const result = finalTermResults.find(r => r.subject === subject.name);
-        const examMarks = result?.examMarks ?? 0;
         const singleMark = result?.marks ?? 0;
-        const obtained = hasActivityMarks ? (examMarks + (result?.activityMarks ?? 0)) : singleMark;
+        const obtained = hasActivityMarks ? ((result?.examMarks ?? 0) + (result?.activityMarks ?? 0)) : singleMark;
         const full = subject.examFullMarks + (hasActivityMarks ? subject.activityFullMarks : 0);
 
         if (full > 0) {
-            let failed = false;
-            if (gradeCategory === 'III-VIII') {
-                if (hasActivityMarks) {
-                    // Fail if exam marks are below 20 OR total is below 33
-                    if (examMarks < 20 || obtained < 33) {
-                        failed = true;
-                    }
-                } else { // Fallback for old system without activities
-                    if (singleMark < 33) {
-                         failed = true;
-                    }
-                }
-            } else {
-                if (obtained < 33) {
-                    failed = true;
-                }
-            }
-            if (failed) {
-                 failedSubjects.push(subject.name);
+            // Uniform pass mark of 33 for all numeric subjects across all grades.
+            if (obtained < 33) {
+                failedSubjects.push(subject.name);
             }
         }
     });

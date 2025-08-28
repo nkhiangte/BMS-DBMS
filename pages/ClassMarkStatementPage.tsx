@@ -166,13 +166,16 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
 
 
     const handleDownloadTemplate = () => {
-        if (!gradeDef || !examDetails) return;
+        if (!gradeDef || !examDetails || !grade) return;
 
         const headers = ['Roll No', 'Student Name'];
         const useSplitMarks = hasActivitiesForThisGrade && gradeDef.subjects.some(s => s.activityFullMarks > 0);
 
         gradeDef.subjects.forEach(subject => {
-            if (subject.gradingSystem === 'OABC') {
+            const isGradeBasedOverride = (grade === Grade.I || grade === Grade.II) && (subject.name === 'Cursive' || subject.name === 'Drawing');
+            const isGradeBased = subject.gradingSystem === 'OABC' || isGradeBasedOverride;
+            
+            if (isGradeBased) {
                  headers.push(`${subject.name} (Grade)`);
             } else if (useSplitMarks && subject.activityFullMarks > 0) {
                 headers.push(`${subject.name} (Exam)`);
@@ -192,7 +195,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !gradeDef || !examDetails) return;
+        if (!file || !gradeDef || !examDetails || !grade) return;
 
         setIsProcessingFile(true);
         setImportData(null);
@@ -230,7 +233,10 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                     const newResult: SubjectMark = { subject: subjectDef.name };
                     const useSplitMarks = hasActivitiesForThisGrade && subjectDef.activityFullMarks > 0;
                     
-                    if (subjectDef.gradingSystem === 'OABC') {
+                    const isGradeBasedOverride = (grade === Grade.I || grade === Grade.II) && (subjectDef.name === 'Cursive' || subjectDef.name === 'Drawing');
+                    const isGradeBased = subjectDef.gradingSystem === 'OABC' || isGradeBasedOverride;
+                    
+                    if (isGradeBased) {
                         let gradeVal = row[`${subjectDef.name} (Grade)`];
                         if (gradeVal === undefined) {
                             gradeVal = row[subjectDef.name];
