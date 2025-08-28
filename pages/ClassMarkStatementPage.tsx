@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, StudentStatus, Exam, SubjectMark, User, StudentAttendanceRecord, StudentAttendanceStatus } from '../types';
 import { BackIcon, HomeIcon, PrinterIcon, EditIcon, InboxArrowDownIcon, SpinnerIcon } from '../components/Icons';
-import { TERMINAL_EXAMS, GRADES_WITH_NO_ACTIVITIES } from '../constants';
+import { TERMINAL_EXAMS, GRADES_WITH_NO_ACTIVITIES, OABC_GRADES } from '../constants';
 import { formatStudentId, calculateStudentResult, calculateRanks } from '../utils';
 import * as XLSX from 'xlsx';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -235,8 +235,19 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                     const useSplitMarks = hasActivitiesForThisGrade && subjectDef.activityFullMarks > 0;
                     
                     if (subjectDef.gradingSystem === 'OABC') {
-                        const gradeVal = row[`${subjectDef.name} (Grade)`];
-                        if (gradeVal !== undefined) newResult.grade = gradeVal;
+                        let gradeVal = row[`${subjectDef.name} (Grade)`];
+                        if (gradeVal === undefined) {
+                            gradeVal = row[subjectDef.name];
+                        }
+
+                        if (gradeVal !== undefined && gradeVal !== null && String(gradeVal).trim() !== '') {
+                            const upperGradeVal = String(gradeVal).toUpperCase().trim();
+                            if (OABC_GRADES.includes(upperGradeVal as any)) {
+                                newResult.grade = upperGradeVal as 'O' | 'A' | 'B' | 'C';
+                            } else {
+                                errors.push(`Row ${index + 2}, Student ${student.name}: Invalid grade "${gradeVal}" for ${subjectDef.name}. Must be O, A, B, or C.`);
+                            }
+                        }
                     } else if (useSplitMarks) {
                         const examMark = row[`${subjectDef.name} (Exam)`];
                         const activityMark = row[`${subjectDef.name} (Activity)`];
