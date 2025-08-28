@@ -65,94 +65,80 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
           <thead className="bg-slate-50">
             <tr>
               <th scope="col" className="w-1/3 px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Subject</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Exam / Grade</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Activity Marks</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Total</th>
+              {hasActivitiesForThisGrade ? (
+                <>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Exam Marks</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Activity Marks</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Total</th>
+                </>
+              ) : (
+                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase tracking-wider">Marks / Grade</th>
+              )}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
             {subjectDefinitions.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-4 text-center text-slate-600">
+                <td colSpan={hasActivitiesForThisGrade ? 4 : 2} className="px-6 py-4 text-center text-slate-600">
                   No subjects defined for this grade.
                 </td>
               </tr>
             ) : (
               subjectDefinitions.map((subjectDef) => {
                 const result = results.find(r => r.subject === subjectDef.name) || { subject: subjectDef.name };
-                const useSplitMarks = hasActivitiesForThisGrade && subjectDef.activityFullMarks > 0;
-                
                 const isEffectivelyGradeBased = subjectDef.examFullMarks === 0 && subjectDef.activityFullMarks === 0;
                 const isGradeBased = subjectDef.gradingSystem === 'OABC' || isEffectivelyGradeBased;
-                
+
                 return (
                   <tr key={subjectDef.name}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">
                        {subjectDef.name}
                     </td>
-
-                    {/* Exam / Main Marks / Grade Column */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800">
-                      {isEditing ? (
-                        isGradeBased ? (
-                            <input 
-                                type="text"
-                                value={result.grade ?? ''}
-                                onChange={(e) => {
-                                    const val = e.target.value.toUpperCase();
-                                    if (/^[OABC]?$/.test(val)) {
-                                        handleMarksChange(subjectDef.name, 'grade', val);
-                                    }
-                                }}
-                                className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm text-center font-bold"
-                                maxLength={1}
-                            />
-                        ) : (
-                            <input 
-                                type="number"
-                                value={useSplitMarks ? (result.examMarks ?? '') : (result.marks ?? (result.examMarks ?? ''))}
-                                onChange={(e) => handleMarksChange(subjectDef.name, useSplitMarks ? 'examMarks' : 'marks', e.target.value, subjectDef.examFullMarks)}
-                                className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
-                                placeholder={`/ ${subjectDef.examFullMarks}`}
-                                max={subjectDef.examFullMarks}
-                            />
-                        )
-                      ) : (
-                        isGradeBased ? <span className="font-bold text-lg">{result.grade || '-'}</span> :
-                        (useSplitMarks ? (result.examMarks ?? '-') : ((result.marks ?? ((result.examMarks ?? 0) + (result.activityMarks ?? 0))) || '-'))
-                      )}
-                    </td>
-
-                    {/* Activity Marks Column */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800">
-                      {isGradeBased ? <span className="text-slate-600 font-semibold">N/A</span> :
-                        useSplitMarks ? (
-                            isEditing ? (
-                            <input 
-                                type="number"
-                                value={result.activityMarks ?? ''}
-                                onChange={(e) => handleMarksChange(subjectDef.name, 'activityMarks', e.target.value, subjectDef.activityFullMarks)}
-                                className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
-                                placeholder={`/ ${subjectDef.activityFullMarks}`}
-                                max={subjectDef.activityFullMarks}
-                            />
+                    {hasActivitiesForThisGrade ? (
+                        <>
+                            {/* Exam Marks Column (for grades with activities) */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800">
+                            {isEditing ? (
+                                isGradeBased ? (
+                                    <input type="text" value={result.grade ?? ''} onChange={(e) => { const val = e.target.value.toUpperCase(); if (/^[OABC]?$/.test(val)) { handleMarksChange(subjectDef.name, 'grade', val); }}} className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm text-center font-bold" maxLength={1} />
+                                ) : (
+                                    <input type="number" value={result.examMarks ?? ''} onChange={(e) => handleMarksChange(subjectDef.name, 'examMarks', e.target.value, subjectDef.examFullMarks)} className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm" placeholder={`/ ${subjectDef.examFullMarks}`} max={subjectDef.examFullMarks} />
+                                )
                             ) : (
-                            result.activityMarks ?? '-'
-                            )
-                        ) : (
-                            <span className="text-slate-600 font-semibold">N/A</span>
-                        )
-                      }
-                    </td>
-
-                    {/* Total Column */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900">
-                      {isGradeBased ? <span className="font-bold text-lg">{result.grade || '-'}</span> :
-                       useSplitMarks
-                        ? (((result.examMarks || 0) + (result.activityMarks || 0)) || '-')
-                        : ((result.marks ?? ((result.examMarks ?? 0) + (result.activityMarks ?? 0))) || '-')
-                      }
-                    </td>
+                                isGradeBased ? <span className="font-bold text-lg">{result.grade || '-'}</span> : (result.examMarks ?? '-')
+                            )}
+                            </td>
+                            {/* Activity Marks Column */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800">
+                            {isGradeBased || subjectDef.activityFullMarks === 0 ? <span className="text-slate-600 font-semibold">N/A</span> :
+                                (isEditing ? (
+                                    <input type="number" value={result.activityMarks ?? ''} onChange={(e) => handleMarksChange(subjectDef.name, 'activityMarks', e.target.value, subjectDef.activityFullMarks)} className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm" placeholder={`/ ${subjectDef.activityFullMarks}`} max={subjectDef.activityFullMarks}/>
+                                ) : (result.activityMarks ?? '-'))
+                            }
+                            </td>
+                            {/* Total Column */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900">
+                                {isGradeBased ? <span className="font-bold text-lg">{result.grade || '-'}</span> :
+                                (((result.examMarks || 0) + (result.activityMarks || 0)) || '-')
+                                }
+                            </td>
+                        </>
+                    ) : (
+                        <>
+                            {/* Single Marks/Grade Column (for grades without activities) */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800">
+                            {isEditing ? (
+                                isGradeBased ? (
+                                <input type="text" value={result.grade ?? ''} onChange={(e) => { const val = e.target.value.toUpperCase(); if (/^[OABC]?$/.test(val)) { handleMarksChange(subjectDef.name, 'grade', val); }}} className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm text-center font-bold" maxLength={1} />
+                                ) : (
+                                <input type="number" value={result.marks ?? (result.examMarks ?? '')} onChange={(e) => handleMarksChange(subjectDef.name, 'marks', e.target.value, subjectDef.examFullMarks)} className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm" placeholder={`/ ${subjectDef.examFullMarks}`} max={subjectDef.examFullMarks}/>
+                                )
+                            ) : (
+                                isGradeBased ? <span className="font-bold text-lg">{result.grade || '-'}</span> : ((result.marks ?? ((result.examMarks ?? 0) + (result.activityMarks ?? 0))) || '-')
+                            )}
+                            </td>
+                        </>
+                    )}
                   </tr>
                 )
               })

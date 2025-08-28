@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Student, GradeDefinition, Exam, SubjectMark, Grade } from '../types';
 import { SpinnerIcon, CheckIcon, XIcon } from './Icons';
-import { OABC_GRADES } from '../constants';
+import { OABC_GRADES, GRADES_WITH_NO_ACTIVITIES } from '../constants';
 
 interface MarksEntryModalProps {
     isOpen: boolean;
@@ -63,6 +63,7 @@ const areResultsEqual = (res1: SubjectMark[], res2: SubjectMark[]): boolean => {
 const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSave, students, gradeDef, examId, examName, grade }) => {
     const [marksData, setMarksData] = useState<MarksState>({});
     const [isSaving, setIsSaving] = useState(false);
+    const hasActivitiesForThisGrade = !GRADES_WITH_NO_ACTIVITIES.includes(grade);
 
     useEffect(() => {
         if (isOpen) {
@@ -166,7 +167,7 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
 
                 if(isGradeBased) {
                     newResult.grade = processGrade(subjectMarks.grade);
-                } else if (subjectDef.activityFullMarks > 0) {
+                } else if (hasActivitiesForThisGrade && subjectDef.activityFullMarks > 0) {
                     newResult.examMarks = processMark(subjectMarks.examMarks);
                     newResult.activityMarks = processMark(subjectMarks.activityMarks);
                 } else {
@@ -209,7 +210,7 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                 <th className="border p-2 text-left font-bold text-slate-800">Roll</th>
                                 <th className="border p-2 text-left font-bold text-slate-800">Student Name</th>
                                 {gradeDef.subjects.map(subject => (
-                                    <th key={subject.name} colSpan={subject.gradingSystem === 'OABC' || (subject.examFullMarks === 0 && subject.activityFullMarks === 0) ? 1 : (subject.activityFullMarks > 0 ? 2 : 1)} className="border p-2 text-center font-bold text-slate-800">
+                                    <th key={subject.name} colSpan={hasActivitiesForThisGrade && subject.activityFullMarks > 0 ? 2 : 1} className="border p-2 text-center font-bold text-slate-800">
                                         {subject.name}
                                     </th>
                                 ))}
@@ -221,14 +222,16 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                     const isEffectivelyGradeBased = subject.examFullMarks === 0 && subject.activityFullMarks === 0;
                                     const isGradeBased = subject.gradingSystem === 'OABC' || isEffectivelyGradeBased;
                                     
-                                    return isGradeBased ? [
-                                        <th key={subject.name} className="border p-2 font-semibold text-slate-700">Grade</th>
-                                    ] : subject.activityFullMarks > 0 ? [
-                                        <th key={`${subject.name}-exam`} className="border p-2 font-semibold text-slate-700">Exam ({subject.examFullMarks})</th>,
-                                        <th key={`${subject.name}-activity`} className="border p-2 font-semibold text-slate-700">Act ({subject.activityFullMarks})</th>
-                                    ] : [
-                                        <th key={subject.name} className="border p-2 font-semibold text-slate-700">Marks ({subject.examFullMarks})</th>
-                                    ]
+                                    if (isGradeBased) {
+                                        return [<th key={subject.name} className="border p-2 font-semibold text-slate-700">Grade</th>];
+                                    } else if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
+                                        return [
+                                            <th key={`${subject.name}-exam`} className="border p-2 font-semibold text-slate-700">Exam ({subject.examFullMarks})</th>,
+                                            <th key={`${subject.name}-activity`} className="border p-2 font-semibold text-slate-700">Act ({subject.activityFullMarks})</th>
+                                        ];
+                                    } else {
+                                        return [<th key={subject.name} className="border p-2 font-semibold text-slate-700">Marks ({subject.examFullMarks})</th>];
+                                    }
                                 })}
                             </tr>
                         </thead>
@@ -262,7 +265,7 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                                     />
                                                 </td>
                                             ]
-                                        } else if (subject.activityFullMarks > 0) {
+                                        } else if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
                                             return [
                                                 <td key={`${subject.name}-exam`} className="border p-1">
                                                     <input
