@@ -1,7 +1,7 @@
 
 
-import React, { useState, FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, FormEvent, useEffect, useCallback } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Student, TcRecord, Grade, User } from '../types';
 import { BackIcon, HomeIcon, DocumentPlusIcon, CheckIcon } from '../components/Icons';
 import { formatStudentId, calculateDues } from '../utils';
@@ -50,8 +50,9 @@ const FormField: React.FC<{
 
 const TcRegistrationPage: React.FC<TcRegistrationPageProps> = ({ students, onSave, academicYear, user }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   
-  const [studentIdInput, setStudentIdInput] = useState<string>('');
+  const [studentIdInput, setStudentIdInput] = useState<string>(location.state?.studentIdInput || '');
   const [student, setStudent] = useState<Student | null>(null);
   const [searchError, setSearchError] = useState<string>('');
   const [isFetchingDob, setIsFetchingDob] = useState<boolean>(false);
@@ -96,7 +97,7 @@ const TcRegistrationPage: React.FC<TcRegistrationPageProps> = ({ students, onSav
     }
   };
   
-  const handleStudentSearch = () => {
+  const handleStudentSearch = useCallback(() => {
     setStudent(null);
     setSearchError('');
     setFormData(initialFormState); // Reset form on new search
@@ -123,7 +124,13 @@ const TcRegistrationPage: React.FC<TcRegistrationPageProps> = ({ students, onSav
     } else {
         setSearchError('Student ID not found. Please check and try again.');
     }
-  };
+  }, [studentIdInput, students, academicYear]);
+
+  useEffect(() => {
+      if (location.state?.studentIdInput) {
+          handleStudentSearch();
+      }
+  }, [location.state, handleStudentSearch]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

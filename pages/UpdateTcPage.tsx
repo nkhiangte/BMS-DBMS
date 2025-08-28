@@ -1,7 +1,7 @@
 
 
-import React, { useState, FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, FormEvent, useEffect, useCallback } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { TcRecord, User } from '../types';
 import { BackIcon, HomeIcon, SearchIcon, CheckIcon } from '../components/Icons';
 
@@ -46,13 +46,14 @@ interface UpdateTcPageProps {
 
 const UpdateTcPage: React.FC<UpdateTcPageProps> = ({ tcRecords, onUpdate, user }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   
-  const [studentIdInput, setStudentIdInput] = useState<string>('');
+  const [studentIdInput, setStudentIdInput] = useState<string>(location.state?.studentIdInput || '');
   const [foundRecord, setFoundRecord] = useState<TcRecord | null>(null);
   const [searchError, setSearchError] = useState<string>('');
   const [formData, setFormData] = useState<TcRecord['tcData'] | null>(null);
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     setFoundRecord(null);
     setFormData(null);
     setSearchError('');
@@ -70,7 +71,13 @@ const UpdateTcPage: React.FC<UpdateTcPageProps> = ({ tcRecords, onUpdate, user }
     } else {
       setSearchError('No Transfer Certificate record found for this Student ID.');
     }
-  };
+  }, [studentIdInput, tcRecords]);
+
+  useEffect(() => {
+      if (location.state?.studentIdInput) {
+          handleSearch();
+      }
+  }, [location.state, handleSearch]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     if (!formData) return;

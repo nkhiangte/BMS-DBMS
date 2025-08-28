@@ -1,5 +1,6 @@
-import { Student, Staff, Grade, FeePayments, SubjectMark, GradeDefinition, StaffAttendanceRecord, StudentAttendanceRecord, AttendanceStatus, StudentAttendanceStatus, SubjectDefinition } from './types';
-import { FEE_STRUCTURE, academicMonths, GRADES_LIST } from './constants';
+
+import { Student, Staff, Grade, FeePayments, SubjectMark, GradeDefinition, StaffAttendanceRecord, StudentAttendanceRecord, AttendanceStatus, StudentAttendanceStatus, SubjectDefinition, FeeStructure } from './types';
+import { academicMonths, GRADES_LIST, FEE_SET_GRADES } from './constants';
 
 const getGradeCode = (grade: Grade): string => {
     switch (grade) {
@@ -37,13 +38,18 @@ export const formatStudentId = (student: Student, academicYear: string): string 
     return `BMS${yearSuffix}${gradeCode}${paddedRollNo}`;
 };
 
-export const getFeeDetails = (grade: Grade) => {
-    const set1Grades: Grade[] = [Grade.NURSERY, Grade.KINDERGARTEN, Grade.I, Grade.II];
-    const set2Grades: Grade[] = [Grade.III, Grade.IV, Grade.V, Grade.VI];
-
-    if (set1Grades.includes(grade)) return FEE_STRUCTURE.set1;
-    if (set2Grades.includes(grade)) return FEE_STRUCTURE.set2;
-    return FEE_STRUCTURE.set3;
+export const getFeeDetails = (grade: Grade, feeStructure: FeeStructure) => {
+    if (FEE_SET_GRADES.set1.includes(grade)) {
+        return feeStructure.set1;
+    }
+    if (FEE_SET_GRADES.set2.includes(grade)) {
+        return feeStructure.set2;
+    }
+    if (FEE_SET_GRADES.set3.includes(grade)) {
+        return feeStructure.set3;
+    }
+    // Fallback, though all grades are covered by FEE_SET_GRADES
+    return feeStructure.set1;
 };
 
 export const calculateDues = (student: Student): string[] => {

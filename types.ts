@@ -251,6 +251,18 @@ export interface Student {
   transferDate?: string;
 }
 
+// --- NEW: Fee Structure Types ---
+export interface FeeSet {
+    admissionFee: number;
+    tuitionFee: number;
+    examFee: number;
+}
+
+export interface FeeStructure {
+    set1: FeeSet;
+    set2: FeeSet;
+    set3: FeeSet;
+}
 
 // --- Transfer Certificate Types ---
 

@@ -46,10 +46,16 @@ export const GRADE_DEFINITIONS: Record<Grade, GradeDefinition> = {
 
 export const academicMonths = ["April", "May", "June", "July", "August", "September", "October", "November", "December", "January", "February", "March"];
 
-export const FEE_STRUCTURE = {
+export const DEFAULT_FEE_STRUCTURE = {
   set1: { admissionFee: 5000, tuitionFee: 1500, examFee: 500 },
   set2: { admissionFee: 6000, tuitionFee: 2000, examFee: 600 },
   set3: { admissionFee: 7000, tuitionFee: 2500, examFee: 700 },
+};
+
+export const FEE_SET_GRADES: Record<string, Grade[]> = {
+    set1: [Grade.NURSERY, Grade.KINDERGARTEN, Grade.I, Grade.II],
+    set2: [Grade.III, Grade.IV, Grade.V, Grade.VI],
+    set3: [Grade.VII, Grade.VIII, Grade.IX, Grade.X],
 };
 
 export const INVENTORY_CATEGORY_LIST: InventoryCategory[] = Object.values(InventoryCategory);
