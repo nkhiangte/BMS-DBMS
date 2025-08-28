@@ -301,14 +301,18 @@ export const calculateRanks = (
     .filter(s => s.result === 'PASS' || s.result === 'SIMPLE PASS')
     .sort((a, b) => b.totalMarks - a.totalMarks);
 
-  // Assign ranks, handling ties using standard competition ranking (1, 2, 2, 4).
-  let rank = 1;
-  for (let i = 0; i < passedStudents.length; i++) {
-    // If not the first student and has a lower score than the previous, update rank.
-    if (i > 0 && passedStudents[i].totalMarks < passedStudents[i - 1].totalMarks) {
-      rank = i + 1;
+  // Assign ranks, handling ties using dense ranking (e.g., 1, 2, 2, 3).
+  if (passedStudents.length > 0) {
+    let rank = 1;
+    ranks.set(passedStudents[0].studentId, rank);
+    for (let i = 1; i < passedStudents.length; i++) {
+      // If score is lower than the previous student, increment the rank.
+      // Otherwise, it's a tie, so they get the same rank.
+      if (passedStudents[i].totalMarks < passedStudents[i - 1].totalMarks) {
+        rank++;
+      }
+      ranks.set(passedStudents[i].studentId, rank);
     }
-    ranks.set(passedStudents[i].studentId, rank);
   }
 
   // Set rank to 'NA' for students who failed.
