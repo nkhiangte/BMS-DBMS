@@ -460,6 +460,7 @@ export enum AttendanceStatus {
     PRESENT = "Present",
     ABSENT = "Absent",
     LEAVE = "On Leave",
+    LATE = "Late",
 }
 
 export interface StaffAttendanceRecord {
@@ -492,7 +493,8 @@ export enum CalendarEventType {
 export interface CalendarEvent {
     id: string;
     title: string;
-    date: string; // YYYY-MM-DD
+    date: string; // YYYY-MM-DD (Start Date)
+    endDate?: string; // YYYY-MM-DD (Optional End Date)
     type: CalendarEventType;
     description?: string;
 }

@@ -14,6 +14,7 @@ const CalendarEventFormModal: React.FC<CalendarEventFormModalProps> = ({ isOpen,
     const getInitialFormData = () => ({
         title: '',
         date: formatDateForDisplay(new Date().toISOString().split('T')[0]),
+        endDate: '',
         type: CalendarEventType.EVENT,
         description: '',
     });
@@ -26,6 +27,7 @@ const CalendarEventFormModal: React.FC<CalendarEventFormModalProps> = ({ isOpen,
                 setFormData({
                     title: event.title,
                     date: formatDateForDisplay(event.date),
+                    endDate: event.endDate ? formatDateForDisplay(event.endDate) : '',
                     type: event.type,
                     description: event.description || '',
                 });
@@ -45,6 +47,7 @@ const CalendarEventFormModal: React.FC<CalendarEventFormModalProps> = ({ isOpen,
         const dataToSubmit = {
             ...formData,
             date: formatDateForStorage(formData.date),
+            endDate: formData.endDate ? formatDateForStorage(formData.endDate) : undefined,
             type: formData.type as CalendarEventType,
         };
         onSubmit(dataToSubmit);
@@ -66,15 +69,19 @@ const CalendarEventFormModal: React.FC<CalendarEventFormModalProps> = ({ isOpen,
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label htmlFor="date" className="block text-sm font-bold text-slate-800">Date</label>
+                                <label htmlFor="date" className="block text-sm font-bold text-slate-800">Start Date</label>
                                 <input type="text" name="date" id="date" placeholder="DD/MM/YYYY" pattern="\d{1,2}/\d{1,2}/\d{4}" value={formData.date} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
                             </div>
-                            <div>
-                                <label htmlFor="type" className="block text-sm font-bold text-slate-800">Event Type</label>
-                                <select name="type" id="type" value={formData.type} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required>
-                                    {CALENDAR_EVENT_TYPE_LIST.map(type => <option key={type} value={type}>{type}</option>)}
-                                </select>
+                             <div>
+                                <label htmlFor="endDate" className="block text-sm font-bold text-slate-800">End Date (Optional)</label>
+                                <input type="text" name="endDate" id="endDate" placeholder="DD/MM/YYYY" pattern="\d{1,2}/\d{1,2}/\d{4}" value={formData.endDate} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
                             </div>
+                        </div>
+                         <div>
+                            <label htmlFor="type" className="block text-sm font-bold text-slate-800">Event Type</label>
+                            <select name="type" id="type" value={formData.type} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required>
+                                {CALENDAR_EVENT_TYPE_LIST.map(type => <option key={type} value={type}>{type}</option>)}
+                            </select>
                         </div>
                         <div>
                             <label htmlFor="description" className="block text-sm font-bold text-slate-800">Description (Optional)</label>

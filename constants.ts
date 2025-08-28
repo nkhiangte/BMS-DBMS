@@ -57,3 +57,17 @@ export const HOSTEL_BLOCK_LIST: HostelBlock[] = Object.values(HostelBlock);
 export const HOSTEL_STAFF_ROLE_LIST: HostelStaffRole[] = Object.values(HostelStaffRole);
 export const HOSTEL_INVENTORY_CATEGORY_LIST: HostelInventoryCategory[] = Object.values(HostelInventoryCategory);
 export const CALENDAR_EVENT_TYPE_LIST: CalendarEventType[] = Object.values(CalendarEventType);
+
+export const MIZORAM_HOLIDAYS: { date: string, title: string }[] = [
+    { date: '2024-01-01', title: "New Year's Day" },
+    { date: '2024-01-26', title: "Republic Day" },
+    { date: '2024-03-01', title: "Chapchar Kut" },
+    { date: '2024-03-29', title: "Good Friday" },
+    { date: '2024-04-11', title: "Id-ul-Fitr" },
+    { date: '2024-06-15', title: "Y.M.A. Day" },
+    { date: '2024-06-30', title: "Remna Ni" },
+    { date: '2024-08-15', title: "Independence Day" },
+    { date: '2024-10-02', title: "Gandhi Jayanti" },
+    { date: '2024-12-25', title: "Christmas Day" },
+    { date: '2024-12-26', title: "Christmas Holiday" },
+];

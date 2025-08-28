@@ -208,6 +208,8 @@ export const exportAttendanceToCsv = ({
     const daysInMonth = new Date(year, monthNum, 0).getDate();
     const monthName = new Date(year, monthNum - 1, 1).toLocaleString('default', { month: 'long' });
 
+    const isStaff = entityType === 'Staff';
+
     const headers = [
         `${entityType} ID`,
         'Name',
@@ -216,6 +218,7 @@ export const exportAttendanceToCsv = ({
         'Absent',
         'Leave',
     ];
+    if (isStaff) headers.push('Late');
     
     const rows = people.map(person => {
         const rowData = [
@@ -226,6 +229,7 @@ export const exportAttendanceToCsv = ({
         let presentCount = 0;
         let absentCount = 0;
         let leaveCount = 0;
+        let lateCount = 0; // Only for staff
 
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -240,13 +244,18 @@ export const exportAttendanceToCsv = ({
                 statusChar = 'A';
                 absentCount++;
             } else if (status === AttendanceStatus.LEAVE || status === StudentAttendanceStatus.LEAVE) {
-                statusChar = 'L';
+                statusChar = 'LV'; // Using LV for Leave to avoid conflict
                 leaveCount++;
+            } else if (isStaff && status === AttendanceStatus.LATE) {
+                statusChar = 'L';
+                lateCount++;
             }
             rowData.push(statusChar);
         }
 
         rowData.push(String(presentCount), String(absentCount), String(leaveCount));
+        if (isStaff) rowData.push(String(lateCount));
+        
         return rowData.join(',');
     });
 

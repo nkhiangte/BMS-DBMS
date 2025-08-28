@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, CalendarEvent, CalendarEventType } from '../types';
 import { BackIcon, HomeIcon, PlusIcon, EditIcon, TrashIcon } from '../components/Icons';
+import { MIZORAM_HOLIDAYS } from '../constants';
 
 interface CalendarPageProps {
     events: CalendarEvent[];
@@ -45,15 +46,53 @@ const CalendarPage: React.FC<CalendarPageProps> = ({ events, user, onAdd, onEdit
         const firstDay = getFirstDayOfMonth(year, month);
         const calendarDays = [];
 
-        // Add padding for days from previous month
         for (let i = 0; i < firstDay; i++) {
             calendarDays.push(<div key={`pad-start-${i}`} className="border-r border-b bg-slate-50"></div>);
         }
 
-        // Add days of the current month
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const dayEvents = events.filter(e => e.date === dateStr);
+            const currentDayDate = new Date(dateStr);
+            currentDayDate.setHours(0, 0, 0, 0);
+
+            const dayEvents: CalendarEvent[] = [];
+
+            // 1. Check for database events (single and multi-day)
+            events.forEach(event => {
+                const eventStart = new Date(event.date);
+                const eventEnd = event.endDate ? new Date(event.endDate) : eventStart;
+                eventStart.setHours(0,0,0,0);
+                eventEnd.setHours(0,0,0,0);
+                if(currentDayDate >= eventStart && currentDayDate <= eventEnd) {
+                    dayEvents.push(event);
+                }
+            });
+
+            // 2. Check for Mizoram Government Holidays
+            const govHoliday = MIZORAM_HOLIDAYS.find(h => h.date === dateStr);
+            if (govHoliday) {
+                dayEvents.push({
+                    id: `gov-${dateStr}`,
+                    title: govHoliday.title,
+                    date: dateStr,
+                    type: CalendarEventType.HOLIDAY
+                });
+            }
+
+            // 3. Check for weekends (Saturday & Sunday)
+            const dayOfWeek = currentDayDate.getDay();
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                 dayEvents.push({
+                    id: `weekend-${dateStr}`,
+                    title: 'Holiday',
+                    date: dateStr,
+                    type: CalendarEventType.HOLIDAY
+                });
+            }
+
+            // Deduplicate events by title to avoid showing "Holiday" twice
+            const uniqueDayEvents = Array.from(new Map(dayEvents.map(e => [e.title, e])).values());
+
             const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
 
             calendarDays.push(
@@ -62,10 +101,10 @@ const CalendarPage: React.FC<CalendarPageProps> = ({ events, user, onAdd, onEdit
                         {day}
                     </span>
                     <div className="mt-1 space-y-1 overflow-y-auto">
-                        {dayEvents.map(event => (
-                            <div key={event.id} className={`p-1.5 rounded-md text-xs font-semibold border cursor-pointer ${getEventColor(event.type)}`} title={`${event.type}: ${event.title}`}>
+                        {uniqueDayEvents.map(event => (
+                            <div key={event.id} className={`p-1.5 rounded-md text-xs font-semibold border ${event.id.startsWith('gov-') || event.id.startsWith('weekend-') ? '' : 'cursor-pointer'} ${getEventColor(event.type)}`} title={`${event.type}: ${event.title}`}>
                                 <p className="truncate">{event.title}</p>
-                                {user.role === 'admin' && (
+                                {user.role === 'admin' && !event.id.startsWith('gov-') && !event.id.startsWith('weekend-') && (
                                     <div className="absolute top-1 right-1 hidden group-hover:flex gap-1">
                                         <button onClick={() => onEdit(event)} className="p-1 bg-white/50 rounded-full hover:bg-white"><EditIcon className="w-4 h-4 text-slate-600"/></button>
                                         <button onClick={() => onDelete(event)} className="p-1 bg-white/50 rounded-full hover:bg-white"><TrashIcon className="w-4 h-4 text-red-600"/></button>

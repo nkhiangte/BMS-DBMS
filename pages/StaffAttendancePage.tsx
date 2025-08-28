@@ -63,8 +63,19 @@ const StaffAttendancePage: React.FC<StaffAttendancePageProps> = ({ user, staff, 
                 const distance = getDistanceFromLatLonInM(latitude, longitude, SCHOOL_COORDS.lat, SCHOOL_COORDS.lon);
 
                 if (distance <= MAX_DISTANCE_METERS) {
-                    onMarkAttendance(currentUserStaffProfile.id, AttendanceStatus.PRESENT);
-                    setNotification({ message: `Attendance marked successfully! You are ${distance.toFixed(0)}m from the school.`, type: 'success' });
+                    const now = new Date();
+                    const cutOff = new Date();
+                    cutOff.setHours(9, 0, 0, 0); // 9:00 AM today
+
+                    const statusToMark = now > cutOff ? AttendanceStatus.LATE : AttendanceStatus.PRESENT;
+                    
+                    onMarkAttendance(currentUserStaffProfile.id, statusToMark);
+
+                    const message = statusToMark === AttendanceStatus.LATE 
+                        ? `Attendance marked as LATE. You are ${distance.toFixed(0)}m from school.`
+                        : `Attendance marked successfully! You are ${distance.toFixed(0)}m from the school.`;
+                    
+                    setNotification({ message, type: 'success' });
                 } else {
                     setNotification({ message: `Failed: You are ${distance.toFixed(0)}m away. You must be within ${MAX_DISTANCE_METERS}m.`, type: 'error' });
                 }
@@ -113,11 +124,13 @@ const StaffAttendancePage: React.FC<StaffAttendancePageProps> = ({ user, staff, 
             [AttendanceStatus.PRESENT]: 'bg-emerald-100 text-emerald-800 border-emerald-300',
             [AttendanceStatus.ABSENT]: 'bg-rose-100 text-rose-800 border-rose-300',
             [AttendanceStatus.LEAVE]: 'bg-slate-100 text-slate-800 border-slate-300',
+            [AttendanceStatus.LATE]: 'bg-amber-100 text-amber-800 border-amber-300',
         };
         const activeColors = {
             [AttendanceStatus.PRESENT]: 'bg-emerald-500 text-white',
             [AttendanceStatus.ABSENT]: 'bg-rose-500 text-white',
             [AttendanceStatus.LEAVE]: 'bg-slate-500 text-white',
+            [AttendanceStatus.LATE]: 'bg-amber-500 text-white',
         }
 
         return (
@@ -203,6 +216,7 @@ const StaffAttendancePage: React.FC<StaffAttendancePageProps> = ({ user, staff, 
                                             attendance?.[member.id] === AttendanceStatus.PRESENT ? 'bg-emerald-100 text-emerald-800' :
                                             attendance?.[member.id] === AttendanceStatus.ABSENT ? 'bg-rose-100 text-rose-800' :
                                             attendance?.[member.id] === AttendanceStatus.LEAVE ? 'bg-slate-200 text-slate-800' :
+                                            attendance?.[member.id] === AttendanceStatus.LATE ? 'bg-amber-100 text-amber-800' :
                                             'bg-slate-100 text-slate-600'
                                         }`}>
                                             {attendance?.[member.id] || 'Not Marked'}
@@ -213,7 +227,8 @@ const StaffAttendancePage: React.FC<StaffAttendancePageProps> = ({ user, staff, 
                                             <div className="flex items-center justify-center gap-2">
                                                 <StatusButton staffId={member.id} status={AttendanceStatus.PRESENT} label="P"/>
                                                 <StatusButton staffId={member.id} status={AttendanceStatus.ABSENT} label="A"/>
-                                                <StatusButton staffId={member.id} status={AttendanceStatus.LEAVE} label="L"/>
+                                                <StatusButton staffId={member.id} status={AttendanceStatus.LEAVE} label="LV"/>
+                                                <StatusButton staffId={member.id} status={AttendanceStatus.LATE} label="L"/>
                                             </div>
                                         </td>
                                     )}
