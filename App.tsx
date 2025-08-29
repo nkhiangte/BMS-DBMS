@@ -79,32 +79,58 @@ const base64ToBlob = async (base64: string): Promise<Blob> => {
     return blob;
 };
 
-const uploadImage = async (base64Image: string): Promise<string> => {
-    if (base64Image.startsWith('http')) {
-        return base64Image;
-    }
-
-    try {
-        const blob = await base64ToBlob(base64Image);
-        const fileName = `photos/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${blob.type.split('/')[1] || 'jpg'}`;
-        const storageRef = storage.ref(fileName);
-        
-        const snapshot = await storageRef.put(blob);
-        const downloadURL = await snapshot.ref.getDownloadURL();
-        
-        return downloadURL;
-    } catch (error: any) {
-        console.error("Error uploading image to Firebase Storage:", error);
-        let message = "Image upload failed. Please try again.";
-        if (error.code === 'storage/unauthorized') {
-            message = "Image upload failed due to insufficient permissions. Please contact an administrator to check Firebase Storage security rules.";
-        } else if (error.code === 'storage/canceled') {
-            message = "Image upload was canceled.";
-        } else if (error.code === 'storage/unknown') {
-            message = "An unknown error occurred during image upload. Check your network connection.";
+const uploadImage = (base64Image: string): Promise<string> => {
+    return new Promise(async (resolve, reject) => {
+        if (base64Image.startsWith('http')) {
+            resolve(base64Image);
+            return;
         }
-        throw new Error(message);
-    }
+
+        try {
+            const blob = await base64ToBlob(base64Image);
+            const fileName = `photos/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${blob.type.split('/')[1] || 'jpg'}`;
+            const storageRef = storage.ref(fileName);
+            
+            const uploadTask = storageRef.put(blob);
+
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    // Optional: handle progress updates
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    console.log('Upload is ' + progress + '% done');
+                }, 
+                (error) => {
+                    // Handle unsuccessful uploads
+                    console.error("Error uploading image to Firebase Storage:", error);
+                    let message = "Image upload failed. Please try again.";
+                    switch (error.code) {
+                        case 'storage/unauthorized':
+                            message = "Image upload failed due to insufficient permissions. Please check Firebase Storage security rules.";
+                            break;
+                        case 'storage/canceled':
+                            message = "Image upload was canceled.";
+                            break;
+                        case 'storage/unknown':
+                            message = "An unknown error occurred during image upload. Check your network connection.";
+                            break;
+                    }
+                    reject(new Error(message));
+                }, 
+                () => {
+                    // Handle successful uploads on complete
+                    uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                        resolve(downloadURL);
+                    }).catch((error) => {
+                        console.error("Error getting download URL:", error);
+                        reject(new Error("Image uploaded, but failed to get download URL."));
+                    });
+                }
+            );
+        } catch (error) {
+            console.error("Error preparing image for upload:", error);
+            reject(new Error("Failed to prepare image for upload."));
+        }
+    });
 };
 
 const PrivateRoute: React.FC<{ user: User | null, children: React.ReactNode }> = ({ user, children }) => {
