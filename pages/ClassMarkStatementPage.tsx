@@ -366,6 +366,24 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
     return (
         <>
             <div className="printable-area bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
+                 <style>{`
+                    @page {
+                        size: legal landscape;
+                        margin: 1cm;
+                    }
+                    @media print {
+                        body {
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+                        #mark-statement-table {
+                            font-size: 8pt;
+                        }
+                        .printable-area {
+                            padding: 0 !important;
+                        }
+                    }
+                `}</style>
                 <div className="mb-6 flex justify-between items-center print:hidden">
                     <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-800">
                         <BackIcon className="w-5 h-5" /> Back
