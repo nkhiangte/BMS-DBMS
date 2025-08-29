@@ -1,5 +1,6 @@
 
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, User, Grade, FeeStructure } from '../types';
 import { BackIcon, EditIcon, UserIcon, AcademicCapIcon, DocumentReportIcon, HomeIcon, CurrencyDollarIcon, CheckCircleIcon, XCircleIcon, MessageIcon, WhatsappIcon } from '../components/Icons';
@@ -15,24 +16,25 @@ interface StudentDetailPageProps {
 }
 
 const PhotoWithFallback: React.FC<{src?: string, alt: string}> = ({ src, alt }) => {
-    const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-        e.currentTarget.onerror = null; // Prevent infinite loop
-        e.currentTarget.style.display = 'none'; // Hide the broken image
-        const parent = e.currentTarget.parentElement;
-        if(parent) {
-            const fallback = parent.querySelector('.fallback-icon');
-            if(fallback) {
-                (fallback as HTMLElement).style.display = 'flex';
-            }
-        }
+    const [hasError, setHasError] = useState(!src);
+
+    useEffect(() => {
+        setHasError(!src);
+    }, [src]);
+
+    const handleError = () => {
+        setHasError(true);
     };
 
     return (
-        <div className="relative w-full h-full bg-slate-200 rounded-full flex items-center justify-center">
-             {src && <img src={src} alt={alt} className="h-full w-full object-cover rounded-full" onError={handleError} />}
-            <div className={`fallback-icon absolute inset-0 items-center justify-center text-slate-500 ${src ? 'hidden' : 'flex'}`}>
-                <UserIcon className="w-2/3 h-2/3" />
-            </div>
+        <div className="relative w-full h-full bg-slate-200 rounded-full flex items-center justify-center overflow-hidden">
+            {hasError ? (
+                <div className="flex items-center justify-center text-slate-500 w-full h-full">
+                    <UserIcon className="w-2/3 h-2/3" />
+                </div>
+            ) : (
+                <img src={src} alt={alt} className="h-full w-full object-cover" onError={handleError} />
+            )}
         </div>
     )
 }

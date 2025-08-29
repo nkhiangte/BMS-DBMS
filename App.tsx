@@ -6,7 +6,7 @@ import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, S
 import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST, MIZORAM_HOLIDAYS, DEFAULT_FEE_STRUCTURE } from './constants';
 import { getNextGrade, createDefaultFeePayments, calculateStudentResult, formatStudentId } from './utils';
 
-import { auth, db, firebaseConfig, firebase } from './firebaseConfig';
+import { auth, db, storage, firebaseConfig, firebase } from './firebaseConfig';
 
 import Header from './components/Header';
 import StudentFormModal from './components/StudentFormModal';
@@ -73,34 +73,29 @@ import CommunicationPage from './pages/CommunicationPage';
 import CalendarPage from './pages/CalendarPage';
 import CalendarEventFormModal from './components/CalendarEventFormModal';
 
-const IMGBB_API_KEY: string = "YOUR_IMGBB_API_KEY";
+const base64ToBlob = async (base64: string): Promise<Blob> => {
+    const response = await fetch(base64);
+    const blob = await response.blob();
+    return blob;
+};
 
 const uploadImage = async (base64Image: string): Promise<string> => {
-    if (base64Image.startsWith('http')) return base64Image;
-    if (!IMGBB_API_KEY || IMGBB_API_KEY === "YOUR_IMGBB_API_KEY") {
-        console.warn("imgbb API key is not set. Using a placeholder image URL.");
-        return "https://i.ibb.co/688JsK1/placeholder.png";
+    if (base64Image.startsWith('http')) {
+        return base64Image;
     }
 
     try {
-        const formData = new FormData();
-        formData.append('image', base64Image.split(',')[1]);
-
-        const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-            method: 'POST',
-            body: formData,
-        });
-
-        const result = await response.json();
-        if (result.success) {
-            return result.data.url;
-        } else {
-            console.error('Image upload failed:', result);
-            return '';
-        }
+        const blob = await base64ToBlob(base64Image);
+        const fileName = `photos/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${blob.type.split('/')[1] || 'jpg'}`;
+        const storageRef = storage.ref(fileName);
+        
+        const snapshot = await storageRef.put(blob);
+        const downloadURL = await snapshot.ref.getDownloadURL();
+        
+        return downloadURL;
     } catch (error) {
-        console.error('Error uploading image:', error);
-        return '';
+        console.error("Error uploading image to Firebase Storage:", error);
+        return "https://i.ibb.co/688JsK1/placeholder.png"; 
     }
 };
 

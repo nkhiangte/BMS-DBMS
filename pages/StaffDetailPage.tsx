@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Staff, Grade, GradeDefinition, EmploymentStatus } from '../types';
 import { BackIcon, EditIcon, UserIcon, HomeIcon, MailIcon, PhoneIcon, BriefcaseIcon, AcademicCapIcon, CurrencyDollarIcon, BookOpenIcon } from '../components/Icons';
@@ -11,12 +11,25 @@ interface StaffDetailPageProps {
 }
 
 const PhotoWithFallback: React.FC<{src?: string, alt: string}> = ({ src, alt }) => {
+    const [hasError, setHasError] = useState(!src);
+
+    useEffect(() => {
+        setHasError(!src);
+    }, [src]);
+
+    const handleError = () => {
+        setHasError(true);
+    };
+
     return (
-        <div className="relative w-full h-full bg-slate-200 rounded-full flex items-center justify-center">
-             {src ? <img src={src} alt={alt} className="h-full w-full object-cover rounded-full" onError={(e) => (e.currentTarget.style.display = 'none')} /> : null}
-            <div className={`absolute inset-0 flex items-center justify-center text-slate-600`}>
-                <UserIcon className="w-2/3 h-2/3" />
-            </div>
+        <div className="relative w-full h-full bg-slate-200 rounded-full flex items-center justify-center overflow-hidden">
+            {hasError ? (
+                <div className="flex items-center justify-center text-slate-600 w-full h-full">
+                    <UserIcon className="w-2/3 h-2/3" />
+                </div>
+            ) : (
+                 <img src={src} alt={alt} className="h-full w-full object-cover" onError={handleError} />
+            )}
         </div>
     )
 }

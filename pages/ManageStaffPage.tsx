@@ -1,7 +1,8 @@
 
 
 
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Staff, EmploymentStatus, Grade, GradeDefinition, Designation, User } from '../types';
 import { PlusIcon, SearchIcon, HomeIcon, BackIcon, EditIcon, UserIcon, BriefcaseIcon, PhoneIcon, MailIcon, TrashIcon, DocumentReportIcon, InboxArrowDownIcon } from '../components/Icons';
@@ -14,6 +15,26 @@ interface ManageStaffPageProps {
   onDelete: (staffMember: Staff) => void;
   user: User;
 }
+
+const PhotoWithFallback: React.FC<{src?: string, alt: string}> = ({ src, alt }) => {
+    const [hasError, setHasError] = useState(!src);
+
+    useEffect(() => {
+        setHasError(!src);
+    }, [src]);
+    
+    return (
+        <div className="relative w-full h-full bg-slate-200 rounded-full flex items-center justify-center overflow-hidden">
+            {hasError ? (
+                <div className="flex items-center justify-center text-slate-600 w-full h-full">
+                    <UserIcon className="w-2/3 h-2/3" />
+                </div>
+            ) : (
+                <img src={src} alt={alt} className="h-full w-full object-cover" onError={() => setHasError(true)} />
+            )}
+        </div>
+    );
+};
 
 const StaffCard: React.FC<{ 
     staffMember: Staff;
@@ -39,12 +60,7 @@ const StaffCard: React.FC<{
             <div className="flex items-start gap-4 pb-4 border-b">
                 <div className="w-20 h-20 rounded-full shadow-md border-2 border-white flex-shrink-0">
                     <Link to={`/staff/${staffMember.id}`} className="block w-full h-full">
-                        <div className="relative w-full h-full bg-slate-200 rounded-full flex items-center justify-center">
-                            {staffMember.photographUrl ? <img src={staffMember.photographUrl} alt={`${firstName} ${lastName}'s photograph`} className="h-full w-full object-cover rounded-full" onError={(e) => (e.currentTarget.style.display = 'none')} /> : null}
-                            <div className={`absolute inset-0 flex items-center justify-center text-slate-600`}>
-                                <UserIcon className="w-2/3 h-2/3" />
-                            </div>
-                        </div>
+                        <PhotoWithFallback src={staffMember.photographUrl} alt={`${firstName} ${lastName}'s photograph`} />
                     </Link>
                 </div>
                 <div className="flex-grow">
