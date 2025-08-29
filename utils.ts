@@ -1,5 +1,3 @@
-
-
 import { Student, Staff, Grade, FeePayments, SubjectMark, GradeDefinition, StaffAttendanceRecord, StudentAttendanceRecord, AttendanceStatus, StudentAttendanceStatus, SubjectDefinition, FeeStructure } from './types';
 import { academicMonths, GRADES_LIST, FEE_SET_GRADES } from './constants';
 
@@ -312,18 +310,17 @@ export const calculateRanks = (
     .filter(s => s.result === 'PASS' || s.result === 'SIMPLE PASS')
     .sort((a, b) => b.totalMarks - a.totalMarks);
 
-  // Assign ranks, handling ties using dense ranking (e.g., 1, 2, 2, 3).
+  // Assign ranks using dense ranking (e.g., 1, 2, 2, 3).
   if (passedStudents.length > 0) {
     let rank = 1;
-    let currentRank = 1;
-    ranks.set(passedStudents[0].studentId, currentRank);
+    ranks.set(passedStudents[0].studentId, rank);
     for (let i = 1; i < passedStudents.length; i++) {
-        rank++;
-      // If score is lower than the previous student, the rank is the current index + 1
+      // If the current student's score is less than the previous one, increment the rank.
       if (passedStudents[i].totalMarks < passedStudents[i - 1].totalMarks) {
-        currentRank = rank;
+        rank++;
       }
-      ranks.set(passedStudents[i].studentId, currentRank);
+      // Assign the current rank. If scores are the same, the rank will be the same as the previous student.
+      ranks.set(passedStudents[i].studentId, rank);
     }
   }
 
