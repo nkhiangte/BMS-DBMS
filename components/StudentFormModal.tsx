@@ -90,7 +90,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
         pen: '',
         category: Category.GENERAL,
         religion: '',
-        bloodGroup: undefined,
+        bloodGroup: null,
         cwsn: 'No',
         fatherName: '',
         fatherOccupation: '',
@@ -170,11 +170,44 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
-        const dataToSubmit = {
+
+        const dataWithFormattedDate = {
             ...formData,
             dateOfBirth: formatDateForStorage(formData.dateOfBirth),
-        } as Omit<Student, 'id'>;
-        onSubmit(dataToSubmit);
+        };
+        
+        const cleanData: { [key: string]: any } = { ...dataWithFormattedDate };
+
+        const optionalFields: (keyof Omit<Student, 'id'>)[] = [
+            'studentId',
+            'guardianName',
+            'guardianRelationship',
+            'lastSchoolAttended',
+            'healthConditions',
+            'achievements',
+            'bloodGroup',
+            'transferDate',
+            'feePayments',
+            'academicPerformance'
+        ];
+
+        optionalFields.forEach(field => {
+            const value = cleanData[field];
+            if (value === '' || value === null || value === null) {
+                delete cleanData[field];
+            }
+        });
+
+        if (cleanData.rollNo) {
+             cleanData.rollNo = Number(cleanData.rollNo);
+        }
+        
+        // Ensure bloodGroup is not sent as an empty string if unselected
+        if (cleanData.bloodGroup === '') {
+            delete cleanData.bloodGroup;
+        }
+
+        onSubmit(cleanData as Omit<Student, 'id'>);
     };
 
     if (!isOpen) return null;
