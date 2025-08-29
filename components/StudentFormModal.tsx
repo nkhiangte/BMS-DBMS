@@ -1,7 +1,7 @@
 import React, { useState, useEffect, FormEvent, useRef } from 'react';
 import { Grade, Student, Gender, StudentStatus, Category, BloodGroup } from '../types';
 import { GRADES_LIST, GENDER_LIST, CATEGORY_LIST, BLOOD_GROUP_LIST } from '../constants';
-import { ChevronDownIcon, ChevronUpIcon, UserIcon } from './Icons';
+import { ChevronDownIcon, ChevronUpIcon, UserIcon, SpinnerIcon } from './Icons';
 import { formatDateForDisplay, formatDateForStorage, formatStudentId } from '../utils';
 
 interface StudentFormModalProps {
@@ -11,6 +11,8 @@ interface StudentFormModalProps {
   student: Student | null;
   newStudentTargetGrade?: Grade | null;
   academicYear: string;
+  isSaving: boolean;
+  error?: string;
 }
 
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
@@ -75,7 +77,7 @@ const AccordionSection: React.FC<{ title: string; children: React.ReactNode; def
     );
 };
 
-const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, onSubmit, student, newStudentTargetGrade, academicYear }) => {
+const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, onSubmit, student, newStudentTargetGrade, academicYear, isSaving, error }) => {
     const getInitialFormData = (): Omit<Student, 'id'> => ({
         rollNo: 0,
         name: '',
@@ -204,6 +206,12 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                         <h2 className="text-2xl font-bold text-slate-800">{student ? 'Edit Student Details' : 'Add New Student'}</h2>
                     </div>
                     <div className="p-6 space-y-4 overflow-y-auto max-h-[75vh]">
+                        {error && (
+                            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md animate-fade-in" role="alert">
+                                <p className="font-bold">Error</p>
+                                <p>{error}</p>
+                            </div>
+                        )}
                         <AccordionSection title="Personal Details" defaultOpen={true}>
                             <div>
                                 <label className="block text-sm font-bold text-slate-800">Full Name</label>
@@ -342,11 +350,18 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
                         </AccordionSection>
                     </div>
                     <div className="bg-slate-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl border-t">
-                        <button type="button" onClick={onClose} className="btn btn-secondary">
+                        <button type="button" onClick={onClose} className="btn btn-secondary" disabled={isSaving}>
                             Cancel
                         </button>
-                        <button type="submit" className="btn btn-primary">
-                            {student ? 'Save Changes' : 'Add Student'}
+                        <button type="submit" className="btn btn-primary" disabled={isSaving}>
+                           {isSaving ? (
+                                <>
+                                    <SpinnerIcon className="w-5 h-5" />
+                                    <span>Saving...</span>
+                                </>
+                            ) : (
+                                student ? 'Save Changes' : 'Add Student'
+                            )}
                         </button>
                     </div>
                 </form>

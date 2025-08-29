@@ -11,7 +11,7 @@ import {
     EMPLOYMENT_STATUS_LIST,
     STAFF_TYPE_LIST,
 } from '../constants';
-import { ChevronDownIcon, ChevronUpIcon, UserIcon } from './Icons';
+import { ChevronDownIcon, ChevronUpIcon, UserIcon, SpinnerIcon } from './Icons';
 import { formatDateForDisplay, formatDateForStorage } from '../utils';
 
 const AccordionSection: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => {
@@ -83,9 +83,11 @@ interface StaffFormModalProps {
   staffMember: Staff | null;
   allStaff: Staff[];
   gradeDefinitions: Record<Grade, GradeDefinition>;
+  isSaving: boolean;
+  error?: string;
 }
 
-const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubmit, staffMember, allStaff, gradeDefinitions }) => {
+const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubmit, staffMember, allStaff, gradeDefinitions, isSaving, error }) => {
     const getInitialFormData = (): Omit<Staff, 'id'> => ({
         staffType: 'Teaching',
         employeeId: '',
@@ -246,6 +248,12 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                 <h2 className="text-2xl font-bold text-slate-800">{staffMember ? 'Edit Staff Details' : 'Add New Staff Member'}</h2>
             </div>
             <div className="p-6 space-y-4 overflow-y-auto max-h-[75vh]">
+                {error && (
+                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md animate-fade-in" role="alert">
+                        <p className="font-bold">Error</p>
+                        <p>{error}</p>
+                    </div>
+                )}
                 <AccordionSection title="Personal Details" defaultOpen={true}>
                     <div>
                         <label className="block text-sm font-bold text-slate-800">First Name</label>
@@ -442,11 +450,18 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                 </AccordionSection>
             </div>
             <div className="bg-slate-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl border-t">
-                <button type="button" onClick={onClose} className="btn btn-secondary">
-                Cancel
+                <button type="button" onClick={onClose} className="btn btn-secondary" disabled={isSaving}>
+                    Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                {staffMember ? 'Save Changes' : 'Add Staff'}
+                <button type="submit" className="btn btn-primary" disabled={isSaving}>
+                    {isSaving ? (
+                        <>
+                            <SpinnerIcon className="w-5 h-5" />
+                            <span>Saving...</span>
+                        </>
+                    ) : (
+                        staffMember ? 'Save Changes' : 'Add Staff'
+                    )}
                 </button>
             </div>
         </form>

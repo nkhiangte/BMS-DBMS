@@ -93,9 +93,17 @@ const uploadImage = async (base64Image: string): Promise<string> => {
         const downloadURL = await snapshot.ref.getDownloadURL();
         
         return downloadURL;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error uploading image to Firebase Storage:", error);
-        return "https://i.ibb.co/688JsK1/placeholder.png"; 
+        let message = "Image upload failed. Please try again.";
+        if (error.code === 'storage/unauthorized') {
+            message = "Image upload failed due to insufficient permissions. Please contact an administrator to check Firebase Storage security rules.";
+        } else if (error.code === 'storage/canceled') {
+            message = "Image upload was canceled.";
+        } else if (error.code === 'storage/unknown') {
+            message = "An unknown error occurred during image upload. Check your network connection.";
+        }
+        throw new Error(message);
     }
 };
 
@@ -144,6 +152,8 @@ const App: React.FC = () => {
     const [isCalendarEventFormOpen, setIsCalendarEventFormOpen] = useState(false);
     const [editingCalendarEvent, setEditingCalendarEvent] = useState<CalendarEvent | null>(null);
     const [deletingCalendarEvent, setDeletingCalendarEvent] = useState<CalendarEvent | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [formError, setFormError] = useState('');
 
     const [academicYear, setAcademicYear] = useState<string | null>(localStorage.getItem('academicYear'));
     const [authError, setAuthError] = useState('');
@@ -325,9 +335,9 @@ const App: React.FC = () => {
     const handleAddStudent = () => { setIsStudentFormOpen(true); };
     const handleEditStudent = (student: Student) => { setEditingStudent(student); setIsStudentFormOpen(true); };
     const handleStudentFormSubmit = async (studentData: Omit<Student, 'id'>) => {
+        setIsSaving(true);
+        setFormError('');
         try {
-            addNotification("Saving student details...", "success");
-
             let photographUrl = studentData.photographUrl;
             if (photographUrl && !photographUrl.startsWith('http')) {
                 photographUrl = await uploadImage(photographUrl);
@@ -342,13 +352,15 @@ const App: React.FC = () => {
                 await db.collection('students').add(dataToSave);
                 addNotification("New student added successfully!", "success");
             }
-        } catch (error) {
-            console.error("Error saving student details:", error);
-            addNotification("Failed to save student details.", "error");
-        } finally {
+            
             setIsStudentFormOpen(false);
             setEditingStudent(null);
             setNewStudentTargetGrade(null);
+        } catch (error: any) {
+            console.error("Error saving student details:", error);
+            setFormError(error.message || "Failed to save student details.");
+        } finally {
+            setIsSaving(false);
         }
     };
     const handleUpdateAcademic = async (studentId: string, performance: Exam[]) => {
@@ -385,9 +397,9 @@ const App: React.FC = () => {
     const handleAddStaff = () => { setIsStaffFormOpen(true); };
     const handleEditStaff = (staffMember: Staff) => { setEditingStaff(staffMember); setIsStaffFormOpen(true); };
     const handleStaffFormSubmit = async (staffData: Omit<Staff, 'id'>, assignedGradeKey: Grade | null) => {
+        setIsSaving(true);
+        setFormError('');
         try {
-            addNotification("Saving staff details...", "success");
-
             let photographUrl = staffData.photographUrl;
             if (photographUrl && !photographUrl.startsWith('http')) {
                 photographUrl = await uploadImage(photographUrl);
@@ -416,12 +428,14 @@ const App: React.FC = () => {
                 }
                 addNotification("New staff member added successfully!", "success");
             }
-        } catch (error) {
-            console.error("Error saving staff details:", error);
-            addNotification("Failed to save staff details.", "error");
-        } finally {
+
             setIsStaffFormOpen(false);
             setEditingStaff(null);
+        } catch (error: any) {
+            console.error("Error saving staff details:", error);
+            setFormError(error.message || "Failed to save staff details.");
+        } finally {
+            setIsSaving(false);
         }
     };
     const handleDeleteStaff = async (staffMember: Staff) => {
@@ -721,11 +735,13 @@ const App: React.FC = () => {
             </main>
             <StudentFormModal
                 isOpen={isStudentFormOpen}
-                onClose={() => { setIsStudentFormOpen(false); setEditingStudent(null); setNewStudentTargetGrade(null); }}
+                onClose={() => { setIsStudentFormOpen(false); setEditingStudent(null); setNewStudentTargetGrade(null); setFormError(''); }}
                 onSubmit={handleStudentFormSubmit}
                 student={editingStudent}
                 newStudentTargetGrade={newStudentTargetGrade}
                 academicYear={academicYear!}
+                isSaving={isSaving}
+                error={formError}
             />
              <ImportStudentsModal
                 isOpen={isImportModalOpen}
@@ -744,7 +760,16 @@ const App: React.FC = () => {
                 allStudents={students}
                 allGrades={GRADES_LIST}
             />}
-            <StaffFormModal isOpen={isStaffFormOpen} onClose={() => { setIsStaffFormOpen(false); setEditingStaff(null); }} onSubmit={handleStaffFormSubmit} staffMember={editingStaff} allStaff={staff} gradeDefinitions={gradeDefinitions} />
+            <StaffFormModal 
+                isOpen={isStaffFormOpen} 
+                onClose={() => { setIsStaffFormOpen(false); setEditingStaff(null); setFormError(''); }} 
+                onSubmit={handleStaffFormSubmit} 
+                staffMember={editingStaff} 
+                allStaff={staff} 
+                gradeDefinitions={gradeDefinitions}
+                isSaving={isSaving}
+                error={formError}
+            />
             <ConfirmationModal
                 isOpen={!!deletingStudent}
                 onClose={() => setDeletingStudent(null)}
