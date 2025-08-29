@@ -636,20 +636,32 @@ const App: React.FC = () => {
     // Auth Effect
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+            setAuthError(''); // Clear previous errors
             try {
                 if (firebaseUser) {
                     const userDocRef = db.collection('users').doc(firebaseUser.uid);
                     const userDoc = await userDocRef.get();
+
                     if (userDoc.exists) {
-                        const userData = userDoc.data() as User;
-                        setUser({
-                            uid: firebaseUser.uid,
-                            displayName: userData.displayName,
-                            email: firebaseUser.email,
-                            photoURL: userData.photoURL || firebaseUser.photoURL,
-                            role: userData.role,
-                        });
+                        const userData = userDoc.data();
+                        const role = userData?.role;
+
+                        if (['admin', 'user', 'pending'].includes(role)) {
+                            setUser({
+                                uid: firebaseUser.uid,
+                                displayName: userData.displayName || firebaseUser.displayName,
+                                email: firebaseUser.email,
+                                photoURL: userData.photoURL || firebaseUser.photoURL,
+                                role: role as User['role'],
+                            });
+                        } else {
+                            // Role is invalid or missing
+                            console.error(`User ${firebaseUser.uid} has invalid role: "${role}". Forcing logout.`);
+                            setAuthError('Your account role is not configured correctly. Please contact an administrator.');
+                            await auth.signOut();
+                        }
                     } else {
+                        // User exists in Auth, but not in Firestore. Create a 'pending' profile.
                         const newUser: User = { 
                             uid: firebaseUser.uid, 
                             displayName: firebaseUser.displayName, 
@@ -659,14 +671,15 @@ const App: React.FC = () => {
                         };
                         await userDocRef.set(newUser);
                         setUser(newUser);
+                        setNotification('Your account has been created. An administrator must approve it before you can access all features.');
                     }
                 } else {
                     setUser(null);
                 }
             } catch (error) {
-                console.error("Error during auth state change handling:", error);
-                // Also log out the user on error to prevent being stuck in a weird state
-                setUser(null);
+                console.error("Error during authentication check:", error);
+                setAuthError("A network error occurred while verifying your account. Please check your connection and try again.");
+                await auth.signOut();
             } finally {
                 setLoading(false);
             }
