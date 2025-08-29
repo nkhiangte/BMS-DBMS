@@ -185,11 +185,20 @@ export interface SubjectMark {
   grade?: 'O' | 'A' | 'B' | 'C';
 }
 
+export enum ConductGrade {
+    O = "O (Outstanding)",
+    A = "A (Very Good)",
+    B = "B (Good)",
+    C = "C (Satisfactory)",
+    D = "D (Needs Improvement)",
+}
+
 export interface Exam {
   id: string;
   name: string;
   results: SubjectMark[];
   teacherRemarks?: string;
+  generalConduct?: ConductGrade;
 }
 
 export interface FeePayments {
@@ -511,4 +520,21 @@ export interface CalendarEvent {
     endDate?: string; // YYYY-MM-DD (Optional End Date)
     type: CalendarEventType;
     description?: string;
+}
+
+// --- NEW: Conduct & Discipline ---
+export enum ConductEntryType {
+    MERIT = "Merit",
+    DEMERIT = "Demerit",
+}
+
+export interface ConductEntry {
+    id: string;
+    studentId: string;
+    date: string; // YYYY-MM-DD
+    type: ConductEntryType;
+    category: string;
+    description: string;
+    recordedBy: string; // name of the user who recorded it
+    recordedById: string; // UID of the user
 }

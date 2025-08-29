@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, Grade, SubjectMark, GradeDefinition, SubjectDefinition, User, StudentStatus, StudentAttendanceRecord, StudentAttendanceStatus } from '../types';
+import { Student, Grade, SubjectMark, GradeDefinition, SubjectDefinition, User, StudentStatus, StudentAttendanceRecord, StudentAttendanceStatus, Exam } from '../types';
 import { BackIcon, UserIcon, HomeIcon, PrinterIcon, SpinnerIcon } from '../components/Icons';
 import { formatStudentId, formatDateForDisplay, calculateStudentResult, calculateRanks, getPerformanceGrade, getRemarks, getMonthsForTerm, isSubjectNumeric } from '../utils';
 import { GRADES_WITH_NO_ACTIVITIES, TERMINAL_EXAMS } from '../constants';
@@ -57,11 +57,14 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
 
     const gradeDef = useMemo(() => student ? gradeDefinitions[student.grade] : undefined, [student, gradeDefinitions]);
     
-    const termResults = useMemo(() => {
-        if (!student || !examId) return [];
-        const exam = student.academicPerformance?.find(e => e.id === examId);
-        return exam?.results.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null || r.grade != null) || [];
+    const examData: Exam | undefined = useMemo(() => {
+        if (!student || !examId) return undefined;
+        return student.academicPerformance?.find(e => e.id === examId);
     }, [student, examId]);
+
+    const termResults = useMemo(() => {
+        return examData?.results.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null || r.grade != null) || [];
+    }, [examData]);
 
 
     useEffect(() => {
@@ -282,7 +285,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                     {isLoadingExtraData ? (
                         <div className="flex justify-center items-center gap-2 text-slate-600"><SpinnerIcon className="w-5 h-5"/> <span>Loading summary...</span></div>
                     ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
                             <SummaryItem label="%" value={summaryData.percentage} />
                             <SummaryItem label="Attendance" value={termAttendance} />
                             <SummaryItem label="Rank" value={rank} />
@@ -292,6 +295,7 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
                                 color={summaryData.result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}
                             />
                             <SummaryItem label={isHighSchool ? 'Division' : 'Grade'} value={summaryData.performanceGrade} />
+                            <SummaryItem label="Conduct" value={examData?.generalConduct?.split(' ')[0] || 'N/A'} />
                             <SummaryItem label="Remarks" value={summaryData.remarks} />
                         </div>
                     )}

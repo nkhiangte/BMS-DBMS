@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Exam, SubjectMark, Grade, GradeDefinition, User } from '../types';
-import { TERMINAL_EXAMS } from '../constants';
+import { TERMINAL_EXAMS, CONDUCT_GRADE_LIST } from '../constants';
 import { BackIcon, EditIcon, CheckIcon, XIcon, HomeIcon } from '../components/Icons';
 import AcademicRecordTable from '../components/AcademicRecordTable';
 import { formatStudentId } from '../utils';
@@ -53,6 +53,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
         ...examTemplate,
         results,
         teacherRemarks: existingExam?.teacherRemarks || '',
+        generalConduct: existingExam?.generalConduct,
       };
     });
   }, [student, gradeDefinitions]);
@@ -77,13 +78,14 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
         ...exam,
         results: exam.results.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null || r.grade != null),
         teacherRemarks: exam.teacherRemarks?.trim() || undefined,
+        generalConduct: exam.generalConduct || undefined,
       }));
       onUpdateAcademic(student.id, cleanedPerformanceData);
     }
     setIsEditing(false);
   };
 
-  const handleUpdateExamData = (examId: string, field: 'results' | 'teacherRemarks', value: any) => {
+  const handleUpdateExamData = (examId: string, field: 'results' | 'teacherRemarks' | 'generalConduct', value: any) => {
     setPerformanceData(prev => 
       prev.map(exam => exam.id === examId ? { ...exam, [field]: value } : exam)
     );
@@ -174,21 +176,40 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
                         subjectDefinitions={gradeDef.subjects}
                         grade={student.grade}
                     />
-                    <div className="mt-4">
-                        <label className="block text-sm font-bold text-slate-800 mb-1">Teacher's Remarks for {exam.name}</label>
-                        {isEditing && canEdit ? (
-                            <textarea
-                                value={exam.teacherRemarks || ''}
-                                onChange={e => handleUpdateExamData(exam.id, 'teacherRemarks', e.target.value)}
-                                rows={2}
-                                className="w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
-                                placeholder="Enter feedback or comments..."
-                            />
-                        ) : (
-                            <p className="text-slate-700 p-3 bg-slate-50 rounded-md border min-h-[4rem]">
-                                {exam.teacherRemarks || <span className="italic text-slate-500">No remarks added.</span>}
-                            </p>
-                        )}
+                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-800 mb-1">Teacher's Remarks for {exam.name}</label>
+                            {isEditing && canEdit ? (
+                                <textarea
+                                    value={exam.teacherRemarks || ''}
+                                    onChange={e => handleUpdateExamData(exam.id, 'teacherRemarks', e.target.value)}
+                                    rows={3}
+                                    className="w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                                    placeholder="Enter feedback or comments..."
+                                />
+                            ) : (
+                                <p className="text-slate-700 p-3 bg-slate-50 rounded-md border min-h-[4rem]">
+                                    {exam.teacherRemarks || <span className="italic text-slate-500">No remarks added.</span>}
+                                </p>
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-800 mb-1">General Conduct for {exam.name}</label>
+                             {isEditing && canEdit ? (
+                                <select
+                                    value={exam.generalConduct || ''}
+                                    onChange={e => handleUpdateExamData(exam.id, 'generalConduct', e.target.value)}
+                                    className="w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                                >
+                                    <option value="">-- Select Conduct Grade --</option>
+                                    {CONDUCT_GRADE_LIST.map(gradeValue => <option key={gradeValue} value={gradeValue}>{gradeValue}</option>)}
+                                </select>
+                            ) : (
+                                <p className="text-slate-700 p-3 bg-slate-50 rounded-md border min-h-[4rem]">
+                                    {exam.generalConduct || <span className="italic text-slate-500">Not graded.</span>}
+                                </p>
+                            )}
+                        </div>
                     </div>
                 </div>
             ))}

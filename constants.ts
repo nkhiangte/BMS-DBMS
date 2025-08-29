@@ -1,4 +1,4 @@
-import { Grade, Gender, Category, GradeDefinition, Staff, MaritalStatus, Department, Designation, EmployeeType, BloodGroup, EmploymentStatus, StaffType, InventoryCategory, InventoryStatus, HostelBlock, RoomType, HostelStaffRole, HostelInventoryCategory, StockLogType, Qualification, CalendarEventType } from './types';
+import { Grade, Gender, Category, GradeDefinition, Staff, MaritalStatus, Department, Designation, EmployeeType, BloodGroup, EmploymentStatus, StaffType, InventoryCategory, InventoryStatus, HostelBlock, RoomType, HostelStaffRole, HostelInventoryCategory, StockLogType, Qualification, CalendarEventType, ConductGrade } from './types';
 
 // TODO: Replace with your actual ImgBB API key. You can get one for free from https://api.imgbb.com/
 export const IMGBB_API_KEY = 'd36909d21412322dc45661e15078de9f';
@@ -16,6 +16,29 @@ export const GRADES_LIST: Grade[] = Object.values(Grade);
 export const GENDER_LIST: Gender[] = Object.values(Gender);
 export const CATEGORY_LIST: Category[] = Object.values(Category);
 export const OABC_GRADES: Array<'O' | 'A' | 'B' | 'C'> = ['O', 'A', 'B', 'C'];
+export const CONDUCT_GRADE_LIST: ConductGrade[] = Object.values(ConductGrade);
+
+export const MERIT_CATEGORIES = [
+    "Helpfulness to Peers",
+    "Leadership",
+    "Good Citizenship",
+    "Integrity / Honesty",
+    "Exceptional Classroom Conduct",
+    "Volunteering",
+    "Academic Effort",
+];
+
+export const DEMERIT_CATEGORIES = [
+    "Classroom Disruption",
+    "Disrespect to Staff/Peers",
+    "Non-compliance with Rules",
+    "Tardiness / Punctuality Issue",
+    "Uniform Infraction",
+    "Academic Dishonesty",
+    "Bullying / Harassment",
+    "Property Damage",
+];
+
 
 export const GRADES_WITH_NO_ACTIVITIES: Grade[] = [
   Grade.NURSERY,

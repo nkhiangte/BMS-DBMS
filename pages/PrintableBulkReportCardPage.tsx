@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, Grade, GradeDefinition, StudentStatus, StudentAttendanceRecord, StudentAttendanceStatus, SubjectMark, SubjectDefinition } from '../types';
+import { Student, Grade, GradeDefinition, StudentStatus, StudentAttendanceRecord, StudentAttendanceStatus, SubjectMark, SubjectDefinition, Exam, ConductGrade } from '../types';
 import { BackIcon, UserIcon, HomeIcon, PrinterIcon, SpinnerIcon } from '../components/Icons';
 import { formatStudentId, formatDateForDisplay, calculateStudentResult, calculateRanks, getPerformanceGrade, getRemarks, getMonthsForTerm, isSubjectNumeric } from '../utils';
 import { GRADES_WITH_NO_ACTIVITIES, TERMINAL_EXAMS } from '../constants';
@@ -47,9 +47,10 @@ interface ReportCardContentProps {
     } | null;
     rank: number | 'NA' | null;
     termAttendance: string | null;
+    generalConduct?: ConductGrade;
 }
 
-const ReportCardContent: React.FC<ReportCardContentProps> = ({ student, examDetails, gradeDef, academicYear, termResults, summaryData, rank, termAttendance }) => {
+const ReportCardContent: React.FC<ReportCardContentProps> = ({ student, examDetails, gradeDef, academicYear, termResults, summaryData, rank, termAttendance, generalConduct }) => {
     const isHighSchool = student?.grade === Grade.IX || student?.grade === Grade.X;
     const hasActivitiesForThisGrade = !GRADES_WITH_NO_ACTIVITIES.includes(student.grade);
     
@@ -120,7 +121,7 @@ const ReportCardContent: React.FC<ReportCardContentProps> = ({ student, examDeta
              {summaryData && (
                  <section>
                     <h3 className="text-xl font-bold text-slate-700 mb-4 text-center">{examDetails.name} Summary</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
                         <SummaryItem label="%" value={summaryData.percentage} />
                         <SummaryItem label="Attendance" value={termAttendance} />
                         <SummaryItem label="Rank" value={rank} />
@@ -130,6 +131,7 @@ const ReportCardContent: React.FC<ReportCardContentProps> = ({ student, examDeta
                             color={summaryData.result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}
                         />
                         <SummaryItem label={isHighSchool ? 'Division' : 'Grade'} value={summaryData.performanceGrade} />
+                        <SummaryItem label="Conduct" value={generalConduct?.split(' ')[0] || 'N/A'} />
                         <SummaryItem label="Remarks" value={summaryData.remarks} />
                     </div>
                 </section>
@@ -219,7 +221,8 @@ const PrintableBulkReportCardPage: React.FC<PrintableBulkReportCardPageProps> = 
 
             // 3. Process each student
             const allReportData = classStudents.map(student => {
-                const termResults = student.academicPerformance?.find(e => e.id === examId)?.results || [];
+                const examData = student.academicPerformance?.find(e => e.id === examId);
+                const termResults = examData?.results || [];
                 
                 let grandTotal = 0;
                 let maxGrandTotal = 0;
@@ -253,6 +256,7 @@ const PrintableBulkReportCardPage: React.FC<PrintableBulkReportCardPageProps> = 
                     summaryData,
                     rank: classRanks.get(student.id) ?? null,
                     termAttendance,
+                    generalConduct: examData?.generalConduct,
                 };
             });
             
