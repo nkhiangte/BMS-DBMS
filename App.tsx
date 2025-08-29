@@ -507,7 +507,23 @@ const App: React.FC = () => {
         }
     };
     const handleUpdateCalendarPrefs = (days: number) => { setCalendarNotificationPrefs({ daysBefore: days }); };
-    const handleUpdateBulkMarks = async (updates: Array<{ studentId: string; performance: Exam[] }>) => { console.log('Updating bulk marks', updates.length); };
+    const handleUpdateBulkMarks = async (updates: Array<{ studentId: string; performance: Exam[] }>) => {
+        if (updates.length === 0) return;
+        addNotification(`Updating marks for ${updates.length} students...`, 'success');
+
+        try {
+            const batch = db.batch();
+            updates.forEach(({ studentId, performance }) => {
+                const docRef = db.collection('students').doc(studentId);
+                batch.update(docRef, { academicPerformance: performance });
+            });
+            await batch.commit();
+            addNotification(`Successfully updated marks for ${updates.length} students.`, "success");
+        } catch (error) {
+            console.error("Error updating bulk marks:", error);
+            addNotification("Failed to update marks.", "error");
+        }
+    };
     const handleOpenImportModal = (grade: Grade | null) => { setImportTargetGrade(grade); setIsImportModalOpen(true); };
     const handleOpenTransferModal = (student: Student) => { setTransferringStudent(student); setIsTransferModalOpen(true); };
     const handleTransferStudent = async (studentId: string, newGrade: Grade, newRollNo: number) => {

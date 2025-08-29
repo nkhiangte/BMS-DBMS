@@ -1,8 +1,9 @@
 
+
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, StudentStatus, Exam, SubjectMark, User, StudentAttendanceRecord, StudentAttendanceStatus } from '../types';
-import { BackIcon, HomeIcon, PrinterIcon, EditIcon, InboxArrowDownIcon, SpinnerIcon } from '../components/Icons';
+import { BackIcon, HomeIcon, PrinterIcon, EditIcon, InboxArrowDownIcon, SpinnerIcon, TrashIcon } from '../components/Icons';
 import { TERMINAL_EXAMS, GRADES_WITH_NO_ACTIVITIES, OABC_GRADES } from '../constants';
 import { formatStudentId, calculateStudentResult, calculateRanks, getMonthsForTerm, getPerformanceGrade, getRemarks, isSubjectNumeric } from '../utils';
 import * as XLSX from 'xlsx';
@@ -27,6 +28,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
     const [isSavingImport, setIsSavingImport] = useState(false);
     const [importData, setImportData] = useState<{ updates: Array<{ studentId: string; performance: Exam[] }>; errors: string[] } | null>(null);
     const [isMarksEntryModalOpen, setIsMarksEntryModalOpen] = useState(false);
+    const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
     const [ranks, setRanks] = useState<Map<string, number | 'NA' | null>>(new Map());
@@ -278,6 +280,27 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
         setIsSavingImport(false);
         setImportData(null);
     };
+    
+    const handleResetMarks = async () => {
+        if (!grade || !examId) return;
+
+        const updates = classStudents.map(student => {
+            const currentPerformance: Exam[] = student.academicPerformance ? JSON.parse(JSON.stringify(student.academicPerformance)) : [];
+            const examIndex = currentPerformance.findIndex((e: Exam) => e.id === examId);
+
+            if (examIndex > -1) {
+                currentPerformance[examIndex].results = []; // Reset the results for the specific exam
+            }
+            
+            return {
+                studentId: student.id,
+                performance: currentPerformance,
+            };
+        });
+
+        await onUpdateClassMarks(updates);
+        setIsResetModalOpen(false);
+    };
 
     if (!grade || !examDetails || !gradeDef) {
         return <div>Loading or invalid parameters...</div>;
@@ -313,6 +336,13 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                             <button onClick={() => fileInputRef.current?.click()} disabled={isProcessingFile} className="btn btn-secondary disabled:opacity-70">
                                 {isProcessingFile ? <SpinnerIcon className="w-5 h-5"/> : <InboxArrowDownIcon className="w-5 h-5"/>}
                                 {isProcessingFile ? 'Processing...' : 'Import from Excel'}
+                            </button>
+                            <button
+                                onClick={() => setIsResetModalOpen(true)}
+                                className="btn btn-secondary border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400"
+                            >
+                                <TrashIcon className="w-5 h-5"/>
+                                Reset Marks
                             </button>
                             <button onClick={handleDownloadTemplate} className="text-xs font-semibold text-sky-700 hover:underline px-2">Download Template</button>
                         </div>
@@ -452,6 +482,20 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                         <p className="mt-4">Are you sure you want to proceed and save these changes?</p>
                     </div>
                 )}
+            </ConfirmationModal>
+
+            <ConfirmationModal
+                isOpen={isResetModalOpen}
+                onClose={() => setIsResetModalOpen(false)}
+                onConfirm={handleResetMarks}
+                title="Confirm Reset Marks"
+            >
+                <p>
+                    Are you sure you want to reset all marks for{' '}
+                    <span className="font-bold">{grade}</span> for the{' '}
+                    <span className="font-bold">{examDetails?.name}</span>?
+                </p>
+                <p className="mt-2 font-bold text-red-600">This action will delete all entered marks for this exam and cannot be undone.</p>
             </ConfirmationModal>
             
             <MarksEntryModal 
