@@ -73,14 +73,27 @@ import CommunicationPage from './pages/CommunicationPage';
 import CalendarPage from './pages/CalendarPage';
 import CalendarEventFormModal from './components/CalendarEventFormModal';
 
-const base64ToBlob = async (base64: string): Promise<Blob> => {
-    const response = await fetch(base64);
-    const blob = await response.blob();
-    return blob;
+const dataUrlToBlob = (dataUrl: string): Blob => {
+    const arr = dataUrl.split(',');
+    if (arr.length < 2 || !arr[0] || !arr[1]) {
+        throw new Error('Invalid data URL');
+    }
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch || mimeMatch.length < 2) {
+        throw new Error('Could not parse MIME type from data URL');
+    }
+    const mime = mimeMatch[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
 };
 
 const uploadImage = (base64Image: string): Promise<string> => {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         let uploadTask: firebase.storage.UploadTask | undefined;
 
         const timeoutId = setTimeout(() => {
@@ -100,7 +113,7 @@ const uploadImage = (base64Image: string): Promise<string> => {
         }
 
         try {
-            const blob = await base64ToBlob(base64Image);
+            const blob = dataUrlToBlob(base64Image);
             const fileName = `photos/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${blob.type.split('/')[1] || 'jpg'}`;
             const storageRef = storage.ref(fileName);
             uploadTask = storageRef.put(blob);
