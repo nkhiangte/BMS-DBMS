@@ -374,6 +374,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                             <p className="text-sm text-slate-600">Enter or update marks individually, in bulk, or by importing a file.</p>
                         </div>
                         <div className="flex flex-wrap gap-3">
+                            <button onClick={() => window.print()} className="btn btn-secondary"><PrinterIcon className="w-5 h-5"/> Print</button>
                             <button onClick={() => setIsMarksEntryModalOpen(true)} className="btn btn-secondary"><EditIcon className="w-5 h-5"/> Quick Entry</button>
                             <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls" className="hidden"/>
                             <button onClick={() => fileInputRef.current?.click()} disabled={isProcessingFile} className="btn btn-secondary disabled:opacity-70">
@@ -394,49 +395,49 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
 
 
                 <div className="overflow-x-auto" id="mark-statement-table">
-                    <table className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300 text-sm">
+                    <table className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300 text-xs">
                         <thead className="bg-slate-100">
                             <tr>
                                 <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Roll</th>
                                 <th rowSpan={2} className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom">Student Name</th>
                                 {gradeDef.subjects.map(subject => (
-                                    <th key={subject.name} colSpan={hasActivitiesForThisGrade && subject.activityFullMarks > 0 ? 2 : 1} className="border p-1 text-center align-middle h-32">
+                                    <th key={subject.name} colSpan={hasActivitiesForThisGrade && subject.activityFullMarks > 0 ? 2 : 1} className="border p-1 text-center align-middle h-28">
                                         <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
                                             {subject.name}
                                         </div>
                                     </th>
                                 ))}
-                                <th colSpan={hasActivitiesForThisGrade ? 3 : 1} className="border p-1 text-center align-middle h-32">
+                                <th colSpan={hasActivitiesForThisGrade ? 3 : 1} className="border p-1 text-center align-middle h-28">
                                      <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
                                         Totals
                                     </div>
                                 </th>
-                                <th rowSpan={2} className="border p-1 text-center align-middle h-32">
+                                <th rowSpan={2} className="border p-1 text-center align-middle h-28">
                                     <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
                                         %
                                     </div>
                                 </th>
-                                <th rowSpan={2} className="border p-1 text-center align-middle h-32">
+                                <th rowSpan={2} className="border p-1 text-center align-middle h-28">
                                     <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
                                         {isHighSchool ? 'Division' : 'Grade'}
                                     </div>
                                 </th>
-                                <th rowSpan={2} className="border p-1 text-center align-middle h-32">
+                                <th rowSpan={2} className="border p-1 text-center align-middle h-28">
                                     <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
                                         Result
                                     </div>
                                 </th>
-                                <th rowSpan={2} className="border p-1 text-center align-middle h-32">
+                                <th rowSpan={2} className="border p-1 text-center align-middle h-28">
                                     <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
                                         Rank
                                     </div>
                                 </th>
-                                <th rowSpan={2} className="border p-1 text-center align-middle h-32">
+                                <th rowSpan={2} className="border p-1 text-center align-middle h-28">
                                     <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
                                         Attendance %
                                     </div>
                                 </th>
-                                <th rowSpan={2} className="border p-1 text-center align-middle h-32">
+                                <th rowSpan={2} className="border p-1 text-center align-middle h-28">
                                     <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
                                         Remarks
                                     </div>
