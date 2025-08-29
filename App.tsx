@@ -1,12 +1,13 @@
 
 
+
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType, FeeStructure, FeeSet } from './types';
-import { GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST, MIZORAM_HOLIDAYS, DEFAULT_FEE_STRUCTURE } from './constants';
+import { IMGBB_API_KEY, GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST, MIZORAM_HOLIDAYS, DEFAULT_FEE_STRUCTURE } from './constants';
 import { getNextGrade, createDefaultFeePayments, calculateStudentResult, formatStudentId } from './utils';
 
-import { auth, db, storage, firebaseConfig, firebase } from './firebaseConfig';
+import { auth, db, firebase } from './firebaseConfig';
 
 import Header from './components/Header';
 import StudentFormModal from './components/StudentFormModal';
@@ -73,85 +74,51 @@ import CommunicationPage from './pages/CommunicationPage';
 import CalendarPage from './pages/CalendarPage';
 import CalendarEventFormModal from './components/CalendarEventFormModal';
 
-const dataUrlToBlob = (dataUrl: string): Blob => {
-    const arr = dataUrl.split(',');
-    if (arr.length < 2 || !arr[0] || !arr[1]) {
-        throw new Error('Invalid data URL');
+const uploadImage = async (base64Image: string): Promise<string> => {
+    if (base64Image.startsWith('http')) {
+        return base64Image;
     }
-    const mimeMatch = arr[0].match(/:(.*?);/);
-    if (!mimeMatch || mimeMatch.length < 2) {
-        throw new Error('Could not parse MIME type from data URL');
+
+    // Fix: This comparison was causing a TypeScript error because IMGBB_API_KEY is a constant.
+    // The check for a placeholder key is no longer needed, but we still check if the key is missing.
+    if (!IMGBB_API_KEY) {
+        console.error("ImgBB API key is not set. Please update it in constants.ts");
+        throw new Error("Image upload service is not configured. Please contact an administrator.");
     }
-    const mime = mimeMatch[1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-        u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new Blob([u8arr], { type: mime });
-};
 
-const uploadImage = (base64Image: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        let uploadTask: firebase.storage.UploadTask | undefined;
-
-        const timeoutId = setTimeout(() => {
-            if (uploadTask) {
-                uploadTask.cancel(); // Attempt to cancel the running task
-            }
-            // This specific message will be shown to the user in the form.
-            reject(new Error("Image upload timed out after 30 seconds. This might be due to a slow network connection or incorrect Firebase Storage security rules."));
-        }, 30000); // 30-second timeout
-
-        const cleanup = () => clearTimeout(timeoutId);
-
-        if (base64Image.startsWith('http')) {
-            cleanup();
-            resolve(base64Image);
-            return;
+    try {
+        // ImgBB API expects just the base64 data, not the data URL prefix
+        const base64Data = base64Image.split(',')[1];
+        if (!base64Data) {
+            throw new Error("Invalid base64 image data.");
         }
 
-        try {
-            const blob = dataUrlToBlob(base64Image);
-            const fileName = `photos/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${blob.type.split('/')[1] || 'jpg'}`;
-            const storageRef = storage.ref(fileName);
-            uploadTask = storageRef.put(blob);
+        const formData = new FormData();
+        formData.append('image', base64Data);
 
-            uploadTask.on('state_changed',
-                (snapshot) => { /* progress */ },
-                (error) => {
-                    cleanup();
-                    // A canceled task could be from our timeout. The timeout's rejection will be used, which is more specific.
-                    if (error.code === 'storage/canceled') {
-                        return;
-                    }
-                    console.error("Error uploading image to Firebase Storage:", error);
-                    let message = "Image upload failed. Please try again.";
-                    if (error.code === 'storage/unauthorized') {
-                        message = "Image upload failed due to insufficient permissions. Ensure Firebase Storage rules allow writes for authenticated users (e.g., `allow write: if request.auth != null;`).";
-                    } else if (error.code === 'storage/unknown') {
-                        message = "An unknown error occurred during image upload. Check your network connection.";
-                    }
-                    reject(new Error(message));
-                },
-                () => {
-                    uploadTask?.snapshot.ref.getDownloadURL().then((downloadURL) => {
-                        cleanup();
-                        resolve(downloadURL);
-                    }).catch(error => {
-                        cleanup();
-                        console.error("Error getting download URL:", error);
-                        reject(new Error("Upload succeeded, but failed to get the download URL. This can also be a permissions issue (read permission required)."));
-                    });
-                }
-            );
-        } catch (error) {
-            cleanup();
-            console.error("Error during image blob conversion or task initiation:", error);
-            reject(new Error("Failed to prepare image for upload."));
+        const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error("ImgBB API error:", errorData);
+            throw new Error(errorData.error?.message || 'Image upload failed due to an API error.');
         }
-    });
+
+        const result = await response.json();
+
+        if (result.success && result.data.url) {
+            return result.data.url;
+        } else {
+            throw new Error('ImgBB did not return a valid image URL.');
+        }
+    } catch (error) {
+        console.error("Error uploading image to ImgBB:", error);
+        // Provide a user-friendly error message
+        throw new Error("Failed to upload image. Please check your network connection or try a different image.");
+    }
 };
 
 
