@@ -151,13 +151,9 @@ const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files[0];
         try {
             const compressedDataUrl = await resizeImage(file, 512, 512, 0.8);
-            
-            // Upload to imgbb
-            const imageUrl = await uploadToImgbb(compressedDataUrl);
-            
-            setFormData(prev => ({ ...prev, photographUrl: imageUrl }));
+            setFormData(prev => ({ ...prev, photographUrl: compressedDataUrl }));
         } catch (error) {
-            console.error("Image upload failed:", error);
+            console.error("Image processing failed:", error);
         }
     }
 };

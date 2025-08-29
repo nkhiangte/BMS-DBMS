@@ -268,7 +268,9 @@ const App: React.FC = () => {
 
     const handleLogout = () => {
         sessionStorage.setItem('loginMessage', "You have been logged out.");
-        auth.signOut();
+        auth.signOut().then(() => {
+            window.location.reload();
+        });
         setNotification('');
         setAuthError('');
     };
@@ -327,6 +329,7 @@ const App: React.FC = () => {
             await firebaseUser.updatePassword(newPass);
             sessionStorage.setItem('loginMessage', 'Password changed successfully. Please log in again.');
             await auth.signOut();
+            window.location.reload();
             return { success: true };
         } catch (error: any) {
             let message = 'An error occurred while changing the password.';
@@ -520,7 +523,9 @@ const App: React.FC = () => {
     const handlePromoteStudents = async () => {
         console.log('Promoting students');
         // In a real app, logic to promote students, clear academic/fee records, etc., would go here.
+        sessionStorage.setItem('loginMessage', `Session ${academicYear} concluded. Please log in and set the new academic year.`);
         await auth.signOut();
+        window.location.reload();
     };
     const handleUpdateStaffAttendance = (staffId: string, status: AttendanceStatus) => { console.log('Updating staff attendance', staffId, status); };
     const handleUpdateStudentAttendance = async (grade: Grade, records: StudentAttendanceRecord) => { console.log('Updating student attendance', grade, records); };

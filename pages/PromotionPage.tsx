@@ -56,10 +56,9 @@ const PromotionPage: React.FC<PromotionPageProps> = ({ students, gradeDefinition
     }, [students, gradeDefinitions]);
 
     const handleConfirmPromotion = async () => {
-        sessionStorage.setItem('loginMessage', `Session ${academicYear} concluded. Please log in and set the new academic year.`);
         await onPromoteStudents();
         setIsConfirmModalOpen(false);
-        // No navigation needed, App component will redirect after signOut
+        // The reload is now handled by onPromoteStudents in App.tsx
     };
     
     return (
