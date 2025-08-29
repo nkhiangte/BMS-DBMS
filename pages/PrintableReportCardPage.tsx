@@ -305,7 +305,10 @@ const PrintableReportCardPage: React.FC<PrintableReportCardPageProps> = ({ stude
             <footer className="mt-12 pt-6 border-t-2 border-slate-300 text-center text-sm text-slate-500">
                 <div className="flex justify-around items-end" style={{minHeight: '60px'}}>
                     <div className="w-1/3 pt-8 border-t border-slate-400">Class Teacher's Signature</div>
-                    <div className="w-1/3 pt-8 border-t border-slate-400">Principal's Signature</div>
+                    <div className="w-1/3 pt-8 border-t border-slate-400">
+                        Principal's Signature
+                        <p className="font-bold mt-2 tracking-wider">K. MALSAWMDAWNG</p>
+                    </div>
                 </div>
                 <p className="mt-8">&copy;{new Date().getFullYear()} Bethel Mission School. All rights reserved.</p>
             </footer>

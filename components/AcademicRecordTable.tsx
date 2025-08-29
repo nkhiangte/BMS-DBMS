@@ -1,7 +1,7 @@
 import React from 'react';
 import { SubjectMark, SubjectDefinition, Grade } from '../types';
-import { GRADES_WITH_NO_ACTIVITIES, OABC_GRADES, GRADES_WITH_DETAILED_ACTIVITIES } from '../constants';
-import { isSubjectNumeric, calculateActivityTotal } from '../utils';
+import { GRADES_WITH_NO_ACTIVITIES, OABC_GRADES } from '../constants';
+import { isSubjectNumeric } from '../utils';
 
 interface AcademicRecordTableProps {
   examName: string;
@@ -16,7 +16,6 @@ interface AcademicRecordTableProps {
 const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, results, isEditing, onUpdate, subjectDefinitions, grade, onOpenActivityLog }) => {
   
   const hasActivitiesForThisGrade = !GRADES_WITH_NO_ACTIVITIES.includes(grade);
-  const hasDetailedActivities = GRADES_WITH_DETAILED_ACTIVITIES.includes(grade);
 
   const handleMarksChange = (subjectName: string, field: 'examMarks' | 'activityMarks' | 'marks' | 'grade', value: string, max?: number) => {
     let subjectFound = false;
@@ -91,11 +90,9 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
                 const result = results.find(r => r.subject === subjectDef.name) || { subject: subjectDef.name };
                 const isGradeBased = !isSubjectNumeric(subjectDef, grade);
                 
-                const activityTotal = calculateActivityTotal(result.activityLog) ?? result.activityMarks;
-
-                const totalMarks = (result.examMarks === undefined && activityTotal === undefined)
+                const totalMarks = (result.examMarks === undefined && result.activityMarks === undefined)
                   ? undefined
-                  : (result.examMarks || 0) + (activityTotal || 0);
+                  : (result.examMarks || 0) + (result.activityMarks || 0);
 
                 const singleMark = result.marks ?? totalMarks;
 
@@ -121,16 +118,9 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
                             {/* Activity Marks Column */}
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800">
                             {isGradeBased || subjectDef.activityFullMarks === 0 ? <span className="text-slate-600 font-semibold">N/A</span> :
-                                (isEditing && hasDetailedActivities) ? (
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-semibold w-12 text-center">{activityTotal ?? '-'}</span>
-                                        <button type="button" onClick={() => onOpenActivityLog(subjectDef.name)} className="text-xs font-semibold text-sky-600 hover:underline">
-                                            Log Marks
-                                        </button>
-                                    </div>
-                                ) : (isEditing ? (
-                                    <input type="number" value={activityTotal ?? ''} onChange={(e) => handleMarksChange(subjectDef.name, 'activityMarks', e.target.value, subjectDef.activityFullMarks)} className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm" placeholder={`/ ${subjectDef.activityFullMarks}`} max={subjectDef.activityFullMarks}/>
-                                ) : (activityTotal ?? '-'))
+                                (isEditing ? (
+                                    <input type="number" value={result.activityMarks ?? ''} onChange={(e) => handleMarksChange(subjectDef.name, 'activityMarks', e.target.value, subjectDef.activityFullMarks)} className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm" placeholder={`/ ${subjectDef.activityFullMarks}`} max={subjectDef.activityFullMarks}/>
+                                ) : (result.activityMarks ?? '-'))
                             }
                             </td>
                             {/* Total Column */}

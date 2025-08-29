@@ -49,15 +49,6 @@ export const GRADES_WITH_NO_ACTIVITIES: Grade[] = [
   Grade.X,
 ];
 
-export const GRADES_WITH_DETAILED_ACTIVITIES: Grade[] = [
-  Grade.III,
-  Grade.IV,
-  Grade.V,
-  Grade.VI,
-  Grade.VII,
-  Grade.VIII,
-];
-
 export const TERMINAL_EXAMS = [
   { id: 'terminal1', name: 'First Terminal Exam' },
   { id: 'terminal2', name: 'Second Terminal Exam' },

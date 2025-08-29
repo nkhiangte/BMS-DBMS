@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, Exam, SubjectMark, Grade, GradeDefinition, User, ActivityLog } from '../types';
+import { Student, Exam, SubjectMark, Grade, GradeDefinition, User } from '../types';
 import { TERMINAL_EXAMS, CONDUCT_GRADE_LIST } from '../constants';
 import { BackIcon, EditIcon, CheckIcon, XIcon, HomeIcon } from '../components/Icons';
 import AcademicRecordTable from '../components/AcademicRecordTable';
-import ActivityLogModal from '../components/ActivityLogModal';
-import { formatStudentId, calculateActivityTotal } from '../utils';
+import { formatStudentId } from '../utils';
 
 interface AcademicPerformancePageProps {
   students: Student[];
@@ -24,8 +23,6 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
   
   const [isEditing, setIsEditing] = useState(false);
   const [performanceData, setPerformanceData] = useState<Exam[]>([]);
-  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
-  const [editingLogDetails, setEditingLogDetails] = useState<{ exam: Exam, subjectName: string } | null>(null);
   
   const canEdit = user.role === 'admin' || (student && student.grade === assignedGrade);
 
@@ -48,7 +45,6 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
           marks: existingResult?.marks,
           examMarks: existingResult?.examMarks,
           activityMarks: existingResult?.activityMarks,
-          activityLog: existingResult?.activityLog,
           grade: existingResult?.grade,
         };
       });
@@ -80,7 +76,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
       // Filter out results that are completely empty to avoid saving blank records
       const cleanedPerformanceData = performanceData.map(exam => ({
         ...exam,
-        results: exam.results.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null || r.grade != null || r.activityLog != null),
+        results: exam.results.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null || r.grade != null),
         teacherRemarks: exam.teacherRemarks?.trim() || undefined,
         generalConduct: exam.generalConduct || undefined,
       }));
@@ -93,32 +89,6 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
     setPerformanceData(prev => 
       prev.map(exam => exam.id === examId ? { ...exam, [field]: value } : exam)
     );
-  };
-
-  const handleOpenLogModal = (exam: Exam, subjectName: string) => {
-    setEditingLogDetails({ exam, subjectName });
-    setIsLogModalOpen(true);
-  };
-
-  const handleSaveLog = (subjectName: string, log: ActivityLog) => {
-    if (!editingLogDetails) return;
-    const { exam } = editingLogDetails;
-
-    const newTotal = calculateActivityTotal(log);
-
-    handleUpdateExamData(exam.id, 'results', exam.results.map(result => {
-        if (result.subject === subjectName) {
-            return {
-                ...result,
-                activityLog: Object.values(log).some(v => v != null) ? log : undefined, // Store undefined if empty
-                activityMarks: newTotal,
-            };
-        }
-        return result;
-    }));
-
-    setIsLogModalOpen(false);
-    setEditingLogDetails(null);
   };
 
   if (!student) {
@@ -206,7 +176,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
                         onUpdate={(newResults) => handleUpdateExamData(exam.id, 'results', newResults)}
                         subjectDefinitions={gradeDef.subjects}
                         grade={student.grade}
-                        onOpenActivityLog={(subjectName) => handleOpenLogModal(exam, subjectName)}
+                        onOpenActivityLog={() => {}}
                     />
                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -247,22 +217,6 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
             ))}
         </div>
     </div>
-    {isLogModalOpen && editingLogDetails && (
-        <ActivityLogModal
-            isOpen={isLogModalOpen}
-            onClose={() => setIsLogModalOpen(false)}
-            onSave={handleSaveLog}
-            studentName={student.name}
-            examName={editingLogDetails.exam.name}
-            subjectName={editingLogDetails.subjectName}
-            initialLog={
-                performanceData
-                    .find(e => e.id === editingLogDetails.exam.id)
-                    ?.results.find(r => r.subject === editingLogDetails.subjectName)
-                    ?.activityLog
-            }
-        />
-    )}
     </>
   );
 };

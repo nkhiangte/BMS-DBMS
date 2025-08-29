@@ -1,4 +1,4 @@
-import { Student, Staff, Grade, FeePayments, SubjectMark, GradeDefinition, StaffAttendanceRecord, StudentAttendanceRecord, AttendanceStatus, StudentAttendanceStatus, SubjectDefinition, FeeStructure, ActivityLog } from './types';
+import { Student, Staff, Grade, FeePayments, SubjectMark, GradeDefinition, StaffAttendanceRecord, StudentAttendanceRecord, AttendanceStatus, StudentAttendanceStatus, SubjectDefinition, FeeStructure } from './types';
 import { academicMonths, GRADES_LIST, FEE_SET_GRADES } from './constants';
 
 const getGradeCode = (grade: Grade): string => {
@@ -370,13 +370,4 @@ export const getRemarks = (percentage: number, result: string): string => {
     if (percentage >= 60) return 'Good';
     if (percentage >= 50) return 'Satisfactory';
     return 'Needs Improvement';
-};
-
-export const calculateActivityTotal = (log?: ActivityLog): number | undefined => {
-    if (!log) return undefined;
-    
-    const hasAnyValue = Object.values(log).some(v => v != null);
-    if (!hasAnyValue) return undefined;
-
-    return (log.classTest || 0) + (log.homeAssignment || 0) + (log.quiz || 0) + (log.projectWork || 0);
 };
