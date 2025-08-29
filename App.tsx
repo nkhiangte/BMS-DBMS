@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType, FeeStructure, FeeSet } from './types';
+import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType, FeeStructure, FeeSet, ConductEntry } from './types';
 import { IMGBB_API_KEY, GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST, MIZORAM_HOLIDAYS, DEFAULT_FEE_STRUCTURE } from './constants';
 import { getNextGrade, createDefaultFeePayments, calculateStudentResult, formatStudentId } from './utils';
 
@@ -144,6 +144,7 @@ const App: React.FC = () => {
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [feeStructure, setFeeStructure] = useState<FeeStructure>(DEFAULT_FEE_STRUCTURE);
+    const [conductLog, setConductLog] = useState<ConductEntry[]>([]);
 
     const [isStudentFormOpen, setIsStudentFormOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -605,6 +606,26 @@ const App: React.FC = () => {
             addNotification("Failed to update bulk fee payments.", "error");
         }
     };
+
+    const handleAddConductEntry = async (entry: Omit<ConductEntry, 'id'>) => {
+        try {
+            await db.collection('conductLog').add(entry);
+            addNotification(`${entry.type} entry added successfully.`, 'success');
+        } catch (error) {
+            console.error("Error adding conduct entry:", error);
+            addNotification(`Failed to add ${entry.type} entry.`, 'error');
+        }
+    };
+
+    const handleDeleteConductEntry = async (entryId: string) => {
+        try {
+            await db.collection('conductLog').doc(entryId).delete();
+            addNotification("Conduct entry deleted successfully.", "success");
+        } catch (error) {
+            console.error("Error deleting conduct entry:", error);
+            addNotification("Failed to delete conduct entry.", "error");
+        }
+    };
     
     // Auth Effect
     useEffect(() => {
@@ -672,6 +693,10 @@ const App: React.FC = () => {
             const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as CalendarEvent[];
             setCalendarEvents(events.sort((a, b) => a.date.localeCompare(b.date)));
         }));
+        unsubscribers.push(db.collection('conductLog').onSnapshot(snapshot => {
+            const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ConductEntry[];
+            setConductLog(entries.sort((a, b) => b.date.localeCompare(a.date))); // Sort by most recent
+        }));
         unsubscribers.push(db.collection('config').doc('gradeDefinitions').onSnapshot(doc => {
             if (doc.exists) {
                 const remoteData = doc.data() as Record<string, Partial<GradeDefinition>> | undefined;
@@ -726,7 +751,7 @@ const App: React.FC = () => {
                         {/* Main App Routes */}
                         <Route path="/" element={<PrivateRoute user={user}><DashboardPage user={user} onAddStudent={handleAddStudent} studentCount={activeStudents.length} academicYear={academicYear!} onSetAcademicYear={setAcademicYearAndPersist} allUsers={allUsers} assignedGrade={assignedGrade} /></PrivateRoute>} />
                         <Route path="/students" element={<PrivateRoute user={user}><StudentListPage students={activeStudents} onAdd={handleAddStudent} onEdit={handleEditStudent} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} /></PrivateRoute>} />
-                        <Route path="/student/:studentId" element={<PrivateRoute user={user}><StudentDetailPage students={students} onEdit={handleEditStudent} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} feeStructure={feeStructure} /></PrivateRoute>} />
+                        <Route path="/student/:studentId" element={<PrivateRoute user={user}><StudentDetailPage students={students} onEdit={handleEditStudent} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} feeStructure={feeStructure} conductLog={conductLog} onAddConductEntry={handleAddConductEntry} onDeleteConductEntry={handleDeleteConductEntry} /></PrivateRoute>} />
                         <Route path="/student/:studentId/academics" element={<PrivateRoute user={user}><AcademicPerformancePage students={students} onUpdateAcademic={handleUpdateAcademic} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} /></PrivateRoute>} />
                         <Route path="/classes" element={<PrivateRoute user={user}><ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={handleOpenImportModal} user={user} /></PrivateRoute>} />
                         <Route path="/classes/:grade" element={<PrivateRoute user={user}><ClassStudentsPage students={activeStudents} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} onUpdateClassTeacher={handleUpdateClassTeacher} academicYear={academicYear!} onOpenImportModal={handleOpenImportModal} onOpenTransferModal={handleOpenTransferModal} onDelete={setDeletingStudent} user={user} assignedGrade={assignedGrade} onAddStudentToClass={handleAddStudentToClass} onUpdateBulkFeePayments={handleUpdateBulkFeePayments} feeStructure={feeStructure} /></PrivateRoute>} />
