@@ -201,23 +201,24 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
             dataToSave.subjectsTaught = dataToSave.subjectsTaught.split(',').map((s: string) => s.trim()).filter(Boolean);
         }
     
-        // Firestore fails silently with `undefined` values.
-        // We must clean the object of any keys that have `undefined`, `null`, or `''` as values.
+        // Firestore fails with `undefined` values.
+        // We must clean the object of any keys that have `undefined`, `null`, or `''` as values for optional fields.
         Object.keys(dataToSave).forEach(key => {
             const value = dataToSave[key];
-            if (value === null || value === null || value === '') {
-                // Exceptions for numeric fields that could be 0.
-                if (key !== 'yearsOfExperience' && key !== 'basicSalary') {
+            if (value === undefined || value === null || value === '') {
+                // Exceptions for numeric fields that can be 0, and photographUrl which can be ''.
+                const exceptions = ['yearsOfExperience', 'basicSalary', 'photographUrl'];
+                if (!exceptions.includes(key)) {
                      delete dataToSave[key];
                 }
             }
         });
     
         // Ensure numeric types are correct for fields that might have been left as strings
-        if (dataToSave.yearsOfExperience) {
+        if (dataToSave.yearsOfExperience !== undefined) {
             dataToSave.yearsOfExperience = Number(dataToSave.yearsOfExperience);
         }
-        if (dataToSave.basicSalary) {
+        if (dataToSave.basicSalary !== undefined) {
             dataToSave.basicSalary = Number(dataToSave.basicSalary);
         }
         

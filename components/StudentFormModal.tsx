@@ -173,13 +173,14 @@ const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
             dateOfBirth: formatDateForStorage(formData.dateOfBirth),
         };
 
-        // Firestore fails silently with `undefined` values.
+        // Firestore fails with `undefined` values.
         // We must clean the object of any keys that have `undefined`, `null`, or `''` as values for optional fields.
         Object.keys(dataToSave).forEach(key => {
             const value = dataToSave[key];
-            if (value === null || value === null || value === '') {
-                // Exceptions: we want to keep `rollNo: 0`.
-                if (key !== 'rollNo') {
+            if (value === undefined || value === null || value === '') {
+                // Exceptions: `rollNo` can be 0, and `photographUrl` must be an empty string to signify removal.
+                const exceptions = ['rollNo', 'photographUrl'];
+                if (!exceptions.includes(key)) {
                      delete dataToSave[key];
                 }
             }

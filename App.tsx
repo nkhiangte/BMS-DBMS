@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType, FeeStructure, FeeSet } from './types';
@@ -360,7 +358,7 @@ const App: React.FC = () => {
                 photographUrl = await uploadImage(photographUrl);
             }
 
-            const dataToSave = { ...studentData, photographUrl };
+            const dataToSave = { ...studentData, photographUrl: photographUrl || '' };
 
             if (editingStudent) {
                 await db.collection('students').doc(editingStudent.id).update(dataToSave);
@@ -422,7 +420,7 @@ const App: React.FC = () => {
                 photographUrl = await uploadImage(photographUrl);
             }
 
-            const dataToSave = { ...staffData, photographUrl };
+            const dataToSave = { ...staffData, photographUrl: photographUrl || '' };
 
             if (editingStaff) {
                 await db.collection('staff').doc(editingStaff.id).update(dataToSave);
@@ -705,144 +703,199 @@ const App: React.FC = () => {
         return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
     }
 
+    const setAcademicYearAndPersist = (year: string) => {
+        localStorage.setItem('academicYear', year);
+        setAcademicYear(year);
+    };
+
     return (
         <div className="min-h-screen flex flex-col">
             {user && <Header user={user} onLogout={handleLogout} className="print-hidden" />}
             <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
-                <Routes>
-                    {/* Auth */}
-                    <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage onLogin={handleLogin} error={authError} notification={notification} />} />
-                    <Route path="/signup" element={user ? <Navigate to="/" replace /> : <SignUpPage onSignUp={handleSignUp} />} />
-                    <Route path="/forgot-password" element={user ? <Navigate to="/" replace /> : <ForgotPasswordPage onForgotPassword={handleForgotPassword} />} />
-                    <Route path="/change-password" element={<PrivateRoute user={user}><ChangePasswordPage onChangePassword={handleChangePassword} /></PrivateRoute>} />
-                    <Route path="/users" element={<PrivateRoute user={user}><UserManagementPage allUsers={allUsers} currentUser={user!} onUpdateUserRole={handleUpdateUserRole} onDeleteUser={handleDeleteUser} /></PrivateRoute>} />
+                {user && !academicYear && user.role !== 'pending' && <AcademicYearForm onSetAcademicYear={setAcademicYearAndPersist} />}
 
-                    {/* Core */}
-                    <Route path="/" element={<PrivateRoute user={user}><DashboardPage user={user!} onAddStudent={handleAddStudent} studentCount={activeStudents.length} academicYear={academicYear} onSetAcademicYear={(year) => { localStorage.setItem('academicYear', year); setAcademicYear(year); }} allUsers={allUsers} assignedGrade={assignedGrade} /></PrivateRoute>} />
-                    <Route path="/students" element={<PrivateRoute user={user}><StudentListPage students={activeStudents} onAdd={handleAddStudent} onEdit={handleEditStudent} academicYear={academicYear!} user={user!} assignedGrade={assignedGrade} /></PrivateRoute>} />
-                    <Route path="/student/:studentId" element={<PrivateRoute user={user}>{feeStructure && <StudentDetailPage students={students} onEdit={handleEditStudent} academicYear={academicYear!} user={user!} assignedGrade={assignedGrade} feeStructure={feeStructure} />}</PrivateRoute>} />
-                    <Route path="/student/:studentId/academics" element={<PrivateRoute user={user}><AcademicPerformancePage students={students} onUpdateAcademic={handleUpdateAcademic} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} user={user!} assignedGrade={assignedGrade}/></PrivateRoute>} />
-                    <Route path="/classes" element={<PrivateRoute user={user}><ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={handleOpenImportModal} user={user!} /></PrivateRoute>} />
-                    <Route path="/classes/:grade" element={<PrivateRoute user={user}>{feeStructure && <ClassStudentsPage students={students} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} onUpdateClassTeacher={handleUpdateClassTeacher} academicYear={academicYear!} onOpenImportModal={handleOpenImportModal} onOpenTransferModal={handleOpenTransferModal} onDelete={setDeletingStudent} user={user!} assignedGrade={assignedGrade} onAddStudentToClass={handleAddStudentToClass} onUpdateBulkFeePayments={handleUpdateBulkFeePayments} feeStructure={feeStructure} />}</PrivateRoute>} />
-                    <Route path="/classes/:grade/attendance" element={<PrivateRoute user={user}><StudentAttendancePage students={students} allAttendance={studentAttendance} onUpdateAttendance={handleUpdateStudentAttendance} user={user!} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} academicYear={academicYear!} assignedGrade={assignedGrade} /></PrivateRoute>} />
-
-                    {/* Fees */}
-                    <Route path="/fees" element={<PrivateRoute user={user}>{feeStructure && <FeeManagementPage students={activeStudents} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} user={user!} feeStructure={feeStructure} onUpdateFeeStructure={handleUpdateFeeStructure} />}</PrivateRoute>} />
+                {user && (academicYear || user.role === 'pending') && (
+                <>
+                    <Routes>
+                        {/* Auth */}
+                        <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage onLogin={handleLogin} error={authError} notification={notification} />} />
+                        <Route path="/signup" element={user ? <Navigate to="/" replace /> : <SignUpPage onSignUp={handleSignUp} />} />
+                        <Route path="/forgot-password" element={user ? <Navigate to="/" replace /> : <ForgotPasswordPage onForgotPassword={handleForgotPassword} />} />
+                        <Route path="/change-password" element={<PrivateRoute user={user}><ChangePasswordPage onChangePassword={handleChangePassword} /></PrivateRoute>} />
+    
+                        {/* Main App Routes */}
+                        <Route path="/" element={<PrivateRoute user={user}><DashboardPage user={user} onAddStudent={handleAddStudent} studentCount={activeStudents.length} academicYear={academicYear!} onSetAcademicYear={setAcademicYearAndPersist} allUsers={allUsers} assignedGrade={assignedGrade} /></PrivateRoute>} />
+                        <Route path="/students" element={<PrivateRoute user={user}><StudentListPage students={activeStudents} onAdd={handleAddStudent} onEdit={handleEditStudent} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} /></PrivateRoute>} />
+                        <Route path="/student/:studentId" element={<PrivateRoute user={user}><StudentDetailPage students={students} onEdit={handleEditStudent} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} feeStructure={feeStructure} /></PrivateRoute>} />
+                        <Route path="/student/:studentId/academics" element={<PrivateRoute user={user}><AcademicPerformancePage students={students} onUpdateAcademic={handleUpdateAcademic} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} /></PrivateRoute>} />
+                        <Route path="/classes" element={<PrivateRoute user={user}><ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={handleOpenImportModal} user={user} /></PrivateRoute>} />
+                        <Route path="/classes/:grade" element={<PrivateRoute user={user}><ClassStudentsPage students={activeStudents} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} onUpdateClassTeacher={handleUpdateClassTeacher} academicYear={academicYear!} onOpenImportModal={handleOpenImportModal} onOpenTransferModal={handleOpenTransferModal} onDelete={setDeletingStudent} user={user} assignedGrade={assignedGrade} onAddStudentToClass={handleAddStudentToClass} onUpdateBulkFeePayments={handleUpdateBulkFeePayments} feeStructure={feeStructure} /></PrivateRoute>} />
+                        <Route path="/reports/search" element={<PrivateRoute user={user}><ReportSearchPage students={activeStudents} academicYear={academicYear!} /></PrivateRoute>} />
+                        <Route path="/progress-report/:studentId" element={<PrivateRoute user={user}><ProgressReportPage students={students} academicYear={academicYear!} gradeDefinitions={gradeDefinitions} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} /></PrivateRoute>} />
+                        <Route path="/report-card/:studentId/:examId" element={<PrivateRoute user={user}><PrintableReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} /></PrivateRoute>} />
+                        <Route path="/reports/bulk-print/:grade/:examId" element={<PrivateRoute user={user}><PrintableBulkReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} /></PrivateRoute>} />
+                        <Route path="/reports/class-statement/:grade/:examId" element={<PrivateRoute user={user}><ClassMarkStatementPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onUpdateClassMarks={handleUpdateBulkMarks} user={user} assignedGrade={assignedGrade} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} /></PrivateRoute>} />
+                        <Route path="/subjects" element={<PrivateRoute user={user}><ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} user={user} /></PrivateRoute>} />
+                        <Route path="/staff" element={<PrivateRoute user={user}><ManageStaffPage staff={staff} onAdd={handleAddStaff} onEdit={handleEditStaff} onDelete={setDeletingStaff} gradeDefinitions={gradeDefinitions} user={user} /></PrivateRoute>} />
+                        <Route path="/staff/:staffId" element={<PrivateRoute user={user}><StaffDetailPage staff={staff} onEdit={handleEditStaff} gradeDefinitions={gradeDefinitions} /></PrivateRoute>} />
+                        <Route path="/fees" element={<PrivateRoute user={user}><FeeManagementPage students={students} academicYear={academicYear!} onUpdateFeePayments={handleUpdateFeePayments} user={user} feeStructure={feeStructure} onUpdateFeeStructure={handleUpdateFeeStructure} /></PrivateRoute>} />
+                        <Route path="/promotion" element={<PrivateRoute user={user}><PromotionPage students={activeStudents} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onPromoteStudents={handlePromoteStudents} user={user} /></PrivateRoute>} />
+                        <Route path="/inventory" element={<PrivateRoute user={user}><InventoryPage inventory={inventory} onAdd={handleAddInventoryItem} onEdit={handleEditInventoryItem} onDelete={handleDeleteInventoryItem} user={user} /></PrivateRoute>} />
+                        <Route path="/transfers" element={<PrivateRoute user={user}><TransferManagementPage students={students} tcRecords={tcRecords} academicYear={academicYear!} /></PrivateRoute>} />
+                        <Route path="/transfers/register" element={<PrivateRoute user={user}><TcRegistrationPage students={students} onSave={handleSaveTcRecord} academicYear={academicYear!} user={user} feeStructure={feeStructure} /></PrivateRoute>} />
+                        <Route path="/transfers/update" element={<PrivateRoute user={user}><UpdateTcPage tcRecords={tcRecords} onUpdate={handleUpdateTcRecord} user={user} /></PrivateRoute>} />
+                        <Route path="/transfers/records" element={<PrivateRoute user={user}><AllTcRecordsPage tcRecords={tcRecords} /></PrivateRoute>} />
+                        <Route path="/transfers/print/:tcId" element={<PrivateRoute user={user}><PrintTcPage tcRecords={tcRecords} /></PrivateRoute>} />
+                        
+                        {/* Staff Documents */}
+                        <Route path="/staff/certificates" element={<PrivateRoute user={user}><StaffDocumentsPage serviceCertificateRecords={serviceCertRecords} user={user} /></PrivateRoute>} />
+                        <Route path="/staff/certificates/generate" element={<PrivateRoute user={user}><GenerateServiceCertificatePage staff={staff} onSave={handleSaveServiceCert} user={user} /></PrivateRoute>} />
+                        <Route path="/staff/certificates/print/:certId" element={<PrivateRoute user={user}><PrintServiceCertificatePage serviceCertificateRecords={serviceCertRecords} /></PrivateRoute>} />
+                        
+                        {/* Attendance */}
+                        <Route path="/staff/attendance" element={<PrivateRoute user={user}><StaffAttendancePage user={user} staff={staff} attendance={staffAttendance[new Date().toISOString().slice(0, 10)] || null} onMarkAttendance={handleUpdateStaffAttendance} fetchStaffAttendanceForMonth={fetchStaffAttendanceForMonth} academicYear={academicYear!} /></PrivateRoute>} />
+                        <Route path="/classes/:grade/attendance" element={<PrivateRoute user={user}><StudentAttendancePage students={students} allAttendance={studentAttendance} onUpdateAttendance={handleUpdateStudentAttendance} user={user} assignedGrade={assignedGrade} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} academicYear={academicYear!} /></PrivateRoute>} />
+                        
+                        {/* Hostel Management */}
+                        <Route path="/hostel" element={<PrivateRoute user={user}><HostelDashboardPage /></PrivateRoute>} />
+                        <Route path="/hostel/students" element={<PrivateRoute user={user}><HostelStudentListPage residents={hostelResidents} rooms={hostelRooms} students={students} onAdd={handleAddHostelResident} user={user} /></PrivateRoute>} />
+                        <Route path="/hostel/rooms" element={<PrivateRoute user={user}><HostelRoomListPage rooms={hostelRooms} residents={hostelResidents} students={students} /></PrivateRoute>} />
+                        <Route path="/hostel/fees" element={<PrivateRoute user={user}><HostelFeePage /></PrivateRoute>} />
+                        <Route path="/hostel/attendance" element={<PrivateRoute user={user}><HostelAttendancePage /></PrivateRoute>} />
+                        <Route path="/hostel/mess" element={<PrivateRoute user={user}><HostelMessPage /></PrivateRoute>} />
+                        <Route path="/hostel/staff" element={<PrivateRoute user={user}><HostelStaffPage staff={hostelStaff} onAdd={handleAddHostelStaff} onEdit={handleEditHostelStaff} onDelete={handleDeleteHostelStaff} user={user} /></PrivateRoute>} />
+                        <Route path="/hostel/inventory" element={<PrivateRoute user={user}><HostelInventoryPage inventory={hostelInventory} stockLogs={stockLogs} onUpdateStock={handleUpdateHostelStock} user={user} /></PrivateRoute>} />
+                        <Route path="/hostel/discipline" element={<PrivateRoute user={user}><HostelDisciplinePage /></PrivateRoute>} />
+                        <Route path="/hostel/health" element={<PrivateRoute user={user}><HostelHealthPage /></PrivateRoute>} />
+                        <Route path="/hostel/communication" element={<PrivateRoute user={user}><HostelCommunicationPage /></PrivateRoute>} />
+                        <Route path="/hostel/settings" element={<PrivateRoute user={user}><HostelSettingsPage /></PrivateRoute>} />
+    
+                        {/* Admin */}
+                        {user.role === 'admin' && <Route path="/users" element={<PrivateRoute user={user}><UserManagementPage allUsers={allUsers} currentUser={user} onUpdateUserRole={handleUpdateUserRole} onDeleteUser={handleDeleteUser} /></PrivateRoute>} />}
+                        <Route path="/communication" element={<PrivateRoute user={user}><CommunicationPage students={activeStudents} user={user} /></PrivateRoute>} />
+                        <Route path="/calendar" element={<PrivateRoute user={user}><CalendarPage events={calendarEvents} user={user} onAdd={handleAddCalendarEvent} onEdit={handleEditCalendarEvent} onDelete={setDeletingCalendarEvent} notificationDaysBefore={calendarNotificationPrefs.daysBefore} onUpdatePrefs={handleUpdateCalendarPrefs} /></PrivateRoute>} />
+                    </Routes>
                     
-                    {/* Staff */}
-                    <Route path="/staff" element={<PrivateRoute user={user}><ManageStaffPage staff={staff} gradeDefinitions={gradeDefinitions} onAdd={handleAddStaff} onEdit={handleEditStaff} onDelete={setDeletingStaff} user={user!} /></PrivateRoute>} />
-                    <Route path="/staff/:staffId" element={<PrivateRoute user={user}><StaffDetailPage staff={staff} onEdit={handleEditStaff} gradeDefinitions={gradeDefinitions} /></PrivateRoute>} />
-                    <Route path="/staff/attendance" element={<PrivateRoute user={user}><StaffAttendancePage user={user!} staff={staff} attendance={staffAttendance[new Date().toISOString().split('T')[0]]} onMarkAttendance={handleUpdateStaffAttendance} fetchStaffAttendanceForMonth={fetchStaffAttendanceForMonth} academicYear={academicYear!} /></PrivateRoute>} />
-                    <Route path="/staff/certificates" element={<PrivateRoute user={user}><StaffDocumentsPage serviceCertificateRecords={serviceCertRecords} user={user!} /></PrivateRoute>} />
-                    <Route path="/staff/certificates/generate" element={<PrivateRoute user={user}><GenerateServiceCertificatePage staff={staff} onSave={handleSaveServiceCert} user={user!} /></PrivateRoute>} />
-                    <Route path="/staff/certificates/print/:certId" element={<PrivateRoute user={user}><PrintServiceCertificatePage serviceCertificateRecords={serviceCertRecords} /></PrivateRoute>} />
+                    {/* Modals */}
+                    <NotificationContainer notifications={notifications} onDismiss={(id) => setNotifications(prev => prev.filter(n => n.id !== id))} />
                     
-                    {/* Academics & Reports */}
-                    <Route path="/subjects" element={<PrivateRoute user={user}><ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} user={user!} /></PrivateRoute>} />
-                    <Route path="/reports/search" element={<PrivateRoute user={user}><ReportSearchPage students={activeStudents} academicYear={academicYear!} /></PrivateRoute>} />
-                    <Route path="/progress-report/:studentId" element={<PrivateRoute user={user}><ProgressReportPage students={students} academicYear={academicYear!} gradeDefinitions={gradeDefinitions} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} /></PrivateRoute>} />
-                    <Route path="/report-card/:studentId/:examId" element={<PrivateRoute user={user}><PrintableReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} user={user!} assignedGrade={assignedGrade} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} /></PrivateRoute>} />
-                    <Route path="/reports/class-statement/:grade/:examId" element={<PrivateRoute user={user}><ClassMarkStatementPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onUpdateClassMarks={handleUpdateBulkMarks} user={user!} assignedGrade={assignedGrade} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} /></PrivateRoute>} />
-                    <Route path="/reports/bulk-print/:grade/:examId" element={<PrivateRoute user={user}><PrintableBulkReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} /></PrivateRoute>} />
-                    <Route path="/promotion" element={<PrivateRoute user={user}><PromotionPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onPromoteStudents={handlePromoteStudents} user={user!} /></PrivateRoute>} />
-
-                    {/* Transfers */}
-                    <Route path="/transfers" element={<PrivateRoute user={user}><TransferManagementPage students={students} tcRecords={tcRecords} academicYear={academicYear!} /></PrivateRoute>} />
-                    <Route path="/transfers/register" element={<PrivateRoute user={user}>{feeStructure && <TcRegistrationPage students={students} onSave={handleSaveTcRecord} academicYear={academicYear!} user={user!} feeStructure={feeStructure} />}</PrivateRoute>} />
-                    <Route path="/transfers/update" element={<PrivateRoute user={user}><UpdateTcPage tcRecords={tcRecords} onUpdate={handleUpdateTcRecord} user={user!} /></PrivateRoute>} />
-                    <Route path="/transfers/records" element={<PrivateRoute user={user}><AllTcRecordsPage tcRecords={tcRecords} /></PrivateRoute>} />
-                    <Route path="/transfers/print/:tcId" element={<PrivateRoute user={user}><PrintTcPage tcRecords={tcRecords} /></PrivateRoute>} />
-
-                    {/* Other Modules */}
-                    <Route path="/inventory" element={<PrivateRoute user={user}><InventoryPage inventory={inventory} onAdd={handleAddInventoryItem} onEdit={handleEditInventoryItem} onDelete={handleDeleteInventoryItem} user={user!} /></PrivateRoute>} />
-                    <Route path="/communication" element={<PrivateRoute user={user}><CommunicationPage students={activeStudents} user={user!} /></PrivateRoute>} />
-                    <Route path="/calendar" element={<PrivateRoute user={user}><CalendarPage events={calendarEvents} user={user!} onAdd={handleAddCalendarEvent} onEdit={handleEditCalendarEvent} onDelete={setDeletingCalendarEvent} notificationDaysBefore={calendarNotificationPrefs.daysBefore} onUpdatePrefs={handleUpdateCalendarPrefs} /></PrivateRoute>} />
-
-                    {/* Hostel */}
-                    <Route path="/hostel" element={<PrivateRoute user={user}><HostelDashboardPage /></PrivateRoute>} />
-                    <Route path="/hostel/students" element={<PrivateRoute user={user}><HostelStudentListPage residents={hostelResidents} rooms={hostelRooms} students={students} onAdd={handleAddHostelResident} user={user!} /></PrivateRoute>} />
-                    <Route path="/hostel/rooms" element={<PrivateRoute user={user}><HostelRoomListPage rooms={hostelRooms} residents={hostelResidents} students={students} /></PrivateRoute>} />
-                    <Route path="/hostel/fees" element={<PrivateRoute user={user}><HostelFeePage /></PrivateRoute>} />
-                    <Route path="/hostel/attendance" element={<PrivateRoute user={user}><HostelAttendancePage /></PrivateRoute>} />
-                    <Route path="/hostel/mess" element={<PrivateRoute user={user}><HostelMessPage /></PrivateRoute>} />
-                    <Route path="/hostel/staff" element={<PrivateRoute user={user}><HostelStaffPage staff={hostelStaff} onAdd={handleAddHostelStaff} onEdit={handleEditHostelStaff} onDelete={handleDeleteHostelStaff} user={user!} /></PrivateRoute>} />
-                    <Route path="/hostel/inventory" element={<PrivateRoute user={user}><HostelInventoryPage inventory={hostelInventory} stockLogs={stockLogs} onUpdateStock={handleUpdateHostelStock} user={user!} /></PrivateRoute>} />
-                    <Route path="/hostel/discipline" element={<PrivateRoute user={user}><HostelDisciplinePage /></PrivateRoute>} />
-                    <Route path="/hostel/health" element={<PrivateRoute user={user}><HostelHealthPage /></PrivateRoute>} />
-                    <Route path="/hostel/communication" element={<PrivateRoute user={user}><HostelCommunicationPage /></PrivateRoute>} />
-                    <Route path="/hostel/settings" element={<PrivateRoute user={user}><HostelSettingsPage /></PrivateRoute>} />
-
-                    {/* Fallback Route */}
-                    <Route path="*" element={<Navigate to="/" />} />
-                </Routes>
+                    {isStudentFormOpen && (
+                        <StudentFormModal
+                            isOpen={isStudentFormOpen}
+                            onClose={() => { setIsStudentFormOpen(false); setEditingStudent(null); setNewStudentTargetGrade(null); setFormError(''); }}
+                            onSubmit={handleStudentFormSubmit}
+                            student={editingStudent}
+                            newStudentTargetGrade={newStudentTargetGrade}
+                            academicYear={academicYear!}
+                            isSaving={isSaving}
+                            error={formError}
+                        />
+                    )}
+                    <ConfirmationModal
+                        isOpen={!!deletingStudent}
+                        onClose={() => setDeletingStudent(null)}
+                        onConfirm={() => handleDeleteStudent(deletingStudent!)}
+                        title="Confirm Student Deletion"
+                    >
+                        <p>Are you sure you want to permanently delete <span className="font-bold">{deletingStudent?.name}</span>? This action cannot be undone.</p>
+                    </ConfirmationModal>
+    
+                    {isStaffFormOpen && (
+                        <StaffFormModal
+                            isOpen={isStaffFormOpen}
+                            onClose={() => { setIsStaffFormOpen(false); setEditingStaff(null); setFormError(''); }}
+                            onSubmit={handleStaffFormSubmit}
+                            staffMember={editingStaff}
+                            allStaff={staff}
+                            gradeDefinitions={gradeDefinitions}
+                            isSaving={isSaving}
+                            error={formError}
+                        />
+                    )}
+                     <ConfirmationModal
+                        isOpen={!!deletingStaff}
+                        onClose={() => setDeletingStaff(null)}
+                        onConfirm={() => handleDeleteStaff(deletingStaff!)}
+                        title="Confirm Staff Deletion"
+                    >
+                        <p>Are you sure you want to permanently delete <span className="font-bold">{deletingStaff?.firstName} {deletingStaff?.lastName}</span>? This action cannot be undone.</p>
+                    </ConfirmationModal>
+    
+                    {isInventoryFormOpen && (
+                        <InventoryFormModal
+                            isOpen={isInventoryFormOpen}
+                            onClose={() => { setIsInventoryFormOpen(false); setEditingInventoryItem(null); }}
+                            onSubmit={handleInventoryFormSubmit}
+                            item={editingInventoryItem}
+                        />
+                    )}
+                    {isImportModalOpen && (
+                        <ImportStudentsModal
+                            isOpen={isImportModalOpen}
+                            onClose={() => { setIsImportModalOpen(false); setImportTargetGrade(null); }}
+                            onImport={handleImportStudents}
+                            grade={importTargetGrade}
+                            allStudents={students}
+                            allGrades={GRADES_LIST}
+                            isImporting={isImporting}
+                        />
+                    )}
+                    {isTransferModalOpen && transferringStudent && (
+                        <TransferStudentModal
+                            isOpen={isTransferModalOpen}
+                            onClose={() => { setIsTransferModalOpen(false); setTransferringStudent(null); }}
+                            onConfirm={handleTransferStudent}
+                            student={transferringStudent}
+                            allStudents={students}
+                            allGrades={GRADES_LIST}
+                        />
+                    )}
+                    {isHostelStaffFormOpen && (
+                        <HostelStaffFormModal
+                            isOpen={isHostelStaffFormOpen}
+                            onClose={() => { setIsHostelStaffFormOpen(false); setEditingHostelStaff(null); }}
+                            onSubmit={handleHostelStaffFormSubmit}
+                            staffMember={editingHostelStaff}
+                        />
+                    )}
+                    {isHostelResidentFormOpen && (
+                        <HostelResidentFormModal
+                            isOpen={isHostelResidentFormOpen}
+                            onClose={() => setIsHostelResidentFormOpen(false)}
+                            onSubmit={handleHostelResidentFormSubmit}
+                            resident={null}
+                            allStudents={students}
+                            allRooms={hostelRooms}
+                            allResidents={hostelResidents}
+                        />
+                    )}
+                    {isCalendarEventFormOpen && (
+                        <CalendarEventFormModal
+                            isOpen={isCalendarEventFormOpen}
+                            onClose={() => { setIsCalendarEventFormOpen(false); setEditingCalendarEvent(null); }}
+                            onSubmit={handleCalendarEventFormSubmit}
+                            event={editingCalendarEvent}
+                        />
+                    )}
+                    <ConfirmationModal
+                        isOpen={!!deletingCalendarEvent}
+                        onClose={() => setDeletingCalendarEvent(null)}
+                        onConfirm={handleDeleteCalendarEvent}
+                        title="Confirm Event Deletion"
+                    >
+                        <p>Are you sure you want to permanently delete the event <span className="font-bold">"{deletingCalendarEvent?.title}"</span>?</p>
+                    </ConfirmationModal>
+                </>
+                )}
+                 {!user && (
+                    <Routes>
+                         <Route path="/login" element={<LoginPage onLogin={handleLogin} error={authError} notification={notification} />} />
+                         <Route path="/signup" element={<SignUpPage onSignUp={handleSignUp} />} />
+                         <Route path="/forgot-password" element={<ForgotPasswordPage onForgotPassword={handleForgotPassword} />} />
+                         <Route path="*" element={<Navigate to="/login" replace />} />
+                    </Routes>
+                )}
             </main>
-            <StudentFormModal
-                isOpen={isStudentFormOpen}
-                onClose={() => { setIsStudentFormOpen(false); setEditingStudent(null); setNewStudentTargetGrade(null); setFormError(''); }}
-                onSubmit={handleStudentFormSubmit}
-                student={editingStudent}
-                newStudentTargetGrade={newStudentTargetGrade}
-                academicYear={academicYear!}
-                isSaving={isSaving}
-                error={formError}
-            />
-             <ImportStudentsModal
-                isOpen={isImportModalOpen}
-                onClose={() => setIsImportModalOpen(false)}
-                onImport={handleImportStudents}
-                grade={importTargetGrade}
-                allStudents={students}
-                allGrades={GRADES_LIST}
-                isImporting={isImporting}
-            />
-            {transferringStudent && <TransferStudentModal
-                isOpen={isTransferModalOpen}
-                onClose={() => setIsTransferModalOpen(false)}
-                onConfirm={handleTransferStudent}
-                student={transferringStudent}
-                allStudents={students}
-                allGrades={GRADES_LIST}
-            />}
-            <StaffFormModal 
-                isOpen={isStaffFormOpen} 
-                onClose={() => { setIsStaffFormOpen(false); setEditingStaff(null); setFormError(''); }} 
-                onSubmit={handleStaffFormSubmit} 
-                staffMember={editingStaff} 
-                allStaff={staff} 
-                gradeDefinitions={gradeDefinitions}
-                isSaving={isSaving}
-                error={formError}
-            />
-            <ConfirmationModal
-                isOpen={!!deletingStudent}
-                onClose={() => setDeletingStudent(null)}
-                onConfirm={() => { if(deletingStudent) handleDeleteStudent(deletingStudent); }}
-                title="Confirm Student Deletion"
-            >
-                <p>Are you sure you want to delete <span className="font-bold">{deletingStudent?.name}</span>? This action cannot be undone and will remove all associated records.</p>
-            </ConfirmationModal>
-            <ConfirmationModal
-                isOpen={!!deletingStaff}
-                onClose={() => setDeletingStaff(null)}
-                onConfirm={() => { if(deletingStaff) handleDeleteStaff(deletingStaff); }}
-                title="Confirm Staff Deletion"
-            >
-                <p>Are you sure you want to delete <span className="font-bold">{deletingStaff?.firstName} {deletingStaff?.lastName}</span>? This action cannot be undone.</p>
-            </ConfirmationModal>
-            <CalendarEventFormModal
-                isOpen={isCalendarEventFormOpen}
-                onClose={() => { setIsCalendarEventFormOpen(false); setEditingCalendarEvent(null); }}
-                onSubmit={handleCalendarEventFormSubmit}
-                event={editingCalendarEvent}
-            />
-            <ConfirmationModal
-                isOpen={!!deletingCalendarEvent}
-                onClose={() => setDeletingCalendarEvent(null)}
-                onConfirm={handleDeleteCalendarEvent}
-                title="Confirm Event Deletion"
-            >
-                <p>Are you sure you want to delete the event <span className="font-bold">{deletingCalendarEvent?.title}</span>? This action cannot be undone.</p>
-            </ConfirmationModal>
         </div>
     );
 };
