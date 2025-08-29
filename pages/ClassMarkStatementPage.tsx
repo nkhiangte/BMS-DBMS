@@ -19,7 +19,7 @@ interface ClassMarkStatementPageProps {
 }
 
 const RotatedHeader: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-    <th className={`border p-1 align-bottom h-48 ${className}`}>
+    <th className={`border p-1 align-bottom h-48 w-8 ${className}`}>
         <div className="flex items-end justify-center h-full pb-2">
             <span className="transform -rotate-90 whitespace-nowrap origin-bottom-center text-xs font-bold text-slate-800 uppercase tracking-wider" dangerouslySetInnerHTML={{ __html: children as string }}>
             </span>
@@ -417,11 +417,11 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                 </div>
 
                 <div ref={tableContainerRef} className="overflow-x-auto" id="mark-statement-table">
-                    <table className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300 text-xs">
+                    <table className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300 text-xs table-fixed">
                         <thead>
                             <tr>
                                 <th className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom sticky left-0 bg-slate-100 z-10 w-12">Roll</th>
-                                <th className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom sticky left-12 bg-slate-100 z-10 min-w-[150px]">Student Name</th>
+                                <th className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom sticky left-12 bg-slate-100 z-10 w-[180px]">Student Name</th>
                                 {gradeDef.subjects.map(subject => {
                                     if (!isSubjectNumeric(subject, grade)) {
                                          return <RotatedHeader key={subject.name}>{`${subject.name}<br/>(Grade)`}</RotatedHeader>;
