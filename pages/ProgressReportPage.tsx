@@ -4,6 +4,7 @@ import { Student, Grade, GradeDefinition, StudentStatus, StudentAttendanceRecord
 import { BackIcon, HomeIcon, DocumentReportIcon, EditIcon, SpinnerIcon } from '../components/Icons';
 import { formatStudentId, calculateStudentResult, calculateRanks, getMonthsForTerm, getPerformanceGrade, getRemarks, isSubjectNumeric } from '../utils';
 import { TERMINAL_EXAMS, GRADES_WITH_NO_ACTIVITIES } from '../constants';
+import AcademicRecordTable from '../components/AcademicRecordTable';
 
 interface ProgressReportPageProps {
   students: Student[];
@@ -143,6 +144,8 @@ const ProgressReportPage: React.FC<ProgressReportPageProps> = ({ students, acade
             </div>
         );
     }
+
+    const gradeDef = gradeDefinitions[student.grade];
     
     return (
         <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
@@ -175,25 +178,46 @@ const ProgressReportPage: React.FC<ProgressReportPageProps> = ({ students, acade
                     <span className="text-slate-600 font-semibold">Calculating Term Summaries...</span>
                 </div>
             ) : (
-                <div className="space-y-8">
+                <div className="space-y-12">
                     {TERMINAL_EXAMS.map(exam => {
                         const summary = termSummaries[exam.id];
+                        const examData = student.academicPerformance?.find(e => e.id === exam.id);
+                        const termResults = examData?.results || [];
+                        const filteredResults = termResults.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null || r.grade != null);
                         const isHighSchool = student.grade === Grade.IX || student.grade === Grade.X;
+
                         return (
                             <div key={exam.id}>
-                                <h2 className="text-xl font-bold text-slate-800 mb-4">{exam.name} Summary</h2>
+                                <h2 className="text-2xl font-bold text-slate-800 mb-4">{exam.name}</h2>
                                 {summary ? (
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                                        <SummaryItem label="%" value={summary.percentage} />
-                                        <SummaryItem label="Attendance" value={summary.attendance} />
-                                        <SummaryItem label="Rank" value={summary.rank} />
-                                        <SummaryItem label="Result" value={summary.result} />
-                                        <SummaryItem label={isHighSchool ? "Division" : "Grade"} value={summary.grade} />
-                                        <SummaryItem label="Remarks" value={summary.remarks} />
-                                    </div>
+                                    <>
+                                        <h3 className="text-xl font-semibold text-slate-700 mb-3">Overall Summary</h3>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                                            <SummaryItem label="%" value={summary.percentage} />
+                                            <SummaryItem label="Attendance" value={summary.attendance} />
+                                            <SummaryItem label="Rank" value={summary.rank} />
+                                            <SummaryItem label="Result" value={summary.result} />
+                                            <SummaryItem label={isHighSchool ? "Division" : "Grade"} value={summary.grade} />
+                                            <SummaryItem label="Remarks" value={summary.remarks} />
+                                        </div>
+                                    </>
                                 ) : (
                                     <div className="p-4 bg-slate-50 text-slate-600 rounded-lg border text-center">
                                         Marks for this term have not been entered yet.
+                                    </div>
+                                )}
+
+                                {gradeDef && filteredResults.length > 0 && (
+                                    <div className="mt-8">
+                                        <AcademicRecordTable
+                                            examName="Detailed Marks Breakdown"
+                                            results={filteredResults}
+                                            isEditing={false}
+                                            onUpdate={() => {}}
+                                            subjectDefinitions={gradeDef.subjects}
+                                            grade={student.grade}
+                                            onOpenActivityLog={() => {}}
+                                        />
                                     </div>
                                 )}
                             </div>
