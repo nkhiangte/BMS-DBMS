@@ -342,7 +342,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                              <div className="relative group inline-block text-left">
                                 <div>
                                     <button type="button" className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full" title="Log Activity Marks">
-                                        <AcademicCapIcon className="w-5 h-5"/>
+                                        <AcademicCapIcon className="w-6 h-6"/>
                                     </button>
                                 </div>
                                 <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none hidden group-hover:block z-20">

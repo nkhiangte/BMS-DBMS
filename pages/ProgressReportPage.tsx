@@ -216,10 +216,10 @@ const ProgressReportPage: React.FC<ProgressReportPageProps> = ({ students, acade
                                                 <thead className="bg-slate-50">
                                                     <tr>
                                                         <th className="px-4 py-2 text-left font-bold text-slate-800">Subject</th>
-                                                        <th className="px-4 py-2 text-center font-bold text-slate-800">Class Test (10)</th>
-                                                        <th className="px-4 py-2 text-center font-bold text-slate-800">Homework (5)</th>
+                                                        <th className="px-4 py-2 text-center font-bold text-slate-800">Class Test (20)</th>
+                                                        <th className="px-4 py-2 text-center font-bold text-slate-800">Homework (10)</th>
                                                         <th className="px-4 py-2 text-center font-bold text-slate-800">Quiz (5)</th>
-                                                        <th className="px-4 py-2 text-center font-bold text-slate-800">Project (20)</th>
+                                                        <th className="px-4 py-2 text-center font-bold text-slate-800">Project (5)</th>
                                                         <th className="px-4 py-2 text-center font-bold text-slate-800">Total (40)</th>
                                                     </tr>
                                                 </thead>

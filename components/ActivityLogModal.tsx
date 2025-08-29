@@ -5,10 +5,10 @@ import { CheckIcon, XIcon, PlusIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon }
 type ActivityKey = keyof ActivityLog;
 
 const ACTIVITY_COMPONENTS: { key: ActivityKey, label: string, weightage: number }[] = [
-    { key: 'classTest', label: 'Class Tests', weightage: 10 },
-    { key: 'homework', label: 'Homework', weightage: 5 },
+    { key: 'classTest', label: 'Class Tests', weightage: 20 },
+    { key: 'homework', label: 'Homework', weightage: 10 },
     { key: 'quiz', label: 'Quizzes', weightage: 5 },
-    { key: 'project', label: 'Projects', weightage: 20 },
+    { key: 'project', label: 'Projects', weightage: 5 },
 ];
 
 interface ActivityComponentEditorProps {
@@ -113,12 +113,13 @@ interface ActivityLogModalProps {
 
 const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onClose, onSave, studentName, examName, subjectName, initialLog }) => {
     
-    const createDefaultLog = (): ActivityLog => ({
-        classTest: { assessments: [{ marksObtained: null, maxMarks: null }], weightage: 10, scaledMarks: 0 },
-        homework: { assessments: [{ marksObtained: null, maxMarks: null }], weightage: 5, scaledMarks: 0 },
-        quiz: { assessments: [{ marksObtained: null, maxMarks: null }], weightage: 5, scaledMarks: 0 },
-        project: { assessments: [{ marksObtained: null, maxMarks: null }], weightage: 20, scaledMarks: 0 },
-    });
+    const createDefaultLog = (): ActivityLog => {
+        const log: Partial<ActivityLog> = {};
+        ACTIVITY_COMPONENTS.forEach(({ key, weightage }) => {
+            log[key] = { assessments: [{ marksObtained: null, maxMarks: null }], weightage, scaledMarks: 0 };
+        });
+        return log as ActivityLog;
+    };
 
     const [log, setLog] = useState<ActivityLog>(createDefaultLog());
 
