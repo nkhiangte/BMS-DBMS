@@ -20,8 +20,8 @@ interface ClassMarkStatementPageProps {
 
 const RotatedHeader: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
     <th className={`border p-1 align-bottom h-48 ${className}`}>
-        <div className="flex items-end justify-center h-full pb-2">
-            <span className="transform -rotate-90 whitespace-nowrap origin-bottom-center text-xs font-bold text-slate-800 uppercase tracking-wider" dangerouslySetInnerHTML={{ __html: children as string }}>
+        <div className="flex items-end justify-center h-full pb-2 rotated-header-container">
+            <span className="transform -rotate-90 whitespace-nowrap origin-bottom-center text-xs font-bold text-slate-800 uppercase tracking-wider rotated-header-text" dangerouslySetInnerHTML={{ __html: children as string }}>
             </span>
         </div>
     </th>
@@ -369,19 +369,47 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                  <style>{`
                     @page {
                         size: legal landscape;
-                        margin: 1cm;
+                        margin: 0.5cm;
                     }
                     @media print {
                         body {
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
-                        }
-                        #mark-statement-table {
-                            font-size: 8pt;
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
                         }
                         .printable-area {
-                            padding: 0 !important;
+                            padding: 0 !important; margin: 0 !important;
+                            width: 100%; height: 100%;
+                            overflow: visible;
                         }
+                        #mark-statement-table-container {
+                            width: 100%;
+                            overflow: visible;
+                        }
+                        #mark-statement-table {
+                            font-size: 7pt;
+                            width: 100% !important;
+                            min-width: 100% !important;
+                            table-layout: fixed;
+                            border-collapse: collapse;
+                        }
+                        #mark-statement-table th,
+                        #mark-statement-table td {
+                            padding: 2px 1px !important;
+                            word-wrap: break-word;
+                            white-space: normal;
+                        }
+                        #mark-statement-table .rotated-header-container {
+                            height: 120px !important;
+                        }
+                        #mark-statement-table .rotated-header-text {
+                            font-size: 7pt !important;
+                        }
+                        #mark-statement-table .roll-col { width: 3%; }
+                        #mark-statement-table .name-col { width: 15%; }
+                        #mark-statement-table .marks-col { width: 3%; }
+                        #mark-statement-table .total-col { width: 3.5%; }
+                        #mark-statement-table .remarks-col { width: 6%; }
+                        .print-hide { display: none !important; }
                     }
                 `}</style>
                 <div className="mb-6 flex justify-between items-center print:hidden">
@@ -425,7 +453,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                     </div>
                 )}
 
-                <div className="flex items-center justify-end gap-2 mb-2 print:hidden">
+                <div className="flex items-center justify-end gap-2 mb-2 print-hide">
                     <button onClick={() => scrollTable(-300)} className="btn btn-secondary !p-2 rounded-full" title="Scroll Left">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                     </button>
@@ -434,39 +462,39 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                     </button>
                 </div>
 
-                <div ref={tableContainerRef} className="overflow-x-auto" id="mark-statement-table">
-                    <table className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300 text-xs table-fixed w-full">
+                <div ref={tableContainerRef} className="overflow-x-auto" id="mark-statement-table-container">
+                    <table id="mark-statement-table" className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300 text-xs table-fixed w-full">
                         <thead className="bg-slate-50">
                             <tr>
-                                <th className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom sticky left-0 bg-slate-100 z-10 w-16">Roll</th>
-                                <th className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom sticky left-16 bg-slate-100 z-10 w-44">Student Name</th>
+                                <th className="roll-col border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom sticky left-0 bg-slate-100 z-10 w-16">Roll</th>
+                                <th className="name-col border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom sticky left-16 bg-slate-100 z-10 w-44">Student Name</th>
                                 {gradeDef.subjects.map(subject => {
                                     if (!isSubjectNumeric(subject, grade)) {
-                                         return <RotatedHeader className="w-14" key={subject.name}>{`${subject.name}<br/>(Grade)`}</RotatedHeader>;
+                                         return <RotatedHeader className="marks-col" key={subject.name}>{`${subject.name}<br/>(Grade)`}</RotatedHeader>;
                                     } else if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
                                         return (
                                             <React.Fragment key={subject.name}>
-                                                <RotatedHeader className="w-14">{`Exam (${subject.examFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
-                                                <RotatedHeader className="w-14">{`Activity (${subject.activityFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
+                                                <RotatedHeader className="marks-col">{`Exam (${subject.examFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
+                                                <RotatedHeader className="marks-col">{`Activity (${subject.activityFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
                                             </React.Fragment>
                                         );
                                     }
-                                    return <RotatedHeader className="w-14" key={subject.name}>{`Marks (${subject.examFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
+                                    return <RotatedHeader className="marks-col" key={subject.name}>{`Marks (${subject.examFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
                                 })}
                                 {/* Totals */}
                                 {hasActivitiesForThisGrade ? (
                                     <>
-                                        <RotatedHeader className="w-14">Exam Total ({totalMaxExamMarks})</RotatedHeader>
-                                        <RotatedHeader className="w-14">Activity Total ({totalMaxActivityMarks})</RotatedHeader>
+                                        <RotatedHeader className="total-col">Exam Total ({totalMaxExamMarks})</RotatedHeader>
+                                        <RotatedHeader className="total-col">Activity Total ({totalMaxActivityMarks})</RotatedHeader>
                                     </>
                                 ) : null}
-                                <RotatedHeader className="w-14">Grand Total ({totalMaxMarks})</RotatedHeader>
-                                <RotatedHeader className="w-14">%</RotatedHeader>
-                                <RotatedHeader className="w-14">{isHighSchool ? 'Division' : 'Grade'}</RotatedHeader>
-                                <RotatedHeader className="w-14">Result</RotatedHeader>
-                                <RotatedHeader className="w-14">Rank</RotatedHeader>
-                                <RotatedHeader className="w-14">Attendance %</RotatedHeader>
-                                <RotatedHeader className="w-14">Remarks</RotatedHeader>
+                                <RotatedHeader className="total-col">Grand Total ({totalMaxMarks})</RotatedHeader>
+                                <RotatedHeader className="total-col">%</RotatedHeader>
+                                <RotatedHeader className="total-col">{isHighSchool ? 'Division' : 'Grade'}</RotatedHeader>
+                                <RotatedHeader className="total-col">Result</RotatedHeader>
+                                <RotatedHeader className="total-col">Rank</RotatedHeader>
+                                <RotatedHeader className="total-col">Attendance %</RotatedHeader>
+                                <RotatedHeader className="remarks-col">Remarks</RotatedHeader>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-200">
@@ -476,8 +504,8 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                 const attPercentage = attendance && attendance.total > 0 ? ((attendance.present / attendance.total) * 100).toFixed(1) : '-';
                                 return (
                                     <tr key={student.id} className="hover:bg-slate-50">
-                                        <td className="border px-2 py-1 text-center font-semibold sticky left-0 bg-white hover:bg-slate-50">{student.rollNo}</td>
-                                        <td className="border px-2 py-1 text-left font-medium sticky left-16 bg-white hover:bg-slate-50">
+                                        <td className="roll-col border px-2 py-1 text-center font-semibold sticky left-0 bg-white hover:bg-slate-50">{student.rollNo}</td>
+                                        <td className="name-col border px-2 py-1 text-left font-medium sticky left-16 bg-white hover:bg-slate-50">
                                             <Link to={`/student/${student.id}`} className="hover:underline text-sky-700">{student.name}</Link>
                                         </td>
                                         {gradeDef.subjects.flatMap(subject => {
@@ -485,13 +513,13 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                             const isFailed = failedSubjects.includes(subject.name);
 
                                             if (!isSubjectNumeric(subject, grade)) {
-                                                return [<td key={subject.name} className="border px-1 py-1 text-center font-bold text-lg">{studentResult?.grade ?? '-'}</td>];
+                                                return [<td key={subject.name} className="marks-col border px-1 py-1 text-center font-bold text-lg">{studentResult?.grade ?? '-'}</td>];
                                             } else if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
                                                 const examMarks = studentResult?.examMarks ?? '-';
                                                 const activityMarks = studentResult?.activityMarks ?? '-';
                                                 return [
-                                                    <td key={`${subject.name}-exam`} className={`border px-1 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{examMarks}</td>,
-                                                    <td key={`${subject.name}-activity`} className={`border px-1 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{activityMarks}</td>
+                                                    <td key={`${subject.name}-exam`} className={`marks-col border px-1 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{examMarks}</td>,
+                                                    <td key={`${subject.name}-activity`} className={`marks-col border px-1 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{activityMarks}</td>
                                                 ];
                                             }
                                             
@@ -504,29 +532,29 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                                 }
                                             }
                                             
-                                            return [<td key={subject.name} className={`border px-1 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{marks ?? '-'}</td>]
+                                            return [<td key={subject.name} className={`marks-col border px-1 py-1 text-center font-semibold ${isFailed ? 'text-red-600' : 'text-slate-800'}`}>{marks ?? '-'}</td>]
                                         })}
 
                                         {hasActivitiesForThisGrade ? (
                                         <>
-                                            <td className="border px-1 py-1 text-center font-bold">{totalExamMarks}</td>
-                                            <td className="border px-1 py-1 text-center font-bold">{totalActivityMarks}</td>
+                                            <td className="total-col border px-1 py-1 text-center font-bold">{totalExamMarks}</td>
+                                            <td className="total-col border px-1 py-1 text-center font-bold">{totalActivityMarks}</td>
                                         </>
                                         ) : null}
-                                        <td className="border px-1 py-1 text-center font-bold text-slate-900">{totalMarks}</td>
-                                        <td className="border px-1 py-1 text-center font-semibold">{percentage.toFixed(2)}%</td>
-                                        <td className="border px-1 py-1 text-center font-bold">{performanceGrade}</td>
-                                        <td className={`border px-1 py-1 text-center font-bold ${result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}`}>{result}</td>
-                                        <td className="border px-1 py-1 text-center font-bold">{isLoadingExtraData ? '...' : studentRank}</td>
-                                        <td className="border px-1 py-1 text-center font-semibold">{isLoadingExtraData ? '...' : `${attPercentage}%`}</td>
-                                        <td className="border px-1 py-1 text-center text-xs">{remarks}</td>
+                                        <td className="total-col border px-1 py-1 text-center font-bold text-slate-900">{totalMarks}</td>
+                                        <td className="total-col border px-1 py-1 text-center font-semibold">{percentage.toFixed(2)}%</td>
+                                        <td className="total-col border px-1 py-1 text-center font-bold">{performanceGrade}</td>
+                                        <td className={`total-col border px-1 py-1 text-center font-bold ${result === 'FAIL' ? 'text-red-600' : 'text-emerald-600'}`}>{result}</td>
+                                        <td className="total-col border px-1 py-1 text-center font-bold">{isLoadingExtraData ? '...' : studentRank}</td>
+                                        <td className="total-col border px-1 py-1 text-center font-semibold">{isLoadingExtraData ? '...' : `${attPercentage}%`}</td>
+                                        <td className="remarks-col border px-1 py-1 text-center text-xs">{remarks}</td>
                                     </tr>
                                 );
                             })}
                         </tbody>
                     </table>
                 </div>
-                 <div className="flex items-center justify-end gap-2 mt-2 print:hidden">
+                 <div className="flex items-center justify-end gap-2 mt-2 print-hide">
                     <button onClick={() => scrollTable(-300)} className="btn btn-secondary !p-2 rounded-full" title="Scroll Left">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                     </button>
