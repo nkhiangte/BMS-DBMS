@@ -31,7 +31,14 @@ export const TERMINAL_EXAMS = [
 
 export const GRADE_DEFINITIONS: Record<Grade, GradeDefinition> = {
     [Grade.NURSERY]: { classTeacherId: undefined, subjects: [{ name: 'Pre-Reading', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Pre-Writing', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Numbers', examFullMarks: 100, activityFullMarks: 0 }] },
-    [Grade.KINDERGARTEN]: { classTeacherId: undefined, subjects: [{ name: 'English', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Mathematics', examFullMarks: 100, activityFullMarks: 0 }, { name: 'General Knowledge', examFullMarks: 100, activityFullMarks: 0 }] },
+    [Grade.KINDERGARTEN]: { classTeacherId: undefined, subjects: [
+        { name: 'English I', examFullMarks: 100, activityFullMarks: 0 },
+        { name: 'English II', examFullMarks: 100, activityFullMarks: 0 },
+        { name: 'Maths', examFullMarks: 100, activityFullMarks: 0 },
+        { name: 'Writing', examFullMarks: 100, activityFullMarks: 0 },
+        { name: 'Spellings/Rhymes', examFullMarks: 100, activityFullMarks: 0 },
+        { name: 'Conversation/Drawing', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' }
+    ]},
     [Grade.I]: { classTeacherId: undefined, subjects: [{ name: 'English', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Mathematics', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Environmental Science', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Mizo', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Drawing', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' }, { name: 'Cursive', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' }] },
     [Grade.II]: { classTeacherId: undefined, subjects: [
         { name: 'ENG-I', examFullMarks: 100, activityFullMarks: 0 },
