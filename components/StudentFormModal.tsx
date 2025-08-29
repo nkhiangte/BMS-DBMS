@@ -175,9 +175,10 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
             ...formData,
             dateOfBirth: formatDateForStorage(formData.dateOfBirth),
         };
-        
+
         const cleanData: { [key: string]: any } = { ...dataWithFormattedDate };
 
+        // The list of all fields that are optional in the `Student` type.
         const optionalFields: (keyof Omit<Student, 'id'>)[] = [
             'studentId',
             'guardianName',
@@ -186,11 +187,14 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
             'healthConditions',
             'achievements',
             'bloodGroup',
+            'cwsn',
             'transferDate',
             'feePayments',
-            'academicPerformance'
+            'academicPerformance',
         ];
 
+        // Remove any optional fields that are empty, null, or undefined.
+        // Firestore updates can fail silently if they contain `undefined` values.
         optionalFields.forEach(field => {
             const value = cleanData[field];
             if (value === '' || value === null || value === null) {
@@ -199,12 +203,7 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
         });
 
         if (cleanData.rollNo) {
-             cleanData.rollNo = Number(cleanData.rollNo);
-        }
-        
-        // Ensure bloodGroup is not sent as an empty string if unselected
-        if (cleanData.bloodGroup === '') {
-            delete cleanData.bloodGroup;
+            cleanData.rollNo = Number(cleanData.rollNo);
         }
 
         onSubmit(cleanData as Omit<Student, 'id'>);
