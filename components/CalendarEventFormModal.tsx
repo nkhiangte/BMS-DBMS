@@ -44,13 +44,18 @@ const CalendarEventFormModal: React.FC<CalendarEventFormModalProps> = ({ isOpen,
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
-        const dataToSubmit = {
+        const dataToSubmit: { [key: string]: any } = {
             ...formData,
             date: formatDateForStorage(formData.date),
-            endDate: formData.endDate ? formatDateForStorage(formData.endDate) : undefined,
+            endDate: formatDateForStorage(formData.endDate),
             type: formData.type as CalendarEventType,
         };
-        onSubmit(dataToSubmit);
+        
+        // Clean optional fields
+        if (!dataToSubmit.endDate) delete dataToSubmit.endDate;
+        if (!dataToSubmit.description) delete dataToSubmit.description;
+        
+        onSubmit(dataToSubmit as Omit<CalendarEvent, 'id'>);
     };
 
     if (!isOpen) return null;

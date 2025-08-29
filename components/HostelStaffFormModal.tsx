@@ -146,12 +146,25 @@ const HostelStaffFormModal: React.FC<HostelStaffFormModalProps> = ({ isOpen, onC
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
-        const dataToSubmit = {
+        const dataToSave: {[key: string]: any} = {
             ...formData,
             dateOfJoining: formatDateForStorage(formData.dateOfJoining),
             dateOfBirth: formatDateForStorage(formData.dateOfBirth),
         };
-        onSubmit(dataToSubmit);
+
+        Object.keys(dataToSave).forEach(key => {
+            const value = dataToSave[key];
+            if (value === null || value === null || value === '') {
+                 if (key !== 'salary' && key !== 'attendancePercent') {
+                    delete dataToSave[key];
+                }
+            }
+        });
+
+        dataToSave.salary = Number(dataToSave.salary) || 0;
+        dataToSave.attendancePercent = Number(dataToSave.attendancePercent) || 0;
+
+        onSubmit(dataToSave as Omit<HostelStaff, 'id'>);
     };
 
     if (!isOpen) return null;

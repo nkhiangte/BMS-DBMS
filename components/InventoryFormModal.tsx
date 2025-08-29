@@ -53,15 +53,24 @@ const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, onClose
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const submissionData = {
+    const dataToSave: { [key: string]: any } = {
         ...formData,
-        quantity: parseInt(String(formData.quantity), 10) || 0,
-        category: formData.category as InventoryCategory,
-        status: formData.status as InventoryStatus,
         purchaseDate: formatDateForStorage(formData.purchaseDate),
-        lastMaintenanceDate: formData.lastMaintenanceDate ? formatDateForStorage(formData.lastMaintenanceDate) : undefined,
+        lastMaintenanceDate: formatDateForStorage(formData.lastMaintenanceDate),
     };
-    onSubmit(submissionData);
+
+    Object.keys(dataToSave).forEach(key => {
+        const value = dataToSave[key];
+        if (value === undefined || value === null || value === '') {
+             if (key !== 'quantity') { // quantity can be 0
+                delete dataToSave[key];
+            }
+        }
+    });
+
+    dataToSave.quantity = Number(dataToSave.quantity) || 0;
+    
+    onSubmit(dataToSave as Omit<InventoryItem, 'id'>);
   };
 
   if (!isOpen) return null;

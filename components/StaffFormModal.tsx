@@ -114,7 +114,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
         subjectsTaught: [],
         teacherLicenseNumber: '',
         salaryGrade: '',
-        basicSalary: undefined,
+        basicSalary: null,
         bankAccountNumber: '',
         bankName: '',
         panNumber: '',
@@ -135,13 +135,13 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                     ...getInitialFormData(),
                     ...staffMember,
                     yearsOfExperience: staffMember.yearsOfExperience ?? 0,
-                    basicSalary: staffMember.basicSalary ?? undefined,
+                    basicSalary: staffMember.basicSalary ?? null,
                     dateOfBirth: formatDateForDisplay(staffMember.dateOfBirth),
                     dateOfJoining: formatDateForDisplay(staffMember.dateOfJoining),
                 });
                 const assignedGradeKey = Object.keys(gradeDefinitions).find(
                     g => gradeDefinitions[g as Grade]?.classTeacherId === staffMember.id
-                ) as Grade | undefined;
+                ) as Grade | null;
                 setAssignedGrade(assignedGradeKey || '');
             } else {
                 setFormData(getInitialFormData());
@@ -188,45 +188,38 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         
-        const dataWithFormattedDates = {
+        const dataToSave: { [key: string]: any } = {
             ...formData,
             dateOfBirth: formatDateForStorage(formData.dateOfBirth),
             dateOfJoining: formatDateForStorage(formData.dateOfJoining),
         };
-
-        const cleanData: { [key: string]: any } = { ...dataWithFormattedDates };
         
-        const numericFields: (keyof Staff)[] = ['yearsOfExperience', 'basicSalary'];
-
-        for(const field of numericFields) {
-            const value = cleanData[field];
-            if (value === '' || value === null || value === undefined || isNaN(Number(value))) {
-                delete cleanData[field];
-            } else {
-                cleanData[field] = Number(value);
+        // Convert subjectsTaught from string to array if needed
+        if (typeof dataToSave.subjectsTaught === 'string') {
+            dataToSave.subjectsTaught = dataToSave.subjectsTaught.split(',').map((s: string) => s.trim()).filter(Boolean);
+        }
+    
+        // Firestore fails silently with `undefined` values.
+        // We must clean the object of any keys that have `undefined`, `null`, or `''` as values.
+        Object.keys(dataToSave).forEach(key => {
+            const value = dataToSave[key];
+            if (value === null || value === null || value === '') {
+                // Exceptions for numeric fields that could be 0.
+                if (key !== 'yearsOfExperience' && key !== 'basicSalary') {
+                     delete dataToSave[key];
+                }
             }
+        });
+    
+        // Ensure numeric types are correct for fields that might have been left as strings
+        if (dataToSave.yearsOfExperience) {
+            dataToSave.yearsOfExperience = Number(dataToSave.yearsOfExperience);
+        }
+        if (dataToSave.basicSalary) {
+            dataToSave.basicSalary = Number(dataToSave.basicSalary);
         }
         
-        const optionalTextFields: (keyof Staff)[] = [
-            'teacherLicenseNumber', 'salaryGrade', 'bankAccountNumber', 'bankName', 'panNumber', 'medicalConditions'
-        ];
-        
-        for (const field of optionalTextFields) {
-            if (cleanData[field] === '' || cleanData[field] === null || cleanData[field] === undefined) {
-                delete cleanData[field];
-            }
-        }
-
-        if (cleanData.staffType === 'Non-Teaching') {
-            cleanData.subjectsTaught = [];
-            delete cleanData.teacherLicenseNumber;
-        } else {
-            if(typeof cleanData.subjectsTaught === 'string') {
-                 cleanData.subjectsTaught = (cleanData.subjectsTaught as string).split(',').map(s => s.trim()).filter(Boolean);
-            }
-        }
-        
-        onSubmit(cleanData as Omit<Staff, 'id'>, assignedGrade || null);
+        onSubmit(dataToSave as Omit<Staff, 'id'>, assignedGrade || null);
     };
 
     const gradeOptions = Object.keys(gradeDefinitions).map(gradeKey => {

@@ -171,42 +171,27 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
 
-        const dataWithFormattedDate = {
+        const dataToSave: { [key: string]: any } = {
             ...formData,
             dateOfBirth: formatDateForStorage(formData.dateOfBirth),
         };
 
-        const cleanData: { [key: string]: any } = { ...dataWithFormattedDate };
-
-        // The list of all fields that are optional in the `Student` type.
-        const optionalFields: (keyof Omit<Student, 'id'>)[] = [
-            'studentId',
-            'guardianName',
-            'guardianRelationship',
-            'lastSchoolAttended',
-            'healthConditions',
-            'achievements',
-            'bloodGroup',
-            'cwsn',
-            'transferDate',
-            'feePayments',
-            'academicPerformance',
-        ];
-
-        // Remove any optional fields that are empty, null, or undefined.
-        // Firestore updates can fail silently if they contain `undefined` values.
-        optionalFields.forEach(field => {
-            const value = cleanData[field];
-            if (value === '' || value === null || value === null) {
-                delete cleanData[field];
+        // Firestore fails silently with `undefined` values.
+        // We must clean the object of any keys that have `undefined`, `null`, or `''` as values for optional fields.
+        Object.keys(dataToSave).forEach(key => {
+            const value = dataToSave[key];
+            if (value === null || value === null || value === '') {
+                // Exceptions: we want to keep `rollNo: 0`.
+                if (key !== 'rollNo') {
+                     delete dataToSave[key];
+                }
             }
         });
 
-        if (cleanData.rollNo) {
-            cleanData.rollNo = Number(cleanData.rollNo);
-        }
+        // Ensure numeric types are correct
+        dataToSave.rollNo = Number(dataToSave.rollNo) || 0;
 
-        onSubmit(cleanData as Omit<Student, 'id'>);
+        onSubmit(dataToSave as Omit<Student, 'id'>);
     };
 
     if (!isOpen) return null;
