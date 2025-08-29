@@ -204,20 +204,44 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(data);
             const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+            const jsonData: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
 
             const updates: Array<{ studentId: string; performance: Exam[] }> = [];
             const errors: string[] = [];
+            
+            if (jsonData.length < 2) {
+                errors.push("The file must contain a header row and at least one data row.");
+                setImportData({ updates, errors });
+                setIsProcessingFile(false);
+                return;
+            }
+
+            const headers = jsonData[0].map(h => h ? String(h).trim() : '');
+            const dataRows = jsonData.slice(1);
+
+            const rollNoIndex = headers.findIndex(h => h.toLowerCase().includes('roll no'));
+            if (rollNoIndex === -1) {
+                errors.push("Could not find a 'Roll No' column. Please use the provided template.");
+                setImportData({ updates, errors });
+                setIsProcessingFile(false);
+                return;
+            }
+
+            const headerMap: Record<string, number> = {};
+            headers.forEach((h, i) => {
+                headerMap[h.toLowerCase()] = i;
+            });
+
             const studentMap = new Map(classStudents.map(s => [s.rollNo, s]));
 
-            jsonData.forEach((row, index) => {
-                const rollNo = row['Roll No'];
-                if (rollNo === undefined) return;
+            dataRows.forEach((row, rowIndex) => {
+                const rollNo = row[rollNoIndex];
+                if (rollNo === null || rollNo === undefined || String(rollNo).trim() === '') return;
 
                 const student = studentMap.get(Number(rollNo));
 
                 if (!student) {
-                    errors.push(`Row ${index + 2}: Student with Roll No "${rollNo}" not found.`);
+                    errors.push(`Row ${rowIndex + 2}: Student with Roll No "${rollNo}" not found in ${grade}.`);
                     return;
                 }
 
@@ -234,30 +258,46 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                     const useSplitMarks = hasActivitiesForThisGrade && subjectDef.activityFullMarks > 0;
                     
                     if (!isSubjectNumeric(subjectDef, grade)) {
-                        let gradeVal = row[`${subjectDef.name} (Grade)`];
-                        if (gradeVal === undefined) {
-                            gradeVal = row[subjectDef.name];
-                        }
-
-                        if (gradeVal !== undefined && gradeVal !== null && String(gradeVal).trim() !== '') {
-                            const upperGradeVal = String(gradeVal).toUpperCase().trim();
-                            if (OABC_GRADES.includes(upperGradeVal as any)) {
-                                newResult.grade = upperGradeVal as 'O' | 'A' | 'B' | 'C';
-                            } else {
-                                errors.push(`Row ${index + 2}, Student ${student.name}: Invalid grade "${gradeVal}" for ${subjectDef.name}. Must be O, A, B, or C.`);
+                        const gradeHeader = `${subjectDef.name} (Grade)`.toLowerCase();
+                        const gradeHeaderAlt = subjectDef.name.toLowerCase();
+                        const colIndex = headerMap[gradeHeader] ?? headerMap[gradeHeaderAlt];
+                        
+                        if (colIndex !== undefined) {
+                            let gradeVal = row[colIndex];
+                            if (gradeVal !== undefined && gradeVal !== null && String(gradeVal).trim() !== '') {
+                                const upperGradeVal = String(gradeVal).toUpperCase().trim();
+                                if (OABC_GRADES.includes(upperGradeVal as any)) {
+                                    newResult.grade = upperGradeVal as 'O' | 'A' | 'B' | 'C';
+                                } else {
+                                    errors.push(`Row ${rowIndex + 2}, Student ${student.name}: Invalid grade "${gradeVal}" for ${subjectDef.name}. Must be O, A, B, or C.`);
+                                }
                             }
                         }
                     } else if (useSplitMarks) {
-                        const examMark = row[`${subjectDef.name} (Exam)`];
-                        const activityMark = row[`${subjectDef.name} (Activity)`];
-                        if (examMark !== undefined) newResult.examMarks = Number(examMark);
-                        if (activityMark !== undefined) newResult.activityMarks = Number(activityMark);
+                        const examHeader = `${subjectDef.name} (Exam)`.toLowerCase();
+                        const activityHeader = `${subjectDef.name} (Activity)`.toLowerCase();
+                        const examColIndex = headerMap[examHeader];
+                        const activityColIndex = headerMap[activityHeader];
+
+                        if (examColIndex !== undefined) {
+                            const examMark = row[examColIndex];
+                            if (examMark !== null && examMark !== undefined) newResult.examMarks = Number(examMark);
+                        }
+                        if (activityColIndex !== undefined) {
+                            const activityMark = row[activityColIndex];
+                            if (activityMark !== null && activityMark !== undefined) newResult.activityMarks = Number(activityMark);
+                        }
                     } else {
-                        const mark = row[subjectDef.name];
-                        if (mark !== undefined) newResult.marks = Number(mark);
+                        const markHeader = subjectDef.name.toLowerCase();
+                        const colIndex = headerMap[markHeader];
+
+                        if (colIndex !== undefined) {
+                            const mark = row[colIndex];
+                            if (mark !== null && mark !== undefined) newResult.marks = Number(mark);
+                        }
                     }
 
-                    if(Object.keys(newResult).length > 1) { // has more than just subject name
+                    if(Object.keys(newResult).length > 1) {
                         newResults.push(newResult);
                     }
                 });
@@ -267,9 +307,12 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
             setImportData({ updates, errors });
         } catch (error) {
             console.error("Error processing Excel file:", error);
-            setImportData({ updates: [], errors: ["Failed to process the file."] });
+            setImportData({ updates: [], errors: ["Failed to process the file. It might be corrupted or in an unsupported format."] });
         } finally {
             setIsProcessingFile(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         }
     };
     
@@ -357,19 +400,47 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                 <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Roll</th>
                                 <th rowSpan={2} className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom">Student Name</th>
                                 {gradeDef.subjects.map(subject => (
-                                    <th key={subject.name} colSpan={hasActivitiesForThisGrade && subject.activityFullMarks > 0 ? 2 : 1} className="border px-1 py-2 text-center font-bold text-slate-800 uppercase text-xs tracking-wider [writing-mode:vertical-rl] rotate-180 whitespace-nowrap">
-                                        {subject.name}
+                                    <th key={subject.name} colSpan={hasActivitiesForThisGrade && subject.activityFullMarks > 0 ? 2 : 1} className="border p-1 text-center align-middle h-32">
+                                        <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                            {subject.name}
+                                        </div>
                                     </th>
                                 ))}
-                                <th colSpan={hasActivitiesForThisGrade ? 3 : 1} className="border px-1 py-2 text-center font-bold text-slate-800 uppercase text-xs tracking-wider [writing-mode:vertical-rl] rotate-180 whitespace-nowrap">
-                                    Totals
+                                <th colSpan={hasActivitiesForThisGrade ? 3 : 1} className="border p-1 text-center align-middle h-32">
+                                     <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                        Totals
+                                    </div>
                                 </th>
-                                <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">%</th>
-                                <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">{isHighSchool ? 'Division' : 'Grade'}</th>
-                                <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Result</th>
-                                <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Rank</th>
-                                <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Attendance %</th>
-                                <th rowSpan={2} className="border px-2 py-1 text-center font-bold text-slate-800 uppercase align-bottom">Remarks</th>
+                                <th rowSpan={2} className="border p-1 text-center align-middle h-32">
+                                    <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                        %
+                                    </div>
+                                </th>
+                                <th rowSpan={2} className="border p-1 text-center align-middle h-32">
+                                    <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                        {isHighSchool ? 'Division' : 'Grade'}
+                                    </div>
+                                </th>
+                                <th rowSpan={2} className="border p-1 text-center align-middle h-32">
+                                    <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                        Result
+                                    </div>
+                                </th>
+                                <th rowSpan={2} className="border p-1 text-center align-middle h-32">
+                                    <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                        Rank
+                                    </div>
+                                </th>
+                                <th rowSpan={2} className="border p-1 text-center align-middle h-32">
+                                    <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                        Attendance %
+                                    </div>
+                                </th>
+                                <th rowSpan={2} className="border p-1 text-center align-middle h-32">
+                                    <div className="transform -rotate-90 whitespace-nowrap text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                        Remarks
+                                    </div>
+                                </th>
                             </tr>
                             <tr>
                                 {gradeDef.subjects.flatMap(subject => {
