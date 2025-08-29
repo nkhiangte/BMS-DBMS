@@ -51,36 +51,9 @@ export const GRADE_DEFINITIONS: Record<Grade, GradeDefinition> = {
         { name: 'Cursive', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' },
         { name: 'Drawing', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' }
     ]},
-    [Grade.III]: { classTeacherId: undefined, subjects: [
-        { name: 'ENG-I', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'ENG-II', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'MIZO', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'EVS', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'MATHS', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'HINDI', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'Cur', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' },
-        { name: 'Draw', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' }
-    ]},
-    [Grade.IV]: { classTeacherId: undefined, subjects: [
-        { name: 'ENG-I', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'ENG-II', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'MIZO', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'EVS', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'MATHS', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'HINDI', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'Cur', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' },
-        { name: 'Draw', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' }
-    ]},
-    [Grade.V]: { classTeacherId: undefined, subjects: [
-        { name: 'ENG-I', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'ENG-II', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'MIZO', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'EVS', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'MATHS', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'HINDI', examFullMarks: 60, activityFullMarks: 40 },
-        { name: 'Cur', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' },
-        { name: 'Draw', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' }
-    ]},
+    [Grade.III]: { classTeacherId: undefined, subjects: [] },
+    [Grade.IV]: { classTeacherId: undefined, subjects: [] },
+    [Grade.V]: { classTeacherId: undefined, subjects: [] },
     [Grade.VI]: { classTeacherId: undefined, subjects: [{ name: 'English', examFullMarks: 60, activityFullMarks: 40 }, { name: 'English - II', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Mathematics', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Science', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Social Studies', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Mizo', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Hindi', examFullMarks: 60, activityFullMarks: 40 }] },
     [Grade.VII]: { classTeacherId: undefined, subjects: [{ name: 'English', examFullMarks: 60, activityFullMarks: 40 }, { name: 'English - II', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Mathematics', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Science', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Social Studies', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Mizo', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Hindi', examFullMarks: 60, activityFullMarks: 40 }] },
     [Grade.VIII]: { classTeacherId: undefined, subjects: [{ name: 'English', examFullMarks: 60, activityFullMarks: 40 }, { name: 'English - II', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Mathematics', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Science', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Social Studies', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Mizo', examFullMarks: 60, activityFullMarks: 40 }] },
