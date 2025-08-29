@@ -19,7 +19,7 @@ interface ClassMarkStatementPageProps {
 }
 
 const RotatedHeader: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-    <th className={`border p-1 align-bottom h-48 w-8 ${className}`}>
+    <th className={`border p-1 align-bottom h-48 ${className}`}>
         <div className="flex items-end justify-center h-full pb-2">
             <span className="transform -rotate-90 whitespace-nowrap origin-bottom-center text-xs font-bold text-slate-800 uppercase tracking-wider" dangerouslySetInnerHTML={{ __html: children as string }}>
             </span>
@@ -417,38 +417,38 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                 </div>
 
                 <div ref={tableContainerRef} className="overflow-x-auto" id="mark-statement-table">
-                    <table className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300 text-xs table-fixed">
-                        <thead>
+                    <table className="min-w-full divide-y-2 divide-slate-300 border-2 border-slate-300 text-xs table-fixed w-full">
+                        <thead className="bg-slate-50">
                             <tr>
-                                <th className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom sticky left-0 bg-slate-100 z-10 w-12">Roll</th>
-                                <th className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom sticky left-12 bg-slate-100 z-10 w-[180px]">Student Name</th>
+                                <th className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom sticky left-0 bg-slate-100 z-10 w-16">Roll</th>
+                                <th className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom sticky left-16 bg-slate-100 z-10 w-60">Student Name</th>
                                 {gradeDef.subjects.map(subject => {
                                     if (!isSubjectNumeric(subject, grade)) {
-                                         return <RotatedHeader key={subject.name}>{`${subject.name}<br/>(Grade)`}</RotatedHeader>;
+                                         return <RotatedHeader className="w-14" key={subject.name}>{`${subject.name}<br/>(Grade)`}</RotatedHeader>;
                                     } else if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
                                         return (
                                             <React.Fragment key={subject.name}>
-                                                <RotatedHeader>{`Exam (${subject.examFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
-                                                <RotatedHeader>{`Activity (${subject.activityFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
+                                                <RotatedHeader className="w-14">{`Exam (${subject.examFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
+                                                <RotatedHeader className="w-14">{`Activity (${subject.activityFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
                                             </React.Fragment>
                                         );
                                     }
-                                    return <RotatedHeader key={subject.name}>{`Marks (${subject.examFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
+                                    return <RotatedHeader className="w-14" key={subject.name}>{`Marks (${subject.examFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
                                 })}
                                 {/* Totals */}
                                 {hasActivitiesForThisGrade ? (
                                     <>
-                                        <RotatedHeader>Exam Total ({totalMaxExamMarks})</RotatedHeader>
-                                        <RotatedHeader>Activity Total ({totalMaxActivityMarks})</RotatedHeader>
+                                        <RotatedHeader className="w-14">Exam Total ({totalMaxExamMarks})</RotatedHeader>
+                                        <RotatedHeader className="w-14">Activity Total ({totalMaxActivityMarks})</RotatedHeader>
                                     </>
                                 ) : null}
-                                <RotatedHeader>Grand Total ({totalMaxMarks})</RotatedHeader>
-                                <RotatedHeader>%</RotatedHeader>
-                                <RotatedHeader>{isHighSchool ? 'Division' : 'Grade'}</RotatedHeader>
-                                <RotatedHeader>Result</RotatedHeader>
-                                <RotatedHeader>Rank</RotatedHeader>
-                                <RotatedHeader>Attendance %</RotatedHeader>
-                                <RotatedHeader>Remarks</RotatedHeader>
+                                <RotatedHeader className="w-14">Grand Total ({totalMaxMarks})</RotatedHeader>
+                                <RotatedHeader className="w-14">%</RotatedHeader>
+                                <RotatedHeader className="w-14">{isHighSchool ? 'Division' : 'Grade'}</RotatedHeader>
+                                <RotatedHeader className="w-14">Result</RotatedHeader>
+                                <RotatedHeader className="w-14">Rank</RotatedHeader>
+                                <RotatedHeader className="w-14">Attendance %</RotatedHeader>
+                                <RotatedHeader className="w-14">Remarks</RotatedHeader>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-200">
@@ -459,7 +459,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                 return (
                                     <tr key={student.id} className="hover:bg-slate-50">
                                         <td className="border px-2 py-1 text-center font-semibold sticky left-0 bg-white hover:bg-slate-50">{student.rollNo}</td>
-                                        <td className="border px-2 py-1 text-left font-medium sticky left-12 bg-white hover:bg-slate-50">
+                                        <td className="border px-2 py-1 text-left font-medium sticky left-16 bg-white hover:bg-slate-50">
                                             <Link to={`/student/${student.id}`} className="hover:underline text-sky-700">{student.name}</Link>
                                         </td>
                                         {gradeDef.subjects.flatMap(subject => {
