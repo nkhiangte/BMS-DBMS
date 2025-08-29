@@ -146,22 +146,21 @@ const StudentFormModal: React.FC<StudentFormModalProps> = ({ isOpen, onClose, on
         setFormData(prev => ({ ...prev, [name]: type === 'number' ? parseInt(value, 10) || 0 : value }));
     };
     
-    const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            try {
-                const compressedDataUrl = await resizeImage(file, 512, 512, 0.8);
-                setFormData(prev => ({ ...prev, photographUrl: compressedDataUrl }));
-            } catch (error) {
-                console.error("Error compressing image:", error);
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    setFormData(prev => ({ ...prev, photographUrl: reader.result as string }));
-                };
-                reader.readAsDataURL(file);
-            }
+const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        try {
+            const compressedDataUrl = await resizeImage(file, 512, 512, 0.8);
+            
+            // Upload to imgbb
+            const imageUrl = await uploadToImgbb(compressedDataUrl);
+            
+            setFormData(prev => ({ ...prev, photographUrl: imageUrl }));
+        } catch (error) {
+            console.error("Image upload failed:", error);
         }
-    };
+    }
+};
     
     const handleRemovePhoto = () => {
         setFormData(prev => ({ ...prev, photographUrl: '' }));

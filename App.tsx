@@ -267,9 +267,8 @@ const App: React.FC = () => {
     };
 
     const handleLogout = () => {
-        auth.signOut().then(() => {
-            navigate('/login', { replace: true, state: { message: "You have been logged out." } });
-        });
+        sessionStorage.setItem('loginMessage', "You have been logged out.");
+        auth.signOut();
         setNotification('');
         setAuthError('');
     };
@@ -518,7 +517,11 @@ const App: React.FC = () => {
     const handleSaveTcRecord = async (tcRecord: Omit<TcRecord, 'id'>) => { console.log('Saving TC record', tcRecord); };
     const handleUpdateTcRecord = async (tcRecord: TcRecord) => { console.log('Updating TC record', tcRecord); };
     const handleSaveServiceCert = async (certRecord: Omit<ServiceCertificateRecord, 'id'>) => { console.log('Saving service cert', certRecord); };
-    const handlePromoteStudents = async () => { console.log('Promoting students'); };
+    const handlePromoteStudents = async () => {
+        console.log('Promoting students');
+        // In a real app, logic to promote students, clear academic/fee records, etc., would go here.
+        await auth.signOut();
+    };
     const handleUpdateStaffAttendance = (staffId: string, status: AttendanceStatus) => { console.log('Updating staff attendance', staffId, status); };
     const handleUpdateStudentAttendance = async (grade: Grade, records: StudentAttendanceRecord) => { console.log('Updating student attendance', grade, records); };
     const fetchStudentAttendanceForMonth = async (grade: Grade, year: number, month: number) => { console.log('Fetching student attendance', grade, year, month); return {}; };

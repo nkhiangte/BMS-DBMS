@@ -12,7 +12,7 @@ interface PromotionPageProps {
   students: Student[];
   gradeDefinitions: Record<Grade, GradeDefinition>;
   academicYear: string;
-  onPromoteStudents: () => void;
+  onPromoteStudents: () => Promise<void>;
   user: User;
 }
 
@@ -55,10 +55,11 @@ const PromotionPage: React.FC<PromotionPageProps> = ({ students, gradeDefinition
         });
     }, [students, gradeDefinitions]);
 
-    const handleConfirmPromotion = () => {
-        onPromoteStudents();
+    const handleConfirmPromotion = async () => {
+        sessionStorage.setItem('loginMessage', `Session ${academicYear} concluded. Please log in and set the new academic year.`);
+        await onPromoteStudents();
         setIsConfirmModalOpen(false);
-        navigate('/login', { state: { message: `Session ${academicYear} concluded. Please log in and set the new academic year.` }});
+        // No navigation needed, App component will redirect after signOut
     };
     
     return (
