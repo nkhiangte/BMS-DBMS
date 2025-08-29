@@ -421,7 +421,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                         <thead className="bg-slate-50">
                             <tr>
                                 <th className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom sticky left-0 bg-slate-100 z-10 w-16">Roll</th>
-                                <th className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom sticky left-16 bg-slate-100 z-10 w-60">Student Name</th>
+                                <th className="border px-2 py-1 text-left font-bold text-slate-800 uppercase align-bottom sticky left-16 bg-slate-100 z-10 w-44">Student Name</th>
                                 {gradeDef.subjects.map(subject => {
                                     if (!isSubjectNumeric(subject, grade)) {
                                          return <RotatedHeader className="w-14" key={subject.name}>{`${subject.name}<br/>(Grade)`}</RotatedHeader>;
