@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Grade, GradeDefinition, User } from '../types';
@@ -87,9 +86,11 @@ const ManageSubjectsPage: React.FC<ManageSubjectsPageProps> = ({ gradeDefinition
                                             <li key={index} className="flex justify-between items-center bg-white p-1.5 rounded">
                                                 <span className="font-semibold">{subject.name}</span>
                                                 <span className="text-xs text-slate-700 font-mono">
-                                                    {subject.activityFullMarks > 0 
-                                                     ? `Exam:${subject.examFullMarks}, Act:${subject.activityFullMarks}`
-                                                     : `Marks:${subject.examFullMarks}`
+                                                    {subject.gradingSystem === 'OABC'
+                                                        ? 'OABC Grading'
+                                                        : subject.activityFullMarks > 0 
+                                                            ? `Exam:${subject.examFullMarks}, Act:${subject.activityFullMarks}`
+                                                            : `Marks:${subject.examFullMarks}`
                                                     }
                                                 </span>
                                             </li>

@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { SubjectMark, SubjectDefinition, Grade } from '../types';
 import { GRADES_WITH_NO_ACTIVITIES, OABC_GRADES } from '../constants';
+import { isSubjectNumeric } from '../utils';
 
 interface AcademicRecordTableProps {
   examName: string;
@@ -86,9 +88,7 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
             ) : (
               subjectDefinitions.map((subjectDef) => {
                 const result = results.find(r => r.subject === subjectDef.name) || { subject: subjectDef.name };
-                const isEffectivelyGradeBased = subjectDef.examFullMarks === 0 && subjectDef.activityFullMarks === 0;
-                const isGradeBasedOverride = (grade === Grade.I || grade === Grade.II) && (subjectDef.name === 'Cursive' || subjectDef.name === 'Drawing');
-                const isGradeBased = subjectDef.gradingSystem === 'OABC' || isEffectivelyGradeBased || isGradeBasedOverride;
+                const isGradeBased = !isSubjectNumeric(subjectDef, grade);
                 
                 const totalMarks = (result.examMarks === undefined && result.activityMarks === undefined)
                   ? undefined

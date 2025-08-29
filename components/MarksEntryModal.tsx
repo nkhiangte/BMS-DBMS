@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Student, GradeDefinition, Exam, SubjectMark, Grade } from '../types';
 import { SpinnerIcon, CheckIcon, XIcon } from './Icons';
 import { OABC_GRADES, GRADES_WITH_NO_ACTIVITIES } from '../constants';
+import { isSubjectNumeric } from '../utils';
 
 interface MarksEntryModalProps {
     isOpen: boolean;
@@ -162,9 +164,7 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                 const processMark = (val: any) => val === '' || val == null ? undefined : Number(val);
                 const processGrade = (val: any) => val === '' || val == null ? undefined : val;
                 
-                const isEffectivelyGradeBased = subjectDef.examFullMarks === 0 && subjectDef.activityFullMarks === 0;
-                const isGradeBasedOverride = (grade === Grade.I || grade === Grade.II) && (subjectDef.name === 'Cursive' || subjectDef.name === 'Drawing');
-                const isGradeBased = subjectDef.gradingSystem === 'OABC' || isEffectivelyGradeBased || isGradeBasedOverride;
+                const isGradeBased = !isSubjectNumeric(subjectDef, grade);
 
                 if(isGradeBased) {
                     newResult.grade = processGrade(subjectMarks.grade);
@@ -220,9 +220,7 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                 <th className="border p-2"></th>
                                 <th className="border p-2"></th>
                                 {gradeDef.subjects.flatMap(subject => {
-                                    const isEffectivelyGradeBased = subject.examFullMarks === 0 && subject.activityFullMarks === 0;
-                                    const isGradeBasedOverride = (grade === Grade.I || grade === Grade.II) && (subject.name === 'Cursive' || subject.name === 'Drawing');
-                                    const isGradeBased = subject.gradingSystem === 'OABC' || isEffectivelyGradeBased || isGradeBasedOverride;
+                                    const isGradeBased = !isSubjectNumeric(subject, grade);
                                     
                                     if (isGradeBased) {
                                         return [<th key={subject.name} className="border p-2 font-semibold text-slate-700">Grade</th>];
@@ -245,9 +243,7 @@ const MarksEntryModal: React.FC<MarksEntryModalProps> = ({ isOpen, onClose, onSa
                                     {gradeDef.subjects.flatMap((subject, subjectIndex) => {
                                         const marks = marksData[student.id]?.[subject.name] || {};
                                         
-                                        const isEffectivelyGradeBased = subject.examFullMarks === 0 && subject.activityFullMarks === 0;
-                                        const isGradeBasedOverride = (grade === Grade.I || grade === Grade.II) && (subject.name === 'Cursive' || subject.name === 'Drawing');
-                                        const isGradeBased = subject.gradingSystem === 'OABC' || isEffectivelyGradeBased || isGradeBasedOverride;
+                                        const isGradeBased = !isSubjectNumeric(subject, grade);
 
                                         if (isGradeBased) {
                                             return [

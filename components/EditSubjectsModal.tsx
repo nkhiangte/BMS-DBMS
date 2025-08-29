@@ -21,29 +21,43 @@ const EditSubjectsModal: React.FC<EditSubjectsModalProps> = ({ isOpen, onClose, 
     }
   }, [isOpen, initialGradeDefinition]);
 
+  const hasActivity = ![Grade.NURSERY, Grade.KINDERGARTEN, Grade.I, Grade.II, Grade.IX, Grade.X].includes(grade);
+
   const handleSubjectChange = (index: number, field: keyof SubjectDefinition, value: string) => {
     const newSubjects = [...subjects];
     const subjectToUpdate = { ...newSubjects[index] };
 
-    // FIX: Explicitly check for numeric fields to avoid type error with `gradingSystem`.
     if (field === 'name') {
-      subjectToUpdate.name = value;
+        subjectToUpdate.name = value;
     } else if (field === 'examFullMarks' || field === 'activityFullMarks') {
-      const numValue = parseInt(value, 10);
-      subjectToUpdate[field] = isNaN(numValue) ? 0 : numValue;
+        const numValue = parseInt(value, 10);
+        subjectToUpdate[field] = isNaN(numValue) ? 0 : numValue;
+    } else if (field === 'gradingSystem') {
+        const system = value as 'numeric' | 'OABC';
+        subjectToUpdate.gradingSystem = system;
+        if (system === 'OABC') {
+            subjectToUpdate.examFullMarks = 0;
+            subjectToUpdate.activityFullMarks = 0;
+        } else {
+            // Restore default marks when switching back to numeric if they are 0
+            if (subjectToUpdate.examFullMarks === 0 && subjectToUpdate.activityFullMarks === 0) {
+                 subjectToUpdate.examFullMarks = hasActivity ? 60 : 100;
+                 subjectToUpdate.activityFullMarks = hasActivity ? 40 : 0;
+            }
+        }
     }
+
     newSubjects[index] = subjectToUpdate;
     setSubjects(newSubjects);
   };
-
-  const hasActivity = ![Grade.NURSERY, Grade.KINDERGARTEN, Grade.I, Grade.II, Grade.IX, Grade.X].includes(grade);
 
   const handleAddSubject = () => {
     // Add a new subject with default marks based on whether the grade has activities
     const newSubject: SubjectDefinition = { 
         name: '', 
         examFullMarks: hasActivity ? 60 : 100, 
-        activityFullMarks: hasActivity ? 40 : 0 
+        activityFullMarks: hasActivity ? 40 : 0,
+        gradingSystem: 'numeric'
     };
     setSubjects(prev => [...prev, newSubject]);
   };
@@ -62,7 +76,7 @@ const EditSubjectsModal: React.FC<EditSubjectsModalProps> = ({ isOpen, onClose, 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="p-6 border-b">
           <h2 className="text-2xl font-bold text-slate-800">Edit Curriculum for {grade}</h2>
         </div>
@@ -84,14 +98,26 @@ const EditSubjectsModal: React.FC<EditSubjectsModalProps> = ({ isOpen, onClose, 
                           placeholder="Enter subject name"
                       />
                   </div>
+                   <div className="flex-shrink-0 w-36">
+                        <label className="sr-only">Grading System</label>
+                        <select
+                            value={subject.gradingSystem || 'numeric'}
+                            onChange={(e) => handleSubjectChange(index, 'gradingSystem', e.target.value)}
+                            className="w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                        >
+                            <option value="numeric">Numeric Marks</option>
+                            <option value="OABC">OABC Grading</option>
+                        </select>
+                    </div>
                   <div className="flex-shrink-0 w-24">
                        <label className="sr-only">Exam Marks</label>
                        <input
                           type="number"
                           value={subject.examFullMarks}
                           onChange={(e) => handleSubjectChange(index, 'examFullMarks', e.target.value)}
-                          className="w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                          className="w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm disabled:bg-slate-200"
                           placeholder="Exam"
+                          disabled={subject.gradingSystem === 'OABC'}
                       />
                   </div>
                   {hasActivity && (
@@ -101,8 +127,9 @@ const EditSubjectsModal: React.FC<EditSubjectsModalProps> = ({ isOpen, onClose, 
                             type="number"
                             value={subject.activityFullMarks}
                             onChange={(e) => handleSubjectChange(index, 'activityFullMarks', e.target.value)}
-                            className="w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                            className="w-full border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm disabled:bg-slate-200"
                             placeholder="Activity"
+                            disabled={subject.gradingSystem === 'OABC'}
                         />
                     </div>
                   )}

@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Student, Grade, GradeDefinition, StudentStatus, Exam, SubjectMark, User, StudentAttendanceRecord, StudentAttendanceStatus } from '../types';
@@ -172,11 +173,8 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
         const useSplitMarks = hasActivitiesForThisGrade && gradeDef.subjects.some(s => s.activityFullMarks > 0);
 
         gradeDef.subjects.forEach(subject => {
-            const isGradeBasedOverride = ([Grade.I, Grade.II, Grade.III, Grade.IV, Grade.V].includes(grade as Grade)) && (subject.name === 'Cursive' || subject.name === 'Drawing');
-            const isGradeBased = subject.gradingSystem === 'OABC' || isGradeBasedOverride;
-            
-            if (isGradeBased) {
-                 headers.push(`${subject.name} (Grade)`);
+            if (!isSubjectNumeric(subject, grade)) {
+                headers.push(`${subject.name} (Grade)`);
             } else if (useSplitMarks && subject.activityFullMarks > 0) {
                 headers.push(`${subject.name} (Exam)`);
                 headers.push(`${subject.name} (Activity)`);
@@ -233,10 +231,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                     const newResult: SubjectMark = { subject: subjectDef.name };
                     const useSplitMarks = hasActivitiesForThisGrade && subjectDef.activityFullMarks > 0;
                     
-                    const isGradeBasedOverride = ([Grade.I, Grade.II, Grade.III, Grade.IV, Grade.V].includes(grade as Grade)) && (subjectDef.name === 'Cursive' || subjectDef.name === 'Drawing');
-                    const isGradeBased = subjectDef.gradingSystem === 'OABC' || isGradeBasedOverride;
-                    
-                    if (isGradeBased) {
+                    if (!isSubjectNumeric(subjectDef, grade)) {
                         let gradeVal = row[`${subjectDef.name} (Grade)`];
                         if (gradeVal === undefined) {
                             gradeVal = row[subjectDef.name];
@@ -348,8 +343,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                             </tr>
                             <tr>
                                 {gradeDef.subjects.flatMap(subject => {
-                                    const isGradeBasedSubject = ([Grade.I, Grade.II, Grade.III, Grade.IV, Grade.V].includes(grade as Grade)) && (subject.name === 'Cursive' || subject.name === 'Drawing');
-                                    if (subject.gradingSystem === 'OABC' || isGradeBasedSubject) {
+                                    if (!isSubjectNumeric(subject, grade)) {
                                          return [<th key={`${subject.name}-grade`} className="border px-1 py-1 font-semibold text-slate-700 text-xs">Grade</th>];
                                     } else if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
                                         return [
@@ -384,9 +378,8 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                         {gradeDef.subjects.flatMap(subject => {
                                             const studentResult = results.find(r => r.subject === subject.name);
                                             const isFailed = failedSubjects.includes(subject.name);
-                                            const isGradeBasedSubject = ([Grade.I, Grade.II, Grade.III, Grade.IV, Grade.V].includes(grade as Grade)) && (subject.name === 'Cursive' || subject.name === 'Drawing');
 
-                                            if (subject.gradingSystem === 'OABC' || isGradeBasedSubject) {
+                                            if (!isSubjectNumeric(subject, grade)) {
                                                 return [<td key={subject.name} className="border px-2 py-1 text-center font-bold text-lg">{studentResult?.grade ?? '-'}</td>];
                                             } else if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
                                                 const examMarks = studentResult?.examMarks ?? '-';
