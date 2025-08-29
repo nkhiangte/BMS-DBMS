@@ -111,7 +111,7 @@ const ProgressReportPage: React.FC<ProgressReportPageProps> = ({ students, acade
                 let maxGrandTotal = 0;
                 gradeDef.subjects.filter(sub => isSubjectNumeric(sub, student.grade)).forEach(sub => {
                     const res = termResults.find(r => r.subject === sub.name);
-                    grandTotal += (res?.marks ?? (res?.examMarks ?? 0) + (res?.activityMarks ?? 0));
+                    grandTotal += (res?.marks ?? (res?.examMarks ?? 0) + (hasActivities && sub.activityFullMarks > 0 ? (res?.activityMarks ?? 0) : 0));
                     maxGrandTotal += sub.examFullMarks + (hasActivities && sub.activityFullMarks > 0 ? sub.activityFullMarks : 0);
                 });
 
@@ -185,6 +185,7 @@ const ProgressReportPage: React.FC<ProgressReportPageProps> = ({ students, acade
                         const termResults = examData?.results || [];
                         const filteredResults = termResults.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null || r.grade != null);
                         const isHighSchool = student.grade === Grade.IX || student.grade === Grade.X;
+                        const activityResults = termResults.filter(r => r.activityLog && Object.values(r.activityLog).some(v => v != null));
 
                         return (
                             <div key={exam.id}>
@@ -207,10 +208,50 @@ const ProgressReportPage: React.FC<ProgressReportPageProps> = ({ students, acade
                                     </div>
                                 )}
 
+                                {activityResults.length > 0 && (
+                                    <div className="mt-8">
+                                        <h3 className="text-xl font-semibold text-slate-700 mb-3">Activity Marks Breakdown</h3>
+                                        <div className="overflow-x-auto border rounded-lg">
+                                            <table className="min-w-full divide-y divide-slate-200 text-sm">
+                                                <thead className="bg-slate-50">
+                                                    <tr>
+                                                        <th className="px-4 py-2 text-left font-bold text-slate-800">Subject</th>
+                                                        <th className="px-4 py-2 text-center font-bold text-slate-800">Class Test (10)</th>
+                                                        <th className="px-4 py-2 text-center font-bold text-slate-800">Homework (5)</th>
+                                                        <th className="px-4 py-2 text-center font-bold text-slate-800">Quiz (5)</th>
+                                                        <th className="px-4 py-2 text-center font-bold text-slate-800">Project (20)</th>
+                                                        <th className="px-4 py-2 text-center font-bold text-slate-800">Total (40)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-slate-200">
+                                                    {gradeDef.subjects.map(subjectDef => {
+                                                        const result = termResults.find(r => r.subject === subjectDef.name);
+                                                        const log = result?.activityLog;
+                                                        if (!log || !isSubjectNumeric(subjectDef, student.grade)) return null;
+                                                        const total = (log.classTest || 0) + (log.homeAssignment || 0) + (log.quiz || 0) + (log.projectWork || 0);
+                                                        return (
+                                                            <tr key={subjectDef.name}>
+                                                                <td className="px-4 py-2 font-medium text-slate-800">{subjectDef.name}</td>
+                                                                <td className="px-4 py-2 text-center">{log.classTest ?? '-'}</td>
+                                                                <td className="px-4 py-2 text-center">{log.homeAssignment ?? '-'}</td>
+                                                                <td className="px-4 py-2 text-center">{log.quiz ?? '-'}</td>
+                                                                <td className="px-4 py-2 text-center">{log.projectWork ?? '-'}</td>
+                                                                <td className="px-4 py-2 text-center font-bold">{total}</td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+
                                 {gradeDef && filteredResults.length > 0 && (
                                     <div className="mt-8">
+                                        <h3 className="text-xl font-semibold text-slate-700 mb-3">Overall Marks Breakdown</h3>
                                         <AcademicRecordTable
-                                            examName="Detailed Marks Breakdown"
+                                            examName=""
                                             results={filteredResults}
                                             isEditing={false}
                                             onUpdate={() => {}}

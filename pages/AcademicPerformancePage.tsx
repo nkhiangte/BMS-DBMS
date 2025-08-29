@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, Exam, SubjectMark, Grade, GradeDefinition, User } from '../types';
+import { Student, Exam, SubjectMark, Grade, GradeDefinition, User, ActivityLog } from '../types';
 import { TERMINAL_EXAMS, CONDUCT_GRADE_LIST } from '../constants';
 import { BackIcon, EditIcon, CheckIcon, XIcon, HomeIcon } from '../components/Icons';
 import AcademicRecordTable from '../components/AcademicRecordTable';
 import { formatStudentId } from '../utils';
+import ActivityLogModal from '../components/ActivityLogModal';
 
 interface AcademicPerformancePageProps {
   students: Student[];
@@ -23,6 +24,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
   
   const [isEditing, setIsEditing] = useState(false);
   const [performanceData, setPerformanceData] = useState<Exam[]>([]);
+  const [editingActivityLogFor, setEditingActivityLogFor] = useState<{ examId: string, subjectName: string } | null>(null);
   
   const canEdit = user.role === 'admin' || (student && student.grade === assignedGrade);
 
@@ -45,6 +47,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
           marks: existingResult?.marks,
           examMarks: existingResult?.examMarks,
           activityMarks: existingResult?.activityMarks,
+          activityLog: existingResult?.activityLog,
           grade: existingResult?.grade,
         };
       });
@@ -90,6 +93,50 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
       prev.map(exam => exam.id === examId ? { ...exam, [field]: value } : exam)
     );
   };
+
+  const handleOpenActivityLog = (examId: string, subjectName: string) => {
+    setEditingActivityLogFor({ examId, subjectName });
+  };
+  
+  const handleSaveActivityLog = (log: ActivityLog) => {
+      if (!editingActivityLogFor) return;
+  
+      const { examId, subjectName } = editingActivityLogFor;
+      
+      const total = Object.values(log).reduce((acc, val) => acc + (val || 0), 0);
+  
+      setPerformanceData(prev => 
+        prev.map(exam => {
+          if (exam.id === examId) {
+            
+            let subjectFound = false;
+            const newResults = exam.results.map(result => {
+              if (result.subject === subjectName) {
+                subjectFound = true;
+                return { ...result, activityLog: log, activityMarks: total };
+              }
+              return result;
+            });
+            
+            if (!subjectFound) {
+                newResults.push({ subject: subjectName, activityLog: log, activityMarks: total });
+            }
+
+            return { ...exam, results: newResults };
+          }
+          return exam;
+        })
+      );
+      
+      setEditingActivityLogFor(null);
+  };
+
+  const currentActivityLogData = useMemo(() => {
+      if (!editingActivityLogFor) return undefined;
+      const exam = performanceData.find(e => e.id === editingActivityLogFor.examId);
+      const result = exam?.results.find(r => r.subject === editingActivityLogFor.subjectName);
+      return result?.activityLog;
+  }, [editingActivityLogFor, performanceData]);
 
   if (!student) {
     return (
@@ -176,7 +223,7 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
                         onUpdate={(newResults) => handleUpdateExamData(exam.id, 'results', newResults)}
                         subjectDefinitions={gradeDef.subjects}
                         grade={student.grade}
-                        onOpenActivityLog={() => {}}
+                        onOpenActivityLog={(subjectName) => handleOpenActivityLog(exam.id, subjectName)}
                     />
                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -217,6 +264,17 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
             ))}
         </div>
     </div>
+     {editingActivityLogFor && student && (
+        <ActivityLogModal
+            isOpen={!!editingActivityLogFor}
+            onClose={() => setEditingActivityLogFor(null)}
+            onSave={handleSaveActivityLog}
+            studentName={student.name}
+            examName={performanceData.find(e => e.id === editingActivityLogFor.examId)?.name || ''}
+            subjectName={editingActivityLogFor.subjectName}
+            initialLog={currentActivityLogData}
+        />
+    )}
     </>
   );
 };

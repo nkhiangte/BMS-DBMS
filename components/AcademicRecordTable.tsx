@@ -119,7 +119,16 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800">
                             {isGradeBased || subjectDef.activityFullMarks === 0 ? <span className="text-slate-600 font-semibold">N/A</span> :
                                 (isEditing ? (
-                                    <input type="number" value={result.activityMarks ?? ''} onChange={(e) => handleMarksChange(subjectDef.name, 'activityMarks', e.target.value, subjectDef.activityFullMarks)} className="w-24 px-2 py-1 border border-slate-300 rounded-md shadow-sm" placeholder={`/ ${subjectDef.activityFullMarks}`} max={subjectDef.activityFullMarks}/>
+                                     <div className="flex items-center gap-2">
+                                        <span className="font-bold w-8 text-center">{result.activityMarks ?? 0}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => onOpenActivityLog(subjectDef.name)}
+                                            className="text-xs font-semibold text-sky-700 bg-sky-100 hover:bg-sky-200 rounded-full px-2 py-1"
+                                        >
+                                            Log
+                                        </button>
+                                    </div>
                                 ) : (result.activityMarks ?? '-'))
                             }
                             </td>

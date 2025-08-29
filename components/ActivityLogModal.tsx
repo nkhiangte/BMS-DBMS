@@ -5,12 +5,19 @@ import { CheckIcon, ExclamationTriangleIcon, XIcon } from './Icons';
 interface ActivityLogModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (subjectName: string, log: ActivityLog) => void;
+    onSave: (log: ActivityLog) => void;
     studentName: string;
     examName: string;
     subjectName: string;
     initialLog?: ActivityLog;
 }
+
+const activityComponents = [
+    { key: 'classTest', label: 'Class Test', max: 10 },
+    { key: 'homeAssignment', label: 'Home Assignment', max: 5 },
+    { key: 'quiz', label: 'Quiz', max: 5 },
+    { key: 'projectWork', label: 'Project Work', max: 20 },
+];
 
 const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onClose, onSave, studentName, examName, subjectName, initialLog }) => {
     const [log, setLog] = useState<ActivityLog>({});
@@ -22,23 +29,23 @@ const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onClose, on
     }, [isOpen, initialLog]);
 
     const total = useMemo(() => {
-        return (log.classTest || 0) + (log.homeAssignment || 0) + (log.quiz || 0) + (log.projectWork || 0);
+        return activityComponents.reduce((acc, comp) => acc + (Number(log[comp.key as keyof ActivityLog]) || 0), 0);
     }, [log]);
 
     const isInvalid = total > 40;
 
-    const handleChange = (field: keyof ActivityLog, value: string) => {
+    const handleChange = (field: keyof ActivityLog, value: string, max: number) => {
         const numValue = parseInt(value, 10);
         setLog(prev => ({
             ...prev,
-            [field]: isNaN(numValue) ? undefined : numValue,
+            [field]: isNaN(numValue) ? undefined : Math.max(0, Math.min(numValue, max)),
         }));
     };
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         if (isInvalid) return;
-        onSave(subjectName, log);
+        onSave(log);
     };
 
     if (!isOpen) return null;
@@ -61,22 +68,12 @@ const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onClose, on
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-800">Class Test</label>
-                                <input type="number" value={log.classTest ?? ''} onChange={e => handleChange('classTest', e.target.value)} className="mt-1 w-full border-slate-300 rounded-md" min="0"/>
-                            </div>
-                             <div>
-                                <label className="block text-sm font-bold text-slate-800">Home Assignment</label>
-                                <input type="number" value={log.homeAssignment ?? ''} onChange={e => handleChange('homeAssignment', e.target.value)} className="mt-1 w-full border-slate-300 rounded-md" min="0"/>
-                            </div>
-                             <div>
-                                <label className="block text-sm font-bold text-slate-800">Quiz</label>
-                                <input type="number" value={log.quiz ?? ''} onChange={e => handleChange('quiz', e.target.value)} className="mt-1 w-full border-slate-300 rounded-md" min="0"/>
-                            </div>
-                             <div>
-                                <label className="block text-sm font-bold text-slate-800">Project Work</label>
-                                <input type="number" value={log.projectWork ?? ''} onChange={e => handleChange('projectWork', e.target.value)} className="mt-1 w-full border-slate-300 rounded-md" min="0"/>
-                            </div>
+                            {activityComponents.map(({ key, label, max }) => (
+                                <div key={key}>
+                                    <label className="block text-sm font-bold text-slate-800">{label} ({max})</label>
+                                    <input type="number" value={log[key as keyof ActivityLog] ?? ''} onChange={e => handleChange(key as keyof ActivityLog, e.target.value, max)} className="mt-1 w-full border-slate-300 rounded-md" min="0" max={max}/>
+                                </div>
+                            ))}
                         </div>
 
                         <div className="mt-4 pt-4 border-t flex justify-between items-center">

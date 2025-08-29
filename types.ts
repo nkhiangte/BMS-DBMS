@@ -176,21 +176,20 @@ export interface GradeDefinition {
   classTeacherId?: string;
 }
 
+export interface ActivityLog {
+  classTest?: number;
+  homeAssignment?: number;
+  quiz?: number;
+  projectWork?: number;
+}
 
 export interface SubjectMark {
   subject: string;
   marks?: number; // For grades without split marks
   examMarks?: number; // For grades with split marks
   activityMarks?: number; // For grades with split marks
+  activityLog?: ActivityLog; // Detailed breakdown of activity marks
   grade?: 'O' | 'A' | 'B' | 'C';
-}
-
-// FIX: Add missing ActivityLog interface
-export interface ActivityLog {
-  classTest?: number;
-  homeAssignment?: number;
-  quiz?: number;
-  projectWork?: number;
 }
 
 export enum ConductGrade {
