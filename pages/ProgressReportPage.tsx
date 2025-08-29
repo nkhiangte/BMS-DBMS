@@ -185,7 +185,7 @@ const ProgressReportPage: React.FC<ProgressReportPageProps> = ({ students, acade
                         const termResults = examData?.results || [];
                         const filteredResults = termResults.filter(r => r.marks != null || r.examMarks != null || r.activityMarks != null || r.grade != null);
                         const isHighSchool = student.grade === Grade.IX || student.grade === Grade.X;
-                        const activityResults = termResults.filter(r => r.activityLog && Object.values(r.activityLog).some(v => v != null));
+                        const activityResults = termResults.filter(r => r.activityLog);
 
                         return (
                             <div key={exam.id}>
@@ -228,14 +228,20 @@ const ProgressReportPage: React.FC<ProgressReportPageProps> = ({ students, acade
                                                         const result = termResults.find(r => r.subject === subjectDef.name);
                                                         const log = result?.activityLog;
                                                         if (!log || !isSubjectNumeric(subjectDef, student.grade)) return null;
-                                                        const total = (log.classTest || 0) + (log.homeAssignment || 0) + (log.quiz || 0) + (log.projectWork || 0);
+                                                        
+                                                        const classTestScore = log.classTest?.scaledMarks?.toFixed(1) ?? '-';
+                                                        const homeworkScore = log.homework?.scaledMarks?.toFixed(1) ?? '-';
+                                                        const quizScore = log.quiz?.scaledMarks?.toFixed(1) ?? '-';
+                                                        const projectScore = log.project?.scaledMarks?.toFixed(1) ?? '-';
+                                                        const total = result.activityMarks ?? '-';
+
                                                         return (
                                                             <tr key={subjectDef.name}>
                                                                 <td className="px-4 py-2 font-medium text-slate-800">{subjectDef.name}</td>
-                                                                <td className="px-4 py-2 text-center">{log.classTest ?? '-'}</td>
-                                                                <td className="px-4 py-2 text-center">{log.homeAssignment ?? '-'}</td>
-                                                                <td className="px-4 py-2 text-center">{log.quiz ?? '-'}</td>
-                                                                <td className="px-4 py-2 text-center">{log.projectWork ?? '-'}</td>
+                                                                <td className="px-4 py-2 text-center">{classTestScore}</td>
+                                                                <td className="px-4 py-2 text-center">{homeworkScore}</td>
+                                                                <td className="px-4 py-2 text-center">{quizScore}</td>
+                                                                <td className="px-4 py-2 text-center">{projectScore}</td>
                                                                 <td className="px-4 py-2 text-center font-bold">{total}</td>
                                                             </tr>
                                                         );

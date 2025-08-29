@@ -103,7 +103,12 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
   
       const { examId, subjectName } = editingActivityLogFor;
       
-      const total = Object.values(log).reduce((acc, val) => acc + (val || 0), 0);
+      const total = Math.round(
+        (log.classTest?.scaledMarks || 0) +
+        (log.homework?.scaledMarks || 0) +
+        (log.quiz?.scaledMarks || 0) +
+        (log.project?.scaledMarks || 0)
+      );
   
       setPerformanceData(prev => 
         prev.map(exam => {

@@ -176,11 +176,22 @@ export interface GradeDefinition {
   classTeacherId?: string;
 }
 
+export interface Assessment {
+    marksObtained: number | null;
+    maxMarks: number | null;
+}
+
+export interface ActivityComponentLog {
+    assessments: Assessment[];
+    weightage: number;
+    scaledMarks: number;
+}
+
 export interface ActivityLog {
-  classTest?: number;
-  homeAssignment?: number;
-  quiz?: number;
-  projectWork?: number;
+    classTest: ActivityComponentLog;
+    homework: ActivityComponentLog;
+    quiz: ActivityComponentLog;
+    project: ActivityComponentLog;
 }
 
 export interface SubjectMark {
