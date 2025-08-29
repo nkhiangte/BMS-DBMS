@@ -81,7 +81,20 @@ const base64ToBlob = async (base64: string): Promise<Blob> => {
 
 const uploadImage = (base64Image: string): Promise<string> => {
     return new Promise(async (resolve, reject) => {
+        let uploadTask: firebase.storage.UploadTask | undefined;
+
+        const timeoutId = setTimeout(() => {
+            if (uploadTask) {
+                uploadTask.cancel(); // Attempt to cancel the running task
+            }
+            // This specific message will be shown to the user in the form.
+            reject(new Error("Image upload timed out after 30 seconds. This might be due to a slow network connection or incorrect Firebase Storage security rules."));
+        }, 30000); // 30-second timeout
+
+        const cleanup = () => clearTimeout(timeoutId);
+
         if (base64Image.startsWith('http')) {
+            cleanup();
             resolve(base64Image);
             return;
         }
@@ -90,42 +103,38 @@ const uploadImage = (base64Image: string): Promise<string> => {
             const blob = await base64ToBlob(base64Image);
             const fileName = `photos/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${blob.type.split('/')[1] || 'jpg'}`;
             const storageRef = storage.ref(fileName);
-            const uploadTask = storageRef.put(blob);
+            uploadTask = storageRef.put(blob);
 
             uploadTask.on('state_changed',
-                (snapshot) => {
-                    // Optional: handle progress updates
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    console.log('Upload is ' + progress + '% done');
-                },
+                (snapshot) => { /* progress */ },
                 (error) => {
-                    // Handle unsuccessful uploads
+                    cleanup();
+                    // A canceled task could be from our timeout. The timeout's rejection will be used, which is more specific.
+                    if (error.code === 'storage/canceled') {
+                        return;
+                    }
                     console.error("Error uploading image to Firebase Storage:", error);
                     let message = "Image upload failed. Please try again.";
-                    switch (error.code) {
-                        case 'storage/unauthorized':
-                            message = "Image upload failed due to insufficient permissions. Please check Firebase Storage security rules.";
-                            break;
-                        case 'storage/canceled':
-                            message = "Image upload was canceled.";
-                            break;
-                        case 'storage/unknown':
-                            message = "An unknown error occurred during image upload. Check your network connection.";
-                            break;
+                    if (error.code === 'storage/unauthorized') {
+                        message = "Image upload failed due to insufficient permissions. Ensure Firebase Storage rules allow writes for authenticated users (e.g., `allow write: if request.auth != null;`).";
+                    } else if (error.code === 'storage/unknown') {
+                        message = "An unknown error occurred during image upload. Check your network connection.";
                     }
                     reject(new Error(message));
                 },
                 () => {
-                    // Handle successful uploads on complete
-                    uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                    uploadTask?.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                        cleanup();
                         resolve(downloadURL);
                     }).catch(error => {
+                        cleanup();
                         console.error("Error getting download URL:", error);
-                        reject(new Error("Upload succeeded, but failed to get the download URL."));
+                        reject(new Error("Upload succeeded, but failed to get the download URL. This can also be a permissions issue (read permission required)."));
                     });
                 }
             );
         } catch (error) {
+            cleanup();
             console.error("Error during image blob conversion or task initiation:", error);
             reject(new Error("Failed to prepare image for upload."));
         }
