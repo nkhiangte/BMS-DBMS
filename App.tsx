@@ -636,33 +636,40 @@ const App: React.FC = () => {
     // Auth Effect
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-            if (firebaseUser) {
-                const userDocRef = db.collection('users').doc(firebaseUser.uid);
-                const userDoc = await userDocRef.get();
-                if (userDoc.exists) {
-                    const userData = userDoc.data() as User;
-                    setUser({
-                        uid: firebaseUser.uid,
-                        displayName: userData.displayName,
-                        email: firebaseUser.email,
-                        photoURL: userData.photoURL || firebaseUser.photoURL,
-                        role: userData.role,
-                    });
+            try {
+                if (firebaseUser) {
+                    const userDocRef = db.collection('users').doc(firebaseUser.uid);
+                    const userDoc = await userDocRef.get();
+                    if (userDoc.exists) {
+                        const userData = userDoc.data() as User;
+                        setUser({
+                            uid: firebaseUser.uid,
+                            displayName: userData.displayName,
+                            email: firebaseUser.email,
+                            photoURL: userData.photoURL || firebaseUser.photoURL,
+                            role: userData.role,
+                        });
+                    } else {
+                        const newUser: User = { 
+                            uid: firebaseUser.uid, 
+                            displayName: firebaseUser.displayName, 
+                            email: firebaseUser.email, 
+                            photoURL: firebaseUser.photoURL, 
+                            role: 'pending' 
+                        };
+                        await userDocRef.set(newUser);
+                        setUser(newUser);
+                    }
                 } else {
-                    const newUser: User = { 
-                        uid: firebaseUser.uid, 
-                        displayName: firebaseUser.displayName, 
-                        email: firebaseUser.email, 
-                        photoURL: firebaseUser.photoURL, 
-                        role: 'pending' 
-                    };
-                    await userDocRef.set(newUser);
-                    setUser(newUser);
+                    setUser(null);
                 }
-            } else {
+            } catch (error) {
+                console.error("Error during auth state change handling:", error);
+                // Also log out the user on error to prevent being stuck in a weird state
                 setUser(null);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         });
         return () => unsubscribe();
     }, []);
