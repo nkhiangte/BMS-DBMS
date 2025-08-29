@@ -49,10 +49,29 @@ export const GRADES_WITH_NO_ACTIVITIES: Grade[] = [
   Grade.X,
 ];
 
+export const GRADES_WITH_DETAILED_ACTIVITIES: Grade[] = [
+  Grade.III,
+  Grade.IV,
+  Grade.V,
+  Grade.VI,
+  Grade.VII,
+  Grade.VIII,
+];
+
 export const TERMINAL_EXAMS = [
   { id: 'terminal1', name: 'First Terminal Exam' },
   { id: 'terminal2', name: 'Second Terminal Exam' },
   { id: 'terminal3', name: 'Final Terminal Exam' },
+];
+
+const commonSubjectsWithActivities = [
+    { name: 'English', examFullMarks: 60, activityFullMarks: 40 }, 
+    { name: 'English - II', examFullMarks: 60, activityFullMarks: 40 }, 
+    { name: 'Mathematics', examFullMarks: 60, activityFullMarks: 40 }, 
+    { name: 'Science', examFullMarks: 60, activityFullMarks: 40 }, 
+    { name: 'Social Studies', examFullMarks: 60, activityFullMarks: 40 }, 
+    { name: 'Mizo', examFullMarks: 60, activityFullMarks: 40 }, 
+    { name: 'Hindi', examFullMarks: 60, activityFullMarks: 40 }
 ];
 
 export const GRADE_DEFINITIONS: Record<Grade, GradeDefinition> = {
@@ -77,11 +96,11 @@ export const GRADE_DEFINITIONS: Record<Grade, GradeDefinition> = {
         { name: 'Cursive', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' },
         { name: 'Drawing', examFullMarks: 0, activityFullMarks: 0, gradingSystem: 'OABC' }
     ]},
-    [Grade.III]: { classTeacherId: undefined, subjects: [] },
-    [Grade.IV]: { classTeacherId: undefined, subjects: [] },
-    [Grade.V]: { classTeacherId: undefined, subjects: [] },
-    [Grade.VI]: { classTeacherId: undefined, subjects: [{ name: 'English', examFullMarks: 60, activityFullMarks: 40 }, { name: 'English - II', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Mathematics', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Science', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Social Studies', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Mizo', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Hindi', examFullMarks: 60, activityFullMarks: 40 }] },
-    [Grade.VII]: { classTeacherId: undefined, subjects: [{ name: 'English', examFullMarks: 60, activityFullMarks: 40 }, { name: 'English - II', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Mathematics', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Science', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Social Studies', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Mizo', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Hindi', examFullMarks: 60, activityFullMarks: 40 }] },
+    [Grade.III]: { classTeacherId: undefined, subjects: commonSubjectsWithActivities },
+    [Grade.IV]: { classTeacherId: undefined, subjects: commonSubjectsWithActivities },
+    [Grade.V]: { classTeacherId: undefined, subjects: commonSubjectsWithActivities },
+    [Grade.VI]: { classTeacherId: undefined, subjects: commonSubjectsWithActivities },
+    [Grade.VII]: { classTeacherId: undefined, subjects: commonSubjectsWithActivities },
     [Grade.VIII]: { classTeacherId: undefined, subjects: [{ name: 'English', examFullMarks: 60, activityFullMarks: 40 }, { name: 'English - II', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Mathematics', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Science', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Social Studies', examFullMarks: 60, activityFullMarks: 40 }, { name: 'Mizo', examFullMarks: 60, activityFullMarks: 40 }] },
     [Grade.IX]: { classTeacherId: undefined, subjects: [{ name: 'English', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Mathematics', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Science', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Social Studies', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Mizo', examFullMarks: 100, activityFullMarks: 0 }] },
     [Grade.X]: { classTeacherId: undefined, subjects: [{ name: 'English', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Mathematics', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Science', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Social Studies', examFullMarks: 100, activityFullMarks: 0 }, { name: 'Mizo', examFullMarks: 100, activityFullMarks: 0 }] },

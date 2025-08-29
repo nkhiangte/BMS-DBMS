@@ -177,11 +177,20 @@ export interface GradeDefinition {
 }
 
 
+// NEW: Detailed activity log structure
+export interface ActivityLog {
+  classTest?: number;
+  homeAssignment?: number;
+  quiz?: number;
+  projectWork?: number;
+}
+
 export interface SubjectMark {
   subject: string;
   marks?: number; // For grades without split marks
   examMarks?: number; // For grades with split marks
-  activityMarks?: number; // For grades with split marks
+  activityMarks?: number; // For grades with split marks - will be a calculated total
+  activityLog?: ActivityLog; // NEW: Detailed log
   grade?: 'O' | 'A' | 'B' | 'C';
 }
 
