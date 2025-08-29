@@ -1,12 +1,13 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, Grade, GradeDefinition, Staff, EmploymentStatus, User, FeePayments, FeeStructure } from '../types';
-import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon, ClipboardDocumentCheckIcon, PlusIcon, MessageIcon, WhatsappIcon, UserIcon, DocumentReportIcon, CurrencyDollarIcon, PrinterIcon } from '../components/Icons';
+import { Student, Grade, GradeDefinition, Staff, EmploymentStatus, User, FeePayments, FeeStructure, Exam, ActivityLog } from '../types';
+import { BackIcon, HomeIcon, EditIcon, CheckIcon, XIcon, CheckCircleIcon, XCircleIcon, ArrowUpOnSquareIcon, TransferIcon, TrashIcon, ClipboardDocumentCheckIcon, PlusIcon, MessageIcon, WhatsappIcon, UserIcon, DocumentReportIcon, CurrencyDollarIcon, PrinterIcon, AcademicCapIcon } from '../components/Icons';
 import { formatStudentId, calculateDues, formatPhoneNumberForWhatsApp } from '../utils';
 import EditSubjectsModal from '../components/EditSubjectsModal';
 import { TERMINAL_EXAMS } from '../constants';
 import ExamFeeCollectionModal from '../components/ExamFeeCollectionModal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import ActivityLogModal from '../components/ActivityLogModal';
 
 
 interface ClassStudentsPageProps {
@@ -24,6 +25,7 @@ interface ClassStudentsPageProps {
   onAddStudentToClass: (grade: Grade) => void;
   onUpdateBulkFeePayments: (updates: Array<{ studentId: string; payments: FeePayments }>) => Promise<void>;
   feeStructure: FeeStructure;
+  onUpdateAcademic: (studentId: string, performance: Exam[]) => void;
 }
 
 const PhotoThumbnail: React.FC<{ student: Student }> = ({ student }) => {
@@ -51,7 +53,7 @@ const PhotoThumbnail: React.FC<{ student: Student }> = ({ student }) => {
     );
 };
 
-const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, onUpdateClassTeacher, academicYear, onOpenImportModal, onOpenTransferModal, onDelete, user, assignedGrade, onAddStudentToClass, onUpdateBulkFeePayments, feeStructure }) => {
+const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, gradeDefinitions, onUpdateGradeDefinition, onUpdateClassTeacher, academicYear, onOpenImportModal, onOpenTransferModal, onDelete, user, assignedGrade, onAddStudentToClass, onUpdateBulkFeePayments, feeStructure, onUpdateAcademic }) => {
   const { grade } = useParams<{ grade: string }>();
   const navigate = useNavigate();
   const decodedGrade = grade ? decodeURIComponent(grade) as Grade : '' as Grade;
@@ -62,6 +64,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
   const [isBulkPrintModalOpen, setIsBulkPrintModalOpen] = useState(false);
   const [isEditingTeacher, setIsEditingTeacher] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+  const [activityLogTarget, setActivityLogTarget] = useState<{ student: Student; examId: string; subjectName: string; } | null>(null);
 
   const isClassTeacher = user.role === 'admin' || decodedGrade === assignedGrade;
   
@@ -120,6 +123,48 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
       
     setIsEditingTeacher(false);
   };
+
+  const handleSaveActivityLog = (log: ActivityLog) => {
+    if (!activityLogTarget) return;
+    const { student, examId, subjectName } = activityLogTarget;
+
+    const total = Math.round(
+        (log.classTest?.scaledMarks || 0) +
+        (log.homework?.scaledMarks || 0) +
+        (log.quiz?.scaledMarks || 0) +
+        (log.project?.scaledMarks || 0)
+    );
+    
+    const updatedPerformance: Exam[] = JSON.parse(JSON.stringify(student.academicPerformance || []));
+    let exam = updatedPerformance.find(e => e.id === examId);
+    
+    if (!exam) {
+        const examDetails = TERMINAL_EXAMS.find(e => e.id === examId);
+        exam = { id: examId, name: examDetails!.name, results: [] };
+        updatedPerformance.push(exam);
+    }
+
+    let subjectResult = exam.results.find(r => r.subject === subjectName);
+    if (!subjectResult) {
+        subjectResult = { subject: subjectName };
+        exam.results.push(subjectResult);
+    }
+
+    subjectResult.activityLog = log;
+    subjectResult.activityMarks = total;
+
+    onUpdateAcademic(student.id, updatedPerformance);
+    setActivityLogTarget(null);
+  };
+  
+  const currentActivityLogData = useMemo(() => {
+      if (!activityLogTarget) return undefined;
+      const { student, examId, subjectName } = activityLogTarget;
+      const exam = student.academicPerformance?.find(e => e.id === examId);
+      const result = exam?.results.find(r => r.subject === subjectName);
+      return result?.activityLog;
+  }, [activityLogTarget]);
+
 
   const BulkPrintModal: React.FC = () => {
       const [examId, setExamId] = useState<string>('');
@@ -218,14 +263,14 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                         className="flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-md hover:bg-sky-700 transition hover:-translate-y-0.5"
                     >
                         <PlusIcon className="w-5 h-5" />
-                        Add Student to this Class
+                        Add Student
                     </button>
                     <button
                         onClick={() => onOpenImportModal(decodedGrade)}
                         className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 transition hover:-translate-y-0.5"
                     >
                         <ArrowUpOnSquareIcon className="w-5 h-5" />
-                        Import Students
+                        Import
                     </button>
                    </>
                 )}
@@ -261,7 +306,7 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Student</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Contact</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Dues Status</th>
-                {isClassTeacher && <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>}
+                {isClassTeacher && <th className="px-6 py-3 text-left text-xs font-bold text-slate-800 uppercase">Actions</th>}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
@@ -282,16 +327,6 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
                         <div className="flex items-center justify-between">
                             <span>{student.contact}</span>
-                            {student.contact && (
-                                <div className="flex items-center gap-1">
-                                    <a href={`https://wa.me/${formatPhoneNumberForWhatsApp(student.contact)}`} target="_blank" rel="noopener noreferrer" className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-full" title="Send WhatsApp">
-                                        <WhatsappIcon className="w-5 h-5" />
-                                    </a>
-                                    <a href={`sms:${student.contact}`} className="p-1.5 text-sky-600 hover:bg-sky-100 rounded-full" title="Send SMS">
-                                        <MessageIcon className="w-5 h-5" />
-                                    </a>
-                                </div>
-                            )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -302,12 +337,48 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
                         )}
                       </td>
                       {isClassTeacher && (
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex items-center justify-end gap-2">
-                             <button onClick={() => onOpenTransferModal(student)} className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full" title="Transfer Student to another class">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center justify-start gap-1">
+                             <div className="relative group inline-block text-left">
+                                <div>
+                                    <button type="button" className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full" title="Log Activity Marks">
+                                        <AcademicCapIcon className="w-5 h-5"/>
+                                    </button>
+                                </div>
+                                <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none hidden group-hover:block z-20">
+                                    <div className="py-1" role="menu" aria-orientation="vertical">
+                                        <div className="px-4 py-2 text-xs font-bold text-slate-500 uppercase">Log Activity Marks</div>
+                                        {TERMINAL_EXAMS.map(exam => (
+                                            <div key={exam.id} className="relative group/exam">
+                                                <div className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex justify-between items-center cursor-default">
+                                                   <span>{exam.name}</span>
+                                                   <span className="text-slate-400">&rarr;</span>
+                                                </div>
+                                                <div className="origin-top-right absolute left-full -top-1 mt-0 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none hidden group-hover/exam:block z-30">
+                                                    <div className="py-1">
+                                                        {gradeDef.subjects.filter(s => s.activityFullMarks > 0).map(subject => (
+                                                             <button
+                                                                key={subject.name}
+                                                                onClick={() => setActivityLogTarget({student: student, examId: exam.id, subjectName: subject.name})}
+                                                                className="w-full text-left block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                                                             >
+                                                                {subject.name}
+                                                             </button>
+                                                        ))}
+                                                        {gradeDef.subjects.filter(s => s.activityFullMarks > 0).length === 0 && (
+                                                            <span className="block px-4 py-2 text-sm text-slate-500 italic">No activity-based subjects for this grade.</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                             <button onClick={() => onOpenTransferModal(student)} className="p-2 text-amber-600 hover:bg-amber-100 rounded-full" title="Transfer Student">
                                 <TransferIcon className="w-5 h-5" />
                             </button>
-                            <button onClick={() => onDelete(student)} className="p-2 text-red-600 hover:bg-red-100 rounded-full" title="Delete Student Record">
+                            <button onClick={() => onDelete(student)} className="p-2 text-red-600 hover:bg-red-100 rounded-full" title="Delete Student">
                                 <TrashIcon className="w-5 h-5" />
                             </button>
                           </div>
@@ -325,13 +396,15 @@ const ClassStudentsPage: React.FC<ClassStudentsPageProps> = ({ students, staff, 
           )}
         </div>
       </div>
-      {isModalOpen && (
-        <EditSubjectsModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSave={handleSaveSubjects}
-          grade={decodedGrade}
-          initialGradeDefinition={gradeDef}
+      {activityLogTarget && (
+        <ActivityLogModal
+            isOpen={!!activityLogTarget}
+            onClose={() => setActivityLogTarget(null)}
+            onSave={handleSaveActivityLog}
+            studentName={activityLogTarget.student.name}
+            examName={TERMINAL_EXAMS.find(e => e.id === activityLogTarget.examId)?.name || ''}
+            subjectName={activityLogTarget.subjectName}
+            initialLog={currentActivityLogData}
         />
       )}
       <ExamFeeCollectionModal
