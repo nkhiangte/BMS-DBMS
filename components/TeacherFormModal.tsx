@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, FormEvent, useRef } from 'react';
-import { Staff, Grade, GradeDefinition, Gender, MaritalStatus, Department, Designation, EmployeeType, Qualification, BloodGroup, EmploymentStatus, StaffType } from '../types';
+import { Staff, Grade, GradeDefinition, Gender, MaritalStatus, Department, Designation, EmployeeType, Qualification, BloodGroup, EmploymentStatus, StaffType, SubjectAssignment } from '../types';
 import { 
+    GRADES_LIST,
     GENDER_LIST, 
     MARITAL_STATUS_LIST, 
     DEPARTMENT_LIST, 
@@ -12,7 +13,9 @@ import {
     EMPLOYMENT_STATUS_LIST,
     STAFF_TYPE_LIST,
 } from '../constants';
-import { ChevronDownIcon, ChevronUpIcon, UserIcon } from './Icons';
+// FIX: Added PlusIcon and TrashIcon for the new UI and SpinnerIcon for saving state.
+import { ChevronDownIcon, ChevronUpIcon, UserIcon, SpinnerIcon, PlusIcon, TrashIcon } from './Icons';
+import { formatDateForDisplay, formatDateForStorage } from '../utils';
 
 const AccordionSection: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -83,9 +86,12 @@ interface StaffFormModalProps {
   staffMember: Staff | null;
   allStaff: Staff[];
   gradeDefinitions: Record<Grade, GradeDefinition>;
+  // FIX: Added isSaving and error props for better state handling, consistent with other modals.
+  isSaving: boolean;
+  error?: string;
 }
 
-const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubmit, staffMember, allStaff, gradeDefinitions }) => {
+const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubmit, staffMember, allStaff, gradeDefinitions, isSaving, error }) => {
     const getInitialFormData = (): Omit<Staff, 'id'> => ({
         staffType: 'Teaching',
         employeeId: '',
@@ -111,10 +117,12 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
         designation: Designation.TEACHER,
         employeeType: EmployeeType.FULL_TIME,
         status: EmploymentStatus.ACTIVE,
-        subjectsTaught: [],
+        // FIX: Replaced non-existent `subjectsTaught` with `assignedSubjects` to match the Staff type.
+        assignedSubjects: [],
         teacherLicenseNumber: '',
         salaryGrade: '',
-        basicSalary: undefined,
+        // FIX: Changed from undefined to null for consistency and to avoid potential issues with Firestore.
+        basicSalary: null,
         bankAccountNumber: '',
         bankName: '',
         panNumber: '',
@@ -135,7 +143,10 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                     ...getInitialFormData(),
                     ...staffMember,
                     yearsOfExperience: staffMember.yearsOfExperience ?? 0,
-                    basicSalary: staffMember.basicSalary ?? undefined,
+                    basicSalary: staffMember.basicSalary ?? null,
+                    // FIX: Format dates for display in the form inputs.
+                    dateOfBirth: formatDateForDisplay(staffMember.dateOfBirth),
+                    dateOfJoining: formatDateForDisplay(staffMember.dateOfJoining),
                 });
                 const assignedGradeKey = Object.keys(gradeDefinitions).find(
                     g => gradeDefinitions[g as Grade]?.classTeacherId === staffMember.id
@@ -148,15 +159,10 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
         }
     }, [staffMember, isOpen, gradeDefinitions]);
     
+    // FIX: Simplified handleChange as subject assignment has its own handler now.
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        
-        if (name === 'subjectsTaught') {
-            const subjects = value.split(',').map(s => s.trim()).filter(Boolean);
-            setFormData(prev => ({ ...prev, subjectsTaught: subjects }));
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
-        }
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
     
     const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,42 +189,73 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
         }
     };
 
+    // FIX: Added handlers for the new dynamic subject assignment UI.
+    const handleAssignmentChange = (index: number, field: keyof SubjectAssignment, value: string) => {
+        const newAssignments = [...(formData.assignedSubjects || [])];
+        const newAssignment = { ...newAssignments[index], [field]: value as any };
+
+        // If the grade is changed, reset the subject selection.
+        if (field === 'grade') {
+            newAssignment.subject = ''; 
+        }
+        
+        newAssignments[index] = newAssignment;
+        setFormData(prev => ({ ...prev, assignedSubjects: newAssignments }));
+    };
+
+    const handleAddAssignment = () => {
+        const newAssignments = [...(formData.assignedSubjects || []), { grade: GRADES_LIST[0], subject: '' }];
+        setFormData(prev => ({ ...prev, assignedSubjects: newAssignments }));
+    };
+
+    const handleRemoveAssignment = (index: number) => {
+        const newAssignments = (formData.assignedSubjects || []).filter((_, i) => i !== index);
+        setFormData(prev => ({ ...prev, assignedSubjects: newAssignments }));
+    };
+
+
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         
-        const cleanData: { [key: string]: any } = { ...formData };
+        // FIX: Refactored handleSubmit to correctly format data before submission, handle optional fields, and manage subject assignments.
+        const dataToSave: { [key: string]: any } = {
+            ...formData,
+            dateOfBirth: formatDateForStorage(formData.dateOfBirth),
+            dateOfJoining: formatDateForStorage(formData.dateOfJoining),
+        };
         
-        const numericFields: (keyof Staff)[] = ['yearsOfExperience', 'basicSalary'];
+        // FIX: Filter out empty subject assignments
+        if (dataToSave.assignedSubjects) {
+            dataToSave.assignedSubjects = dataToSave.assignedSubjects.filter((a: SubjectAssignment) => a.subject.trim() !== '');
+        }
+    
+        // Firestore fails with `undefined` values.
+        // We must clean the object of any keys that have `undefined`, `null`, or `''` as values for optional fields.
+        Object.keys(dataToSave).forEach(key => {
+            const value = dataToSave[key];
+            if (value === undefined || value === null || value === '') {
+                // Exceptions for numeric fields that can be 0, and photographUrl which can be ''.
+                const exceptions = ['yearsOfExperience', 'basicSalary', 'photographUrl'];
+                if (!exceptions.includes(key)) {
+                     delete dataToSave[key];
+                }
+            }
+        });
+    
+        // Ensure numeric types are correct for fields that might have been left as strings
+        if (dataToSave.yearsOfExperience !== undefined) {
+            dataToSave.yearsOfExperience = Number(dataToSave.yearsOfExperience);
+        }
+        if (dataToSave.basicSalary !== undefined) {
+            dataToSave.basicSalary = Number(dataToSave.basicSalary);
+        }
+        
+        if (dataToSave.staffType === 'Non-Teaching') {
+            delete dataToSave.assignedSubjects;
+            delete dataToSave.teacherLicenseNumber;
+        }
 
-        for(const field of numericFields) {
-            const value = cleanData[field];
-            if (value === '' || value === null || value === undefined || isNaN(Number(value))) {
-                delete cleanData[field];
-            } else {
-                cleanData[field] = Number(value);
-            }
-        }
-        
-        const optionalTextFields: (keyof Staff)[] = [
-            'teacherLicenseNumber', 'salaryGrade', 'bankAccountNumber', 'bankName', 'panNumber', 'medicalConditions'
-        ];
-        
-        for (const field of optionalTextFields) {
-            if (cleanData[field] === '' || cleanData[field] === null || cleanData[field] === undefined) {
-                delete cleanData[field];
-            }
-        }
-
-        if (cleanData.staffType === 'Non-Teaching') {
-            cleanData.subjectsTaught = [];
-            delete cleanData.teacherLicenseNumber;
-        } else {
-            if(typeof cleanData.subjectsTaught === 'string') {
-                 cleanData.subjectsTaught = (cleanData.subjectsTaught as string).split(',').map(s => s.trim()).filter(Boolean);
-            }
-        }
-        
-        onSubmit(cleanData as Omit<Staff, 'id'>, assignedGrade || null);
+        onSubmit(dataToSave as Omit<Staff, 'id'>, assignedGrade || null);
     };
 
     const gradeOptions = Object.keys(gradeDefinitions).map(gradeKey => {
@@ -245,6 +282,12 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                 <h2 className="text-2xl font-bold text-slate-800">{staffMember ? 'Edit Staff Details' : 'Add New Staff Member'}</h2>
             </div>
             <div className="p-6 space-y-4 overflow-y-auto max-h-[75vh]">
+                {error && (
+                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md animate-fade-in" role="alert">
+                        <p className="font-bold">Error</p>
+                        <p>{error}</p>
+                    </div>
+                )}
                 <AccordionSection title="Personal Details" defaultOpen={true}>
                     <div>
                         <label className="block text-sm font-bold text-slate-800">First Name</label>
@@ -262,7 +305,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                     </div>
                     <div>
                         <label className="block text-sm font-bold text-slate-800">Date of Birth</label>
-                        <input type="text" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                        <input type="text" placeholder="DD/MM/YYYY" pattern="\d{1,2}/\d{1,2}/\d{4}" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
                     </div>
                     <div>
                         <label className="block text-sm font-bold text-slate-800">Marital Status</label>
@@ -323,7 +366,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                     </div>
                      <div>
                         <label className="block text-sm font-bold text-slate-800">Date of Joining</label>
-                        <input type="text" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
+                        <input type="text" placeholder="DD/MM/YYYY" pattern="\d{1,2}/\d{1,2}/\d{4}" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" required />
                     </div>
                      <div>
                         <label className="block text-sm font-bold text-slate-800">Staff Type</label>
@@ -384,9 +427,44 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                     </div>
                     {formData.staffType === 'Teaching' && (
                         <>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-800">Subjects Taught</label>
-                                <input type="text" name="subjectsTaught" value={Array.isArray(formData.subjectsTaught) ? formData.subjectsTaught.join(', ') : ''} onChange={handleChange} placeholder="e.g. English, Maths" className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                            {/* FIX: Replaced subjectsTaught text input with a dynamic UI for assignedSubjects. */}
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold text-slate-800">Subject Assignments</label>
+                                <div className="mt-2 space-y-2">
+                                    {(formData.assignedSubjects || []).map((assignment, index) => {
+                                        const subjectsForGrade = gradeDefinitions[assignment.grade]?.subjects || [];
+                                        return (
+                                            <div key={index} className="flex items-center gap-2 p-2 bg-slate-100 rounded-lg">
+                                                <select
+                                                    value={assignment.grade}
+                                                    onChange={(e) => handleAssignmentChange(index, 'grade', e.target.value)}
+                                                    className="form-select flex-grow border-slate-300 rounded-md shadow-sm"
+                                                >
+                                                    {GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                                                </select>
+                                                <select
+                                                    value={assignment.subject}
+                                                    onChange={(e) => handleAssignmentChange(index, 'subject', e.target.value)}
+                                                    className="form-select flex-grow border-slate-300 rounded-md shadow-sm"
+                                                    required
+                                                >
+                                                    <option value="" disabled>-- Select Subject --</option>
+                                                    {subjectsForGrade.map(subjectDef => (
+                                                        <option key={subjectDef.name} value={subjectDef.name}>
+                                                            {subjectDef.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <button type="button" onClick={() => handleRemoveAssignment(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full">
+                                                    <TrashIcon className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                    <button type="button" onClick={handleAddAssignment} className="btn btn-secondary text-sm">
+                                        <PlusIcon className="w-4 h-4"/> Add Assignment
+                                    </button>
+                                </div>
                             </div>
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-bold text-slate-800">Teacher License No. (Optional)</label>
@@ -441,11 +519,18 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                 </AccordionSection>
             </div>
             <div className="bg-slate-50 px-6 py-4 flex justify-end gap-3 rounded-b-xl border-t">
-                <button type="button" onClick={onClose} className="btn btn-secondary">
+                <button type="button" onClick={onClose} className="btn btn-secondary" disabled={isSaving}>
                 Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                {staffMember ? 'Save Changes' : 'Add Staff'}
+                <button type="submit" className="btn btn-primary" disabled={isSaving}>
+                {isSaving ? (
+                        <>
+                            <SpinnerIcon className="w-5 h-5" />
+                            <span>Saving...</span>
+                        </>
+                    ) : (
+                        staffMember ? 'Save Changes' : 'Add Staff'
+                    )}
                 </button>
             </div>
         </form>

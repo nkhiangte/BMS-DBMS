@@ -188,7 +188,14 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
     // FIX: Added handlers for the new dynamic subject assignment UI.
     const handleAssignmentChange = (index: number, field: keyof SubjectAssignment, value: string) => {
         const newAssignments = [...(formData.assignedSubjects || [])];
-        newAssignments[index] = { ...newAssignments[index], [field]: value as any };
+        const newAssignment = { ...newAssignments[index], [field]: value as any };
+
+        // If the grade is changed, reset the subject selection.
+        if (field === 'grade') {
+            newAssignment.subject = ''; 
+        }
+        
+        newAssignments[index] = newAssignment;
         setFormData(prev => ({ ...prev, assignedSubjects: newAssignments }));
     };
 
@@ -415,31 +422,39 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                     </div>
                     {formData.staffType === 'Teaching' && (
                         <>
-                            {/* FIX: Replaced `subjectsTaught` input with a dynamic list editor for `assignedSubjects`. */}
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-bold text-slate-800">Subject Assignments</label>
                                 <div className="mt-2 space-y-2">
-                                    {(formData.assignedSubjects || []).map((assignment, index) => (
-                                        <div key={index} className="flex items-center gap-2 p-2 bg-slate-100 rounded-lg">
-                                            <select
-                                                value={assignment.grade}
-                                                onChange={(e) => handleAssignmentChange(index, 'grade', e.target.value)}
-                                                className="form-select flex-grow border-slate-300 rounded-md shadow-sm"
-                                            >
-                                                {GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
-                                            </select>
-                                            <input
-                                                type="text"
-                                                placeholder="Subject Name"
-                                                value={assignment.subject}
-                                                onChange={(e) => handleAssignmentChange(index, 'subject', e.target.value)}
-                                                className="form-input flex-grow border-slate-300 rounded-md shadow-sm"
-                                            />
-                                            <button type="button" onClick={() => handleRemoveAssignment(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full">
-                                                <TrashIcon className="w-5 h-5" />
-                                            </button>
-                                        </div>
-                                    ))}
+                                    {(formData.assignedSubjects || []).map((assignment, index) => {
+                                        const subjectsForGrade = gradeDefinitions[assignment.grade]?.subjects || [];
+                                        return (
+                                            <div key={index} className="flex items-center gap-2 p-2 bg-slate-100 rounded-lg">
+                                                <select
+                                                    value={assignment.grade}
+                                                    onChange={(e) => handleAssignmentChange(index, 'grade', e.target.value)}
+                                                    className="form-select flex-grow border-slate-300 rounded-md shadow-sm"
+                                                >
+                                                    {GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                                                </select>
+                                                <select
+                                                    value={assignment.subject}
+                                                    onChange={(e) => handleAssignmentChange(index, 'subject', e.target.value)}
+                                                    className="form-select flex-grow border-slate-300 rounded-md shadow-sm"
+                                                    required
+                                                >
+                                                    <option value="" disabled>-- Select Subject --</option>
+                                                    {subjectsForGrade.map(subjectDef => (
+                                                        <option key={subjectDef.name} value={subjectDef.name}>
+                                                            {subjectDef.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <button type="button" onClick={() => handleRemoveAssignment(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full">
+                                                    <TrashIcon className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
                                     <button type="button" onClick={handleAddAssignment} className="btn btn-secondary text-sm">
                                         <PlusIcon className="w-4 h-4"/> Add Assignment
                                     </button>
