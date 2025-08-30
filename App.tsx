@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType, FeeStructure, FeeSet, ConductEntry, SubjectAssignment } from './types';
@@ -40,6 +41,7 @@ import TransferStudentModal from './components/TransferStudentModal';
 import StudentAttendancePage from './pages/StudentAttendancePage';
 import NotificationContainer from './components/NotificationContainer';
 import PrintableBulkReportCardPage from './pages/PrintableBulkReportCardPage';
+import ActivityMarksPage from './pages/ActivityMarksPage'; // Import the new page
 
 // Auth Pages
 import LoginPage from './pages/LoginPage';
@@ -760,7 +762,7 @@ const App: React.FC = () => {
                         <Route path="/change-password" element={<PrivateRoute user={user}><ChangePasswordPage onChangePassword={handleChangePassword} /></PrivateRoute>} />
     
                         {/* Main App Routes */}
-                        <Route path="/" element={<PrivateRoute user={user}><DashboardPage user={user} onAddStudent={handleAddStudent} studentCount={activeStudents.length} academicYear={academicYear!} onSetAcademicYear={setAcademicYearAndPersist} allUsers={allUsers} assignedGrade={assignedGrade} /></PrivateRoute>} />
+                        <Route path="/" element={<PrivateRoute user={user}><DashboardPage user={user} onAddStudent={handleAddStudent} studentCount={activeStudents.length} academicYear={academicYear!} onSetAcademicYear={setAcademicYearAndPersist} allUsers={allUsers} assignedGrade={assignedGrade} assignedSubjects={assignedSubjectsForCurrentUser} /></PrivateRoute>} />
                         <Route path="/students" element={<PrivateRoute user={user}><StudentListPage students={activeStudents} onAdd={handleAddStudent} onEdit={handleEditStudent} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} /></PrivateRoute>} />
                         <Route path="/student/:studentId" element={<PrivateRoute user={user}><StudentDetailPage students={students} onEdit={handleEditStudent} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} feeStructure={feeStructure} conductLog={conductLog} onAddConductEntry={handleAddConductEntry} onDeleteConductEntry={handleDeleteConductEntry} /></PrivateRoute>} />
                         <Route path="/student/:studentId/academics" element={<PrivateRoute user={user}><AcademicPerformancePage students={students} onUpdateAcademic={handleUpdateAcademic} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} assignedSubjects={assignedSubjectsForCurrentUser} /></PrivateRoute>} />
@@ -792,6 +794,9 @@ const App: React.FC = () => {
                         <Route path="/staff/attendance" element={<PrivateRoute user={user}><StaffAttendancePage user={user} staff={staff} attendance={staffAttendance[new Date().toISOString().slice(0, 10)] || null} onMarkAttendance={handleUpdateStaffAttendance} fetchStaffAttendanceForMonth={fetchStaffAttendanceForMonth} academicYear={academicYear!} /></PrivateRoute>} />
                         <Route path="/classes/:grade/attendance" element={<PrivateRoute user={user}><StudentAttendancePage students={students} allAttendance={studentAttendance} onUpdateAttendance={handleUpdateStudentAttendance} user={user} assignedGrade={assignedGrade} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} academicYear={academicYear!} /></PrivateRoute>} />
                         
+                        {/* New Activity Marks Page */}
+                        <Route path="/activity-marks" element={<PrivateRoute user={user}><ActivityMarksPage user={user} staffProfile={currentUserStaffProfile} students={students} gradeDefinitions={gradeDefinitions} onUpdateClassMarks={handleUpdateBulkMarks} /></PrivateRoute>} />
+
                         {/* Hostel Management */}
                         <Route path="/hostel" element={<PrivateRoute user={user}><HostelDashboardPage /></PrivateRoute>} />
                         <Route path="/hostel/students" element={<PrivateRoute user={user}><HostelStudentListPage residents={hostelResidents} rooms={hostelRooms} students={students} onAdd={handleAddHostelResident} user={user} /></PrivateRoute>} />

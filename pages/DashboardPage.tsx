@@ -2,11 +2,12 @@
 
 
 
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { UsersIcon, PlusIcon, DocumentReportIcon, BookOpenIcon, TransferIcon, BriefcaseIcon, CurrencyDollarIcon, AcademicCapIcon, ArchiveBoxIcon, BuildingOfficeIcon, UserGroupIcon, CalendarDaysIcon, MegaphoneIcon } from '../components/Icons';
 import AcademicYearForm from '../components/AcademicYearForm';
-import { User, Grade } from '../types';
+import { User, Grade, SubjectAssignment } from '../types';
 
 interface DashboardPageProps {
   user: User;
@@ -16,6 +17,7 @@ interface DashboardPageProps {
   onSetAcademicYear: (year: string) => void;
   allUsers: User[];
   assignedGrade: Grade | null;
+  assignedSubjects: SubjectAssignment[];
 }
 
 const DashboardCard: React.FC<{
@@ -61,7 +63,7 @@ const DashboardCard: React.FC<{
 };
 
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, studentCount, academicYear, onSetAcademicYear, allUsers, assignedGrade }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, studentCount, academicYear, onSetAcademicYear, allUsers, assignedGrade, assignedSubjects }) => {
   if (!academicYear) {
     return <AcademicYearForm onSetAcademicYear={onSetAcademicYear} />;
   }
@@ -98,6 +100,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onAddStudent, stude
                     icon={<BookOpenIcon className="w-7 h-7" />}
                     color="indigo"
                     action={<Link to={`/classes/${encodeURIComponent(assignedGrade)}`}>Go to My Class</Link>}
+                />
+            )}
+            {user.role === 'user' && assignedSubjects.length > 0 && (
+                 <DashboardCard
+                    title="Activity Marks"
+                    description="Enter activity marks for your assigned subjects."
+                    icon={<AcademicCapIcon className="w-7 h-7" />}
+                    color="amber"
+                    action={<Link to="/activity-marks">Enter Activity Marks</Link>}
                 />
             )}
             {user.role === 'user' && assignedGrade && (
