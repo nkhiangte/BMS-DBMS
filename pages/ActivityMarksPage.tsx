@@ -1,9 +1,10 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Staff, Student, Grade, GradeDefinition, SubjectAssignment, StudentStatus, Exam, ActivityLog, ActivityComponentLog, Assessment } from '../types';
-import { BackIcon, HomeIcon, AcademicCapIcon, BookOpenIcon, CheckIcon, SpinnerIcon } from '../components/Icons';
+import { User, Staff, Student, Grade, GradeDefinition, SubjectAssignment, StudentStatus, Exam, ActivityLog } from '../types';
+import { BackIcon, HomeIcon, AcademicCapIcon, BookOpenIcon, CheckIcon, SpinnerIcon, EditIcon } from '../components/Icons';
 import { TERMINAL_EXAMS } from '../constants';
+import ActivityLogModal from '../components/ActivityLogModal';
 
 interface ActivityMarksPageProps {
   user: User | null;
@@ -13,23 +14,25 @@ interface ActivityMarksPageProps {
   onUpdateClassMarks: (updates: Array<{ studentId: string; performance: Exam[] }>) => Promise<void>;
 }
 
-type MarksData = {
-    [studentId: string]: {
-        [examId: string]: ActivityLog
-    }
-};
+// Toast component for save feedback
+const SuccessToast: React.FC<{ message: string; onDismiss: () => void }> = ({ message, onDismiss }) => {
+    useEffect(() => {
+        const timer = setTimeout(onDismiss, 3000);
+        return () => clearTimeout(timer);
+    }, [onDismiss]);
 
-const ACTIVITY_COMPONENTS: { key: keyof ActivityLog, label: string, weightage: number }[] = [
-    { key: 'classTest', label: 'Class Tests', weightage: 20 },
-    { key: 'homework', label: 'Homework', weightage: 10 },
-    { key: 'quiz', label: 'Quizzes', weightage: 5 },
-    { key: 'project', label: 'Projects', weightage: 5 },
-];
+    return (
+        <div className="fixed top-24 right-5 bg-emerald-500 text-white shadow-lg rounded-lg p-4 flex items-center gap-3 z-50 animate-fade-in">
+            <CheckIcon className="w-6 h-6" />
+            <p className="font-semibold">{message}</p>
+        </div>
+    );
+};
 
 const ActivityMarksPage: React.FC<ActivityMarksPageProps> = ({ user, staffProfile, students, gradeDefinitions, onUpdateClassMarks }) => {
     const navigate = useNavigate();
     const [selectedAssignment, setSelectedAssignment] = useState<SubjectAssignment | null>(null);
-    const [marksData, setMarksData] = useState<MarksData>({});
+    const [activityLogTarget, setActivityLogTarget] = useState<{ student: Student, examId: string } | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
@@ -49,100 +52,55 @@ const ActivityMarksPage: React.FC<ActivityMarksPageProps> = ({ user, staffProfil
             .sort((a,b) => a.rollNo - b.rollNo);
     }, [students, selectedAssignment]);
 
-    const createDefaultActivityLog = (): ActivityLog => {
-        const log: Partial<ActivityLog> = {};
-        ACTIVITY_COMPONENTS.forEach(({ key, weightage }) => {
-            log[key] = { assessments: [{ marksObtained: null, maxMarks: null }], weightage, scaledMarks: 0 };
-        });
-        return log as ActivityLog;
+    const calculateTotalActivityMarks = (log?: ActivityLog): number => {
+        if (!log) return 0;
+        return Object.values(log).reduce((sum, component) => sum + (component.scaledMarks || 0), 0);
     };
 
-    useEffect(() => {
-        if (selectedAssignment) {
-            const initialMarks: MarksData = {};
-            selectedClassStudents.forEach(student => {
-                initialMarks[student.id] = {};
-                TERMINAL_EXAMS.forEach(exam => {
-                    const examData = student.academicPerformance?.find(e => e.id === exam.id);
-                    const subjectResult = examData?.results.find(r => r.subject === selectedAssignment.subject);
-                    initialMarks[student.id][exam.id] = subjectResult?.activityLog || createDefaultActivityLog();
-                });
-            });
-            setMarksData(initialMarks);
-        } else {
-            setMarksData({});
-        }
-    }, [selectedAssignment, selectedClassStudents]);
-
-    const handleLogChange = (studentId: string, examId: string, componentKey: keyof ActivityLog, assessmentIndex: number, field: keyof Assessment, value: string) => {
-        setMarksData(prev => {
-            const newLog = { ...prev[studentId][examId] };
-            const component = { ...newLog[componentKey] };
-            const newAssessments = [...component.assessments];
-            const numValue = value === '' ? null : parseInt(value, 10);
-            newAssessments[assessmentIndex] = { ...newAssessments[assessmentIndex], [field]: isNaN(numValue!) ? null : numValue };
-
-            // Recalculate scaled marks
-            const totalObtained = newAssessments.reduce((sum, a) => sum + (a.marksObtained || 0), 0);
-            const totalMax = newAssessments.reduce((sum, a) => sum + (a.maxMarks || 0), 0);
-            const newScaledMarks = totalMax > 0 ? (totalObtained / totalMax) * component.weightage : 0;
-            
-            component.assessments = newAssessments;
-            component.scaledMarks = newScaledMarks;
-            newLog[componentKey] = component;
-
-            return {
-                ...prev,
-                [studentId]: {
-                    ...prev[studentId],
-                    [examId]: newLog
-                }
-            };
-        });
+    const handleOpenModal = (student: Student, examId: string) => {
+        setActivityLogTarget({ student, examId });
     };
 
-    const handleSave = async () => {
-        if (!selectedAssignment) return;
-        setIsSaving(true);
-        const updates: Array<{ studentId: string; performance: Exam[] }> = [];
-
-        selectedClassStudents.forEach(student => {
-            const studentUpdates = marksData[student.id];
-            if (!studentUpdates) return;
-
-            const newPerformance: Exam[] = JSON.parse(JSON.stringify(student.academicPerformance || []));
-            
-            Object.keys(studentUpdates).forEach(examId => {
-                const updatedLog = studentUpdates[examId];
-                let exam = newPerformance.find(e => e.id === examId);
-                const examDetails = TERMINAL_EXAMS.find(e => e.id === examId)!;
-                if (!exam) {
-                    exam = { id: examId, name: examDetails.name, results: [] };
-                    newPerformance.push(exam);
-                }
-
-                let subjectResult = exam.results.find(r => r.subject === selectedAssignment.subject);
-                if (!subjectResult) {
-                    subjectResult = { subject: selectedAssignment.subject };
-                    exam.results.push(subjectResult);
-                }
-
-                const totalActivityMarks = Object.values(updatedLog).reduce((sum, comp) => sum + comp.scaledMarks, 0);
-                subjectResult.activityLog = updatedLog;
-                subjectResult.activityMarks = Math.round(totalActivityMarks);
-            });
-            
-            updates.push({ studentId: student.id, performance: newPerformance });
-        });
+    const handleSaveFromModal = async (log: ActivityLog) => {
+        if (!activityLogTarget || !selectedAssignment) return;
         
-        if(updates.length > 0) {
-            await onUpdateClassMarks(updates);
+        setIsSaving(true);
+        const { student, examId } = activityLogTarget;
+        
+        const totalActivityMarks = calculateTotalActivityMarks(log);
+
+        const newPerformance: Exam[] = JSON.parse(JSON.stringify(student.academicPerformance || []));
+        
+        let exam = newPerformance.find(e => e.id === examId);
+        const examDetails = TERMINAL_EXAMS.find(e => e.id === examId)!;
+        
+        if (!exam) {
+            exam = { id: examId, name: examDetails.name, results: [] };
+            newPerformance.push(exam);
         }
+
+        let subjectResult = exam.results.find(r => r.subject === selectedAssignment.subject);
+        if (!subjectResult) {
+            subjectResult = { subject: selectedAssignment.subject };
+            exam.results.push(subjectResult);
+        }
+
+        subjectResult.activityLog = log;
+        subjectResult.activityMarks = Math.round(totalActivityMarks);
+
+        await onUpdateClassMarks([{ studentId: student.id, performance: newPerformance }]);
+        
+        setActivityLogTarget(null); // Close modal
         setIsSaving(false);
         setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
     };
 
+    const initialLogForModal = useMemo(() => {
+        if (!activityLogTarget || !selectedAssignment) return undefined;
+        const { student, examId } = activityLogTarget;
+        const exam = student.academicPerformance?.find(e => e.id === examId);
+        return exam?.results.find(r => r.subject === selectedAssignment.subject)?.activityLog;
+    }, [activityLogTarget, selectedAssignment]);
 
     if (!staffProfile || (staffProfile.assignedSubjects || []).length === 0) {
         return (
@@ -156,6 +114,8 @@ const ActivityMarksPage: React.FC<ActivityMarksPageProps> = ({ user, staffProfil
     }
 
     return (
+        <>
+        {showSuccess && <SuccessToast message="Marks saved successfully!" onDismiss={() => setShowSuccess(false)} />}
         <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
             <div className="mb-6 flex justify-between items-center">
                 <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-800">
@@ -171,11 +131,9 @@ const ActivityMarksPage: React.FC<ActivityMarksPageProps> = ({ user, staffProfil
 
             {!selectedAssignment ? (
                 <div className="space-y-6">
-                    {/* FIX: Refactored to use Object.keys to iterate over the assignmentsByGrade object. This resolves a TypeScript error where the 'assignments' array was incorrectly inferred as 'unknown' when using Object.entries. */}
                     {Object.keys(assignmentsByGrade).map(grade => (
                         <div key={grade}>
                             <h2 className="text-xl font-bold text-slate-800 border-b-2 border-slate-200 pb-2 mb-3">{grade}</h2>
-                            {/* FIX: Corrected typo in Tailwind CSS class from 'sm-grid-cols-3' to 'sm:grid-cols-3'. */}
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                                 {assignmentsByGrade[grade as Grade].map(asgn => (
                                     <button
@@ -200,68 +158,69 @@ const ActivityMarksPage: React.FC<ActivityMarksPageProps> = ({ user, staffProfil
                                 Entering Marks for: <span className="text-sky-600">{selectedAssignment.grade} - {selectedAssignment.subject}</span>
                             </h2>
                         </div>
-                         <button onClick={handleSave} disabled={isSaving} className="btn btn-primary px-6 py-3">
-                            {isSaving ? <SpinnerIcon className="w-5 h-5"/> : (showSuccess ? <CheckIcon className="w-5 h-5"/> : <CheckIcon className="w-5 h-5" />)}
-                            <span>{isSaving ? 'Saving...' : (showSuccess ? 'Saved!' : 'Save All Changes')}</span>
-                        </button>
                     </div>
                     <div className="overflow-x-auto border rounded-lg">
-                        <table className="min-w-full divide-y divide-slate-200 text-xs">
-                            <thead className="bg-slate-50 sticky top-0 z-10">
+                        <table className="min-w-full divide-y divide-slate-200">
+                            <thead className="bg-slate-50 sticky top-0">
                                 <tr>
-                                    <th rowSpan={2} className="p-2 border text-left font-bold text-slate-800 sticky left-0 bg-slate-100 z-10 w-44">Student Name</th>
+                                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-800 uppercase w-16">Roll</th>
+                                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-800 uppercase">Student Name</th>
                                     {TERMINAL_EXAMS.map(exam => (
-                                        <th key={exam.id} colSpan={4} className="p-2 border text-center font-bold text-slate-800">{exam.name}</th>
+                                        <th key={exam.id} className="px-4 py-3 text-center text-xs font-bold text-slate-800 uppercase">{exam.name}</th>
                                     ))}
-                                </tr>
-                                <tr>
-                                    {TERMINAL_EXAMS.flatMap(exam =>
-                                        ACTIVITY_COMPONENTS.map(comp => (
-                                            <th key={`${exam.id}-${comp.key}`} className="p-2 border font-semibold text-slate-700 bg-slate-100">
-                                                {comp.label} ({comp.weightage})
-                                            </th>
-                                        ))
-                                    )}
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-200">
                                 {selectedClassStudents.map(student => (
                                     <tr key={student.id} className="hover:bg-slate-50">
-                                        <td className="p-2 border font-medium sticky left-0 bg-white hover:bg-slate-50">{student.name}</td>
-                                        {TERMINAL_EXAMS.flatMap(exam =>
-                                            ACTIVITY_COMPONENTS.map(comp => {
-                                                const log = marksData[student.id]?.[exam.id];
-                                                const assessment = log?.[comp.key]?.assessments[0]; // Assuming one assessment for simplicity
-                                                return (
-                                                    <td key={`${exam.id}-${comp.key}`} className="p-1 border">
-                                                        <div className="flex gap-1">
-                                                            <input
-                                                                type="number"
-                                                                value={assessment?.marksObtained ?? ''}
-                                                                onChange={e => handleLogChange(student.id, exam.id, comp.key, 0, 'marksObtained', e.target.value)}
-                                                                className="w-1/2 text-center p-1 rounded border-slate-300"
-                                                                placeholder="Got"
-                                                            />
-                                                            <input
-                                                                type="number"
-                                                                value={assessment?.maxMarks ?? ''}
-                                                                onChange={e => handleLogChange(student.id, exam.id, comp.key, 0, 'maxMarks', e.target.value)}
-                                                                className="w-1/2 text-center p-1 rounded border-slate-300"
-                                                                placeholder="Max"
-                                                            />
-                                                        </div>
-                                                    </td>
-                                                );
-                                            })
-                                        )}
+                                        <td className="px-4 py-2 font-semibold text-center">{student.rollNo}</td>
+                                        <td className="px-4 py-2 font-medium">{student.name}</td>
+                                        {TERMINAL_EXAMS.map(exam => {
+                                            const examData = student.academicPerformance?.find(e => e.id === exam.id);
+                                            const subjectResult = examData?.results.find(r => r.subject === selectedAssignment.subject);
+                                            const total = subjectResult?.activityMarks;
+
+                                            return (
+                                                <td key={exam.id} className="px-4 py-2 text-center">
+                                                    <div className="flex items-center justify-center gap-3">
+                                                        <span className="font-bold text-lg w-24 text-right">
+                                                            {total != null ? `${total.toFixed(1)} / 40` : '-'}
+                                                        </span>
+                                                        <button 
+                                                            onClick={() => handleOpenModal(student, exam.id)}
+                                                            className="p-2 text-sky-600 hover:bg-sky-100 rounded-full"
+                                                            title={`Log marks for ${exam.name}`}
+                                                        >
+                                                            <EditIcon className="w-5 h-5"/>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
+                        {selectedClassStudents.length === 0 && (
+                            <p className="text-center p-8 text-slate-600">No students in this class.</p>
+                        )}
                     </div>
                 </div>
             )}
         </div>
+        
+        {activityLogTarget && selectedAssignment && (
+            <ActivityLogModal
+                isOpen={!!activityLogTarget}
+                onClose={() => setActivityLogTarget(null)}
+                onSave={handleSaveFromModal}
+                studentName={activityLogTarget.student.name}
+                examName={TERMINAL_EXAMS.find(e => e.id === activityLogTarget!.examId)!.name}
+                subjectName={selectedAssignment.subject}
+                initialLog={initialLogForModal}
+            />
+        )}
+        </>
     );
 };
 
