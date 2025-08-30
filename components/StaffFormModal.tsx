@@ -12,7 +12,6 @@ import {
     EMPLOYMENT_STATUS_LIST,
     STAFF_TYPE_LIST,
 } from '../constants';
-// FIX: Added PlusIcon and TrashIcon for the new UI
 import { ChevronDownIcon, ChevronUpIcon, UserIcon, SpinnerIcon, PlusIcon, TrashIcon } from './Icons';
 import { formatDateForDisplay, formatDateForStorage } from '../utils';
 
@@ -115,7 +114,6 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
         designation: Designation.TEACHER,
         employeeType: EmployeeType.FULL_TIME,
         status: EmploymentStatus.ACTIVE,
-        // FIX: Replaced non-existent `subjectsTaught` with `assignedSubjects` to match the Staff type.
         assignedSubjects: [],
         teacherLicenseNumber: '',
         salaryGrade: '',
@@ -146,7 +144,7 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                 });
                 const assignedGradeKey = Object.keys(gradeDefinitions).find(
                     g => gradeDefinitions[g as Grade]?.classTeacherId === staffMember.id
-                ) as Grade | null;
+                ) as Grade | undefined;
                 setAssignedGrade(assignedGradeKey || '');
             } else {
                 setFormData(getInitialFormData());
@@ -155,7 +153,6 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
         }
     }, [staffMember, isOpen, gradeDefinitions]);
     
-    // FIX: Simplified handleChange as subject assignment has its own handler now.
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -185,12 +182,10 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
         }
     };
 
-    // FIX: Added handlers for the new dynamic subject assignment UI.
     const handleAssignmentChange = (index: number, field: keyof SubjectAssignment, value: string) => {
         const newAssignments = [...(formData.assignedSubjects || [])];
         const newAssignment = { ...newAssignments[index], [field]: value as any };
 
-        // If the grade is changed, reset the subject selection.
         if (field === 'grade') {
             newAssignment.subject = ''; 
         }
@@ -219,17 +214,13 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
             dateOfJoining: formatDateForStorage(formData.dateOfJoining),
         };
         
-        // FIX: Filter out empty subject assignments
         if (dataToSave.assignedSubjects) {
             dataToSave.assignedSubjects = dataToSave.assignedSubjects.filter((a: SubjectAssignment) => a.subject.trim() !== '');
         }
     
-        // Firestore fails with `undefined` values.
-        // We must clean the object of any keys that have `undefined`, `null`, or `''` as values for optional fields.
         Object.keys(dataToSave).forEach(key => {
             const value = dataToSave[key];
             if (value === undefined || value === null || value === '') {
-                // Exceptions for numeric fields that can be 0, and photographUrl which can be ''.
                 const exceptions = ['yearsOfExperience', 'basicSalary', 'photographUrl'];
                 if (!exceptions.includes(key)) {
                      delete dataToSave[key];
@@ -237,7 +228,6 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
             }
         });
     
-        // Ensure numeric types are correct for fields that might have been left as strings
         if (dataToSave.yearsOfExperience !== undefined) {
             dataToSave.yearsOfExperience = Number(dataToSave.yearsOfExperience);
         }
