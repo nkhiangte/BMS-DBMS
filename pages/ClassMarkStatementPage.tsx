@@ -21,7 +21,7 @@ interface ClassMarkStatementPageProps {
 
 const RotatedHeader: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
     <th className={`border p-1 align-bottom h-48 ${className}`}>
-        <div className="flex items-end justify-center h-full pb-2 rotated-header-container">
+        <div className="flex items-end justify-center h-full pb-4 rotated-header-container">
             <span className="transform -rotate-90 whitespace-nowrap origin-bottom-center text-xs font-bold text-slate-800 uppercase tracking-wider rotated-header-text" dangerouslySetInnerHTML={{ __html: children as string }}>
             </span>
         </div>
@@ -475,18 +475,18 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                                     } else if (hasActivitiesForThisGrade && subject.activityFullMarks > 0) {
                                         return (
                                             <React.Fragment key={subject.name}>
-                                                <RotatedHeader className="marks-col">{`Exam (${subject.examFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
-                                                <RotatedHeader className="marks-col">{`Activity (${subject.activityFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
+                                                <RotatedHeader className="marks-col">{`${subject.name} (${subject.examFullMarks})`}</RotatedHeader>
+                                                <RotatedHeader className="marks-col">{`Act (${subject.activityFullMarks})`}</RotatedHeader>
                                             </React.Fragment>
                                         );
                                     }
-                                    return <RotatedHeader className="marks-col" key={subject.name}>{`Marks (${subject.examFullMarks}) <br/> ${subject.name}`}</RotatedHeader>
+                                    return <RotatedHeader className="marks-col" key={subject.name}>{`${subject.name} (${subject.examFullMarks})`}</RotatedHeader>
                                 })}
                                 {/* Totals */}
                                 {hasActivitiesForThisGrade ? (
                                     <>
-                                        <RotatedHeader className="total-col">Exam Total ({totalMaxExamMarks})</RotatedHeader>
-                                        <RotatedHeader className="total-col">Activity Total ({totalMaxActivityMarks})</RotatedHeader>
+                                        <RotatedHeader className="total-col">Sub (tot) ({totalMaxExamMarks})</RotatedHeader>
+                                        <RotatedHeader className="total-col">Act(Tot) ({totalMaxActivityMarks})</RotatedHeader>
                                     </>
                                 ) : null}
                                 <RotatedHeader className="total-col">Grand Total ({totalMaxMarks})</RotatedHeader>

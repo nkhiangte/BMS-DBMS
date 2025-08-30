@@ -1,10 +1,12 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Staff, Student, Grade, GradeDefinition, SubjectAssignment, StudentStatus, Exam, ActivityLog } from '../types';
 import { BackIcon, HomeIcon, AcademicCapIcon, BookOpenIcon, CheckIcon, SpinnerIcon, EditIcon } from '../components/Icons';
 import { TERMINAL_EXAMS } from '../constants';
 import ActivityLogModal from '../components/ActivityLogModal';
+import { isTermLockedForActivity } from '../utils';
 
 interface ActivityMarksPageProps {
   user: User | null;
@@ -12,6 +14,7 @@ interface ActivityMarksPageProps {
   students: Student[];
   gradeDefinitions: Record<Grade, GradeDefinition>;
   onUpdateClassMarks: (updates: Array<{ studentId: string; performance: Exam[] }>) => Promise<void>;
+  academicYear: string;
 }
 
 // Toast component for save feedback
@@ -29,7 +32,7 @@ const SuccessToast: React.FC<{ message: string; onDismiss: () => void }> = ({ me
     );
 };
 
-const ActivityMarksPage: React.FC<ActivityMarksPageProps> = ({ user, staffProfile, students, gradeDefinitions, onUpdateClassMarks }) => {
+const ActivityMarksPage: React.FC<ActivityMarksPageProps> = ({ user, staffProfile, students, gradeDefinitions, onUpdateClassMarks, academicYear }) => {
     const navigate = useNavigate();
     const [selectedAssignment, setSelectedAssignment] = useState<SubjectAssignment | null>(null);
     const [activityLogTarget, setActivityLogTarget] = useState<{ student: Student, examId: string } | null>(null);
@@ -179,6 +182,7 @@ const ActivityMarksPage: React.FC<ActivityMarksPageProps> = ({ user, staffProfil
                                             const examData = student.academicPerformance?.find(e => e.id === exam.id);
                                             const subjectResult = examData?.results.find(r => r.subject === selectedAssignment.subject);
                                             const total = subjectResult?.activityMarks;
+                                            const isLocked = isTermLockedForActivity(exam.id, academicYear);
 
                                             return (
                                                 <td key={exam.id} className="px-4 py-2 text-center">
@@ -188,8 +192,9 @@ const ActivityMarksPage: React.FC<ActivityMarksPageProps> = ({ user, staffProfil
                                                         </span>
                                                         <button 
                                                             onClick={() => handleOpenModal(student, exam.id)}
-                                                            className="p-2 text-sky-600 hover:bg-sky-100 rounded-full"
-                                                            title={`Log marks for ${exam.name}`}
+                                                            className="p-2 text-sky-600 hover:bg-sky-100 rounded-full disabled:text-slate-400 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                                            title={isLocked ? "This term has ended and is locked for editing." : `Log marks for ${exam.name}`}
+                                                            disabled={isLocked}
                                                         >
                                                             <EditIcon className="w-5 h-5"/>
                                                         </button>

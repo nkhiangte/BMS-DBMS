@@ -1,10 +1,12 @@
 import React from 'react';
 import { SubjectMark, SubjectDefinition, Grade } from '../types';
 import { GRADES_WITH_NO_ACTIVITIES, OABC_GRADES } from '../constants';
-import { isSubjectNumeric } from '../utils';
+import { isSubjectNumeric, isTermLockedForActivity } from '../utils';
 
 interface AcademicRecordTableProps {
   examName: string;
+  examId: string;
+  academicYear: string;
   results: SubjectMark[];
   isEditing: boolean;
   onUpdate: (newResults: SubjectMark[]) => void;
@@ -13,9 +15,10 @@ interface AcademicRecordTableProps {
   onOpenActivityLog: (subjectName: string) => void;
 }
 
-const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, results, isEditing, onUpdate, subjectDefinitions, grade, onOpenActivityLog }) => {
+const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, examId, academicYear, results, isEditing, onUpdate, subjectDefinitions, grade, onOpenActivityLog }) => {
   
   const hasActivitiesForThisGrade = !GRADES_WITH_NO_ACTIVITIES.includes(grade);
+  const isLocked = isTermLockedForActivity(examId, academicYear);
 
   const handleMarksChange = (subjectName: string, field: 'examMarks' | 'activityMarks' | 'marks' | 'grade', value: string, max?: number) => {
     let subjectFound = false;
@@ -124,7 +127,9 @@ const AcademicRecordTable: React.FC<AcademicRecordTableProps> = ({ examName, res
                                         <button
                                             type="button"
                                             onClick={() => onOpenActivityLog(subjectDef.name)}
-                                            className="text-xs font-semibold text-sky-700 bg-sky-100 hover:bg-sky-200 rounded-full px-2 py-1"
+                                            className="text-xs font-semibold text-sky-700 bg-sky-100 hover:bg-sky-200 rounded-full px-2 py-1 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                                            disabled={isLocked}
+                                            title={isLocked ? "This term has ended and is locked for editing." : "Log activity marks"}
                                         >
                                             Log
                                         </button>

@@ -795,7 +795,7 @@ const App: React.FC = () => {
                         <Route path="/classes/:grade/attendance" element={<PrivateRoute user={user}><StudentAttendancePage students={students} allAttendance={studentAttendance} onUpdateAttendance={handleUpdateStudentAttendance} user={user} assignedGrade={assignedGrade} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} academicYear={academicYear!} /></PrivateRoute>} />
                         
                         {/* New Activity Marks Page */}
-                        <Route path="/activity-marks" element={<PrivateRoute user={user}><ActivityMarksPage user={user} staffProfile={currentUserStaffProfile} students={students} gradeDefinitions={gradeDefinitions} onUpdateClassMarks={handleUpdateBulkMarks} /></PrivateRoute>} />
+                        <Route path="/activity-marks" element={<PrivateRoute user={user}><ActivityMarksPage user={user} staffProfile={currentUserStaffProfile} students={students} gradeDefinitions={gradeDefinitions} onUpdateClassMarks={handleUpdateBulkMarks} academicYear={academicYear!} /></PrivateRoute>} />
 
                         {/* Hostel Management */}
                         <Route path="/hostel" element={<PrivateRoute user={user}><HostelDashboardPage /></PrivateRoute>} />

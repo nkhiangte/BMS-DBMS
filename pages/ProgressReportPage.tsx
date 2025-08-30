@@ -258,6 +258,8 @@ const ProgressReportPage: React.FC<ProgressReportPageProps> = ({ students, acade
                                         <h3 className="text-xl font-semibold text-slate-700 mb-3">Overall Marks Breakdown</h3>
                                         <AcademicRecordTable
                                             examName=""
+                                            examId={exam.id}
+                                            academicYear={academicYear}
                                             results={filteredResults}
                                             isEditing={false}
                                             onUpdate={() => {}}

@@ -227,9 +227,10 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
         <div>
             {performanceData.map(exam => (
                 <div key={exam.id} className="mb-8">
-                    {/* FIX: Removed user, assignedGrade, and assignedSubjects props as they are not defined in AcademicRecordTableProps */}
                     <AcademicRecordTable
                         examName={exam.name}
+                        examId={exam.id}
+                        academicYear={academicYear}
                         results={exam.results}
                         isEditing={isEditing}
                         onUpdate={(newResults) => handleUpdateExamData(exam.id, 'results', newResults)}

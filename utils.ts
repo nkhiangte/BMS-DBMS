@@ -371,3 +371,31 @@ export const getRemarks = (percentage: number, result: string): string => {
     if (percentage >= 50) return 'Satisfactory';
     return 'Needs Improvement';
 };
+
+export const isTermLockedForActivity = (examId: string, academicYear: string): boolean => {
+    if (!academicYear) return true; // Lock if no academic year is set
+
+    const today = new Date();
+    const startYear = parseInt(academicYear.split('-')[0], 10);
+    let termLockDate: Date;
+
+    switch (examId) {
+        case 'terminal1': // I term: April to July
+            termLockDate = new Date(startYear, 7, 1); // Locks on Aug 1st (month 7 is August)
+            break;
+        case 'terminal2': // II term : Aug to November
+            termLockDate = new Date(startYear, 11, 1); // Locks on Dec 1st (month 11 is December)
+            break;
+        case 'terminal3': // Final term: December to March
+            termLockDate = new Date(startYear + 1, 3, 1); // Locks on April 1st of next year
+            break;
+        default:
+            return true; // Lock unknown terms
+    }
+    
+    // Set time to 00:00:00 for a clean date comparison
+    today.setHours(0, 0, 0, 0);
+    termLockDate.setHours(0, 0, 0, 0);
+    
+    return today >= termLockDate;
+};
