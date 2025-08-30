@@ -110,6 +110,12 @@ export enum BloodGroup {
 
 export type StaffType = 'Teaching' | 'Non-Teaching';
 
+// NEW: Definition for a teacher's subject assignment
+export interface SubjectAssignment {
+  grade: Grade;
+  subject: string;
+}
+
 export interface Staff {
     id: string;
     staffType: StaffType;
@@ -144,7 +150,7 @@ export interface Staff {
     designation: Designation;
     employeeType: EmployeeType;
     status: EmploymentStatus;
-    subjectsTaught: string[]; // Specific to Teaching staff
+    assignedSubjects?: SubjectAssignment[]; // Specific to Teaching staff
     teacherLicenseNumber?: string; // Specific to Teaching staff
 
     // 5. Payroll Details

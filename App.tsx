@@ -1,8 +1,9 @@
 
 
+
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType, FeeStructure, FeeSet, ConductEntry } from './types';
+import { User, Student, Exam, StudentStatus, TcRecord, Grade, GradeDefinition, Staff, EmploymentStatus, FeePayments, SubjectMark, InventoryItem, HostelResident, HostelRoom, HostelStaff, HostelInventoryItem, StockLog, StockLogType, ServiceCertificateRecord, PaymentStatus, StaffAttendanceRecord, AttendanceStatus, DailyStudentAttendance, StudentAttendanceRecord, CalendarEvent, CalendarEventType, FeeStructure, FeeSet, ConductEntry, SubjectAssignment } from './types';
 import { IMGBB_API_KEY, GRADE_DEFINITIONS, TERMINAL_EXAMS, GRADES_LIST, MIZORAM_HOLIDAYS, DEFAULT_FEE_STRUCTURE } from './constants';
 import { getNextGrade, createDefaultFeePayments, calculateStudentResult, formatStudentId } from './utils';
 
@@ -183,13 +184,22 @@ const App: React.FC = () => {
 
     // Memoized values
     const activeStudents = useMemo(() => students.filter(s => s.status === StudentStatus.ACTIVE), [students]);
+    
+    const currentUserStaffProfile = useMemo(() => {
+        if (!user?.email) return null;
+        return staff.find(s => s.emailAddress.toLowerCase() === user.email.toLowerCase());
+    }, [user, staff]);
+
     const assignedGrade = useMemo(() => {
-        if (user?.role !== 'user' || !user.uid) return null;
-        const assignedStaff = staff.find(s => s.emailAddress.toLowerCase() === user.email?.toLowerCase());
-        if (!assignedStaff) return null;
-        const gradeEntry = Object.entries(gradeDefinitions).find(([,def]) => def.classTeacherId === assignedStaff.id);
+        if (!currentUserStaffProfile) return null;
+        const gradeEntry = Object.entries(gradeDefinitions).find(([,def]) => def.classTeacherId === currentUserStaffProfile.id);
         return gradeEntry ? gradeEntry[0] as Grade : null;
-    }, [user, staff, gradeDefinitions]);
+    }, [currentUserStaffProfile, gradeDefinitions]);
+    
+    const assignedSubjectsForCurrentUser = useMemo(() => {
+        return currentUserStaffProfile?.assignedSubjects || [];
+    }, [currentUserStaffProfile]);
+
 
     // Handlers
     const addNotification = useCallback((message: string, type: 'success' | 'error' = 'success') => {
@@ -753,14 +763,14 @@ const App: React.FC = () => {
                         <Route path="/" element={<PrivateRoute user={user}><DashboardPage user={user} onAddStudent={handleAddStudent} studentCount={activeStudents.length} academicYear={academicYear!} onSetAcademicYear={setAcademicYearAndPersist} allUsers={allUsers} assignedGrade={assignedGrade} /></PrivateRoute>} />
                         <Route path="/students" element={<PrivateRoute user={user}><StudentListPage students={activeStudents} onAdd={handleAddStudent} onEdit={handleEditStudent} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} /></PrivateRoute>} />
                         <Route path="/student/:studentId" element={<PrivateRoute user={user}><StudentDetailPage students={students} onEdit={handleEditStudent} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} feeStructure={feeStructure} conductLog={conductLog} onAddConductEntry={handleAddConductEntry} onDeleteConductEntry={handleDeleteConductEntry} /></PrivateRoute>} />
-                        <Route path="/student/:studentId/academics" element={<PrivateRoute user={user}><AcademicPerformancePage students={students} onUpdateAcademic={handleUpdateAcademic} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} /></PrivateRoute>} />
+                        <Route path="/student/:studentId/academics" element={<PrivateRoute user={user}><AcademicPerformancePage students={students} onUpdateAcademic={handleUpdateAcademic} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} assignedSubjects={assignedSubjectsForCurrentUser} /></PrivateRoute>} />
                         <Route path="/classes" element={<PrivateRoute user={user}><ClassListPage gradeDefinitions={gradeDefinitions} staff={staff} onOpenImportModal={handleOpenImportModal} user={user} /></PrivateRoute>} />
                         <Route path="/classes/:grade" element={<PrivateRoute user={user}><ClassStudentsPage students={activeStudents} staff={staff} gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} onUpdateClassTeacher={handleUpdateClassTeacher} academicYear={academicYear!} onOpenImportModal={handleOpenImportModal} onOpenTransferModal={handleOpenTransferModal} onDelete={setDeletingStudent} user={user} assignedGrade={assignedGrade} onAddStudentToClass={handleAddStudentToClass} onUpdateBulkFeePayments={handleUpdateBulkFeePayments} feeStructure={feeStructure} onUpdateAcademic={handleUpdateAcademic} /></PrivateRoute>} />
                         <Route path="/reports/search" element={<PrivateRoute user={user}><ReportSearchPage students={activeStudents} academicYear={academicYear!} /></PrivateRoute>} />
                         <Route path="/progress-report/:studentId" element={<PrivateRoute user={user}><ProgressReportPage students={students} academicYear={academicYear!} gradeDefinitions={gradeDefinitions} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} /></PrivateRoute>} />
                         <Route path="/report-card/:studentId/:examId" element={<PrivateRoute user={user}><PrintableReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} user={user} assignedGrade={assignedGrade} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} /></PrivateRoute>} />
                         <Route path="/reports/bulk-print/:grade/:examId" element={<PrivateRoute user={user}><PrintableBulkReportCardPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} /></PrivateRoute>} />
-                        <Route path="/reports/class-statement/:grade/:examId" element={<PrivateRoute user={user}><ClassMarkStatementPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onUpdateClassMarks={handleUpdateBulkMarks} user={user} assignedGrade={assignedGrade} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} /></PrivateRoute>} />
+                        <Route path="/reports/class-statement/:grade/:examId" element={<PrivateRoute user={user}><ClassMarkStatementPage students={students} gradeDefinitions={gradeDefinitions} academicYear={academicYear!} onUpdateClassMarks={handleUpdateBulkMarks} user={user} assignedGrade={assignedGrade} assignedSubjects={assignedSubjectsForCurrentUser} fetchStudentAttendanceForMonth={fetchStudentAttendanceForMonth} /></PrivateRoute>} />
                         <Route path="/subjects" element={<PrivateRoute user={user}><ManageSubjectsPage gradeDefinitions={gradeDefinitions} onUpdateGradeDefinition={handleUpdateGradeDefinition} user={user} /></PrivateRoute>} />
                         <Route path="/staff" element={<PrivateRoute user={user}><ManageStaffPage staff={staff} onAdd={handleAddStaff} onEdit={handleEditStaff} onDelete={setDeletingStaff} gradeDefinitions={gradeDefinitions} user={user} /></PrivateRoute>} />
                         <Route path="/staff/:staffId" element={<PrivateRoute user={user}><StaffDetailPage staff={staff} onEdit={handleEditStaff} gradeDefinitions={gradeDefinitions} /></PrivateRoute>} />

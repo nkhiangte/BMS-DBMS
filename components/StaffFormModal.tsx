@@ -1,6 +1,7 @@
 import React, { useState, useEffect, FormEvent, useRef } from 'react';
-import { Staff, Grade, GradeDefinition, Gender, MaritalStatus, Department, Designation, EmployeeType, Qualification, BloodGroup, EmploymentStatus, StaffType } from '../types';
+import { Staff, Grade, GradeDefinition, Gender, MaritalStatus, Department, Designation, EmployeeType, Qualification, BloodGroup, EmploymentStatus, StaffType, SubjectAssignment } from '../types';
 import { 
+    GRADES_LIST,
     GENDER_LIST, 
     MARITAL_STATUS_LIST, 
     DEPARTMENT_LIST, 
@@ -11,7 +12,8 @@ import {
     EMPLOYMENT_STATUS_LIST,
     STAFF_TYPE_LIST,
 } from '../constants';
-import { ChevronDownIcon, ChevronUpIcon, UserIcon, SpinnerIcon } from './Icons';
+// FIX: Added PlusIcon and TrashIcon for the new UI
+import { ChevronDownIcon, ChevronUpIcon, UserIcon, SpinnerIcon, PlusIcon, TrashIcon } from './Icons';
 import { formatDateForDisplay, formatDateForStorage } from '../utils';
 
 const AccordionSection: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => {
@@ -113,7 +115,8 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
         designation: Designation.TEACHER,
         employeeType: EmployeeType.FULL_TIME,
         status: EmploymentStatus.ACTIVE,
-        subjectsTaught: [],
+        // FIX: Replaced non-existent `subjectsTaught` with `assignedSubjects` to match the Staff type.
+        assignedSubjects: [],
         teacherLicenseNumber: '',
         salaryGrade: '',
         basicSalary: null,
@@ -152,15 +155,10 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
         }
     }, [staffMember, isOpen, gradeDefinitions]);
     
+    // FIX: Simplified handleChange as subject assignment has its own handler now.
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        
-        if (name === 'subjectsTaught') {
-            const subjects = value.split(',').map(s => s.trim()).filter(Boolean);
-            setFormData(prev => ({ ...prev, subjectsTaught: subjects }));
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
-        }
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
     
     const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -187,6 +185,24 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
         }
     };
 
+    // FIX: Added handlers for the new dynamic subject assignment UI.
+    const handleAssignmentChange = (index: number, field: keyof SubjectAssignment, value: string) => {
+        const newAssignments = [...(formData.assignedSubjects || [])];
+        newAssignments[index] = { ...newAssignments[index], [field]: value as any };
+        setFormData(prev => ({ ...prev, assignedSubjects: newAssignments }));
+    };
+
+    const handleAddAssignment = () => {
+        const newAssignments = [...(formData.assignedSubjects || []), { grade: GRADES_LIST[0], subject: '' }];
+        setFormData(prev => ({ ...prev, assignedSubjects: newAssignments }));
+    };
+
+    const handleRemoveAssignment = (index: number) => {
+        const newAssignments = (formData.assignedSubjects || []).filter((_, i) => i !== index);
+        setFormData(prev => ({ ...prev, assignedSubjects: newAssignments }));
+    };
+
+
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         
@@ -196,9 +212,9 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
             dateOfJoining: formatDateForStorage(formData.dateOfJoining),
         };
         
-        // Convert subjectsTaught from string to array if needed
-        if (typeof dataToSave.subjectsTaught === 'string') {
-            dataToSave.subjectsTaught = dataToSave.subjectsTaught.split(',').map((s: string) => s.trim()).filter(Boolean);
+        // FIX: Filter out empty subject assignments
+        if (dataToSave.assignedSubjects) {
+            dataToSave.assignedSubjects = dataToSave.assignedSubjects.filter((a: SubjectAssignment) => a.subject.trim() !== '');
         }
     
         // Firestore fails with `undefined` values.
@@ -222,6 +238,11 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
             dataToSave.basicSalary = Number(dataToSave.basicSalary);
         }
         
+        if (dataToSave.staffType === 'Non-Teaching') {
+            delete dataToSave.assignedSubjects;
+            delete dataToSave.teacherLicenseNumber;
+        }
+
         onSubmit(dataToSave as Omit<Staff, 'id'>, assignedGrade || null);
     };
 
@@ -394,9 +415,35 @@ const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSubm
                     </div>
                     {formData.staffType === 'Teaching' && (
                         <>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-800">Subjects Taught</label>
-                                <input type="text" name="subjectsTaught" value={Array.isArray(formData.subjectsTaught) ? formData.subjectsTaught.join(', ') : ''} onChange={handleChange} placeholder="e.g. English, Maths" className="mt-1 block w-full border-slate-300 rounded-md shadow-sm" />
+                            {/* FIX: Replaced `subjectsTaught` input with a dynamic list editor for `assignedSubjects`. */}
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold text-slate-800">Subject Assignments</label>
+                                <div className="mt-2 space-y-2">
+                                    {(formData.assignedSubjects || []).map((assignment, index) => (
+                                        <div key={index} className="flex items-center gap-2 p-2 bg-slate-100 rounded-lg">
+                                            <select
+                                                value={assignment.grade}
+                                                onChange={(e) => handleAssignmentChange(index, 'grade', e.target.value)}
+                                                className="form-select flex-grow border-slate-300 rounded-md shadow-sm"
+                                            >
+                                                {GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                                            </select>
+                                            <input
+                                                type="text"
+                                                placeholder="Subject Name"
+                                                value={assignment.subject}
+                                                onChange={(e) => handleAssignmentChange(index, 'subject', e.target.value)}
+                                                className="form-input flex-grow border-slate-300 rounded-md shadow-sm"
+                                            />
+                                            <button type="button" onClick={() => handleRemoveAssignment(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full">
+                                                <TrashIcon className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button type="button" onClick={handleAddAssignment} className="btn btn-secondary text-sm">
+                                        <PlusIcon className="w-4 h-4"/> Add Assignment
+                                    </button>
+                                </div>
                             </div>
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-bold text-slate-800">Teacher License No. (Optional)</label>

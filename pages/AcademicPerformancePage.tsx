@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, Exam, SubjectMark, Grade, GradeDefinition, User, ActivityLog } from '../types';
+import { Student, Exam, SubjectMark, Grade, GradeDefinition, User, ActivityLog, SubjectAssignment } from '../types';
 import { TERMINAL_EXAMS, CONDUCT_GRADE_LIST } from '../constants';
 import { BackIcon, EditIcon, CheckIcon, XIcon, HomeIcon } from '../components/Icons';
 import AcademicRecordTable from '../components/AcademicRecordTable';
@@ -14,9 +14,10 @@ interface AcademicPerformancePageProps {
   academicYear: string;
   user: User;
   assignedGrade: Grade | null;
+  assignedSubjects: SubjectAssignment[];
 }
 
-const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ students, onUpdateAcademic, gradeDefinitions, academicYear, user, assignedGrade }) => {
+const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ students, onUpdateAcademic, gradeDefinitions, academicYear, user, assignedGrade, assignedSubjects }) => {
   const { studentId } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
 
@@ -26,7 +27,12 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
   const [performanceData, setPerformanceData] = useState<Exam[]>([]);
   const [editingActivityLogFor, setEditingActivityLogFor] = useState<{ examId: string, subjectName: string } | null>(null);
   
-  const canEdit = user.role === 'admin' || (student && student.grade === assignedGrade);
+  const isSubjectTeacherForThisClass = useMemo(() => {
+    if (!student) return false;
+    return assignedSubjects.some(s => s.grade === student.grade);
+  }, [assignedSubjects, student]);
+
+  const canEdit = user.role === 'admin' || (student && student.grade === assignedGrade) || isSubjectTeacherForThisClass;
 
   const originalPerformanceData = useMemo(() => {
     if (!student) return [];
@@ -221,10 +227,11 @@ const AcademicPerformancePage: React.FC<AcademicPerformancePageProps> = ({ stude
         <div>
             {performanceData.map(exam => (
                 <div key={exam.id} className="mb-8">
+                    {/* FIX: Removed user, assignedGrade, and assignedSubjects props as they are not defined in AcademicRecordTableProps */}
                     <AcademicRecordTable
                         examName={exam.name}
                         results={exam.results}
-                        isEditing={isEditing && canEdit}
+                        isEditing={isEditing}
                         onUpdate={(newResults) => handleUpdateExamData(exam.id, 'results', newResults)}
                         subjectDefinitions={gradeDef.subjects}
                         grade={student.grade}

@@ -2,6 +2,7 @@
 
 
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Staff, EmploymentStatus, Grade, GradeDefinition, Designation, User } from '../types';
@@ -174,7 +175,8 @@ const ManageStaffPage: React.FC<ManageStaffPageProps> = ({ staff, gradeDefinitio
         'MaritalStatus', 'BloodGroup', 'AadhaarNumber', 'ContactNumber', 'EmailAddress', 
         'PermanentAddress', 'CurrentAddress', 'EducationalQualification', 'Specialization', 
         'YearsOfExperience', 'PreviousExperience', 'DateOfJoining', 'Department', 'Designation', 
-        'EmployeeType', 'Status', 'SubjectsTaught', 'TeacherLicenseNumber', 'SalaryGrade', 
+        // FIX: Renamed 'SubjectsTaught' to 'AssignedSubjects' to match the Staff type.
+        'EmployeeType', 'Status', 'AssignedSubjects', 'TeacherLicenseNumber', 'SalaryGrade', 
         'BasicSalary', 'BankAccountNumber', 'BankName', 'PANNumber', 'EmergencyContactName', 
         'EmergencyContactRelationship', 'EmergencyContactNumber', 'MedicalConditions'
     ];
@@ -214,7 +216,8 @@ const ManageStaffPage: React.FC<ManageStaffPageProps> = ({ staff, gradeDefinitio
             escapeCsvField(member.designation),
             escapeCsvField(member.employeeType),
             escapeCsvField(member.status),
-            escapeCsvField(member.subjectsTaught.join('; ')),
+            // FIX: Changed from `subjectsTaught` to `assignedSubjects` and formatted the object array to a string.
+            escapeCsvField((member.assignedSubjects || []).map(a => `${a.grade}: ${a.subject}`).join(' | ')),
             escapeCsvField(member.teacherLicenseNumber),
             escapeCsvField(member.salaryGrade),
             escapeCsvField(member.basicSalary),

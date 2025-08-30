@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Staff, Grade, GradeDefinition, EmploymentStatus } from '../types';
+import { Staff, Grade, GradeDefinition, EmploymentStatus, SubjectAssignment } from '../types';
 import { BackIcon, EditIcon, UserIcon, HomeIcon, MailIcon, PhoneIcon, BriefcaseIcon, AcademicCapIcon, CurrencyDollarIcon, BookOpenIcon } from '../components/Icons';
 import { formatDateForDisplay } from '../utils';
 
@@ -65,6 +65,17 @@ const StaffDetailPage: React.FC<StaffDetailPageProps> = ({ staff, onEdit, gradeD
     const entry = Object.entries(gradeDefinitions).find(([, def]) => def.classTeacherId === staffMember.id);
     return entry ? entry[0] as Grade : null;
   }, [staffMember, gradeDefinitions]);
+  
+  const subjectsByGrade = useMemo(() => {
+      if (!staffMember?.assignedSubjects) return null;
+      return staffMember.assignedSubjects.reduce((acc, asgn) => {
+          if (!acc[asgn.grade]) {
+              acc[asgn.grade] = [];
+          }
+          acc[asgn.grade].push(asgn.subject);
+          return acc;
+      }, {} as Record<Grade, string[]>);
+  }, [staffMember]);
 
 
   if (!staffMember) {
@@ -166,12 +177,19 @@ const StaffDetailPage: React.FC<StaffDetailPageProps> = ({ staff, onEdit, gradeD
                 <>
                     <DetailItem label="Teacher License No." value={staffMember.teacherLicenseNumber} />
                     <div className="sm:col-span-2 lg:col-span-3">
-                        <DetailItem label="Subjects Handled">
-                            {staffMember.subjectsTaught.length > 0 ? (
-                                <div className="flex flex-wrap gap-2 mt-1">
-                                    {staffMember.subjectsTaught.map(sub => <span key={sub} className="bg-sky-100 text-sky-800 text-xs font-semibold px-2.5 py-1 rounded-full">{sub}</span>)}
-                                </div>
-                            ) : "N/A"}
+                        <DetailItem label="Subject Assignments">
+                           {subjectsByGrade && Object.keys(subjectsByGrade).length > 0 ? (
+                               <div className="space-y-2 mt-1">
+                                   {Object.entries(subjectsByGrade).map(([grade, subjects]) => (
+                                       <div key={grade}>
+                                           <span className="font-semibold text-slate-700">{grade}:</span>
+                                           <div className="flex flex-wrap gap-2 mt-1">
+                                                {subjects.map(sub => <span key={sub} className="bg-sky-100 text-sky-800 text-xs font-semibold px-2.5 py-1 rounded-full">{sub}</span>)}
+                                           </div>
+                                       </div>
+                                   ))}
+                               </div>
+                           ) : "No subjects assigned."}
                         </DetailItem>
                     </div>
                 </>

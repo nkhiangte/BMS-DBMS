@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Student, Grade, GradeDefinition, StudentStatus, Exam, SubjectMark, User, StudentAttendanceRecord, StudentAttendanceStatus } from '../types';
+import { Student, Grade, GradeDefinition, StudentStatus, Exam, SubjectMark, User, StudentAttendanceRecord, StudentAttendanceStatus, SubjectAssignment } from '../types';
 import { BackIcon, HomeIcon, PrinterIcon, EditIcon, InboxArrowDownIcon, SpinnerIcon, TrashIcon } from '../components/Icons';
 import { TERMINAL_EXAMS, GRADES_WITH_NO_ACTIVITIES, OABC_GRADES } from '../constants';
 import { formatStudentId, calculateStudentResult, calculateRanks, getMonthsForTerm, getPerformanceGrade, getRemarks, isSubjectNumeric } from '../utils';
@@ -15,6 +15,7 @@ interface ClassMarkStatementPageProps {
     onUpdateClassMarks: (updates: Array<{ studentId: string; performance: Exam[] }>) => Promise<void>;
     user: User;
     assignedGrade: Grade | null;
+    assignedSubjects: SubjectAssignment[];
     fetchStudentAttendanceForMonth: (grade: Grade, year: number, month: number) => Promise<{ [date: string]: StudentAttendanceRecord }>;
 }
 
@@ -28,7 +29,7 @@ const RotatedHeader: React.FC<{ children: React.ReactNode; className?: string }>
 );
 
 
-const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ students, gradeDefinitions, academicYear, onUpdateClassMarks, user, assignedGrade, fetchStudentAttendanceForMonth }) => {
+const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ students, gradeDefinitions, academicYear, onUpdateClassMarks, user, assignedGrade, assignedSubjects, fetchStudentAttendanceForMonth }) => {
     const { grade: encodedGrade, examId } = useParams<{ grade: string; examId: string }>();
     const navigate = useNavigate();
     const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -601,6 +602,7 @@ const ClassMarkStatementPage: React.FC<ClassMarkStatementPageProps> = ({ student
                 <p className="mt-2 font-bold text-red-600">This action will delete all entered marks for this exam and cannot be undone.</p>
             </ConfirmationModal>
             
+            {/* FIX: Removed user, assignedGrade, and assignedSubjects props as they are not defined in MarksEntryModalProps */}
             <MarksEntryModal 
                 isOpen={isMarksEntryModalOpen}
                 onClose={() => setIsMarksEntryModalOpen(false)}
